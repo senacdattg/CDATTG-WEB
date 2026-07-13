@@ -40,6 +40,12 @@ function ordenarFichas(fichas: FichaCaracterizacionResponse[]): FichaCaracteriza
   return [...fichas].sort((a, b) => a.ficha.localeCompare(b.ficha, 'es'));
 }
 
+function etiquetaInstructorRetroactiva(i: InstructorFichaResponse): string {
+  const nombre = i.instructor_nombre?.trim() || `Instructor #${i.instructor_id}`;
+  const email = i.instructor_email?.trim();
+  return email ? `${nombre} (${email})` : `${nombre} (#${i.instructor_id})`;
+}
+
 export function CargaRetroactivaAsistenciaPage() {
   const { roles } = useAuth();
   const isSuperAdmin = roles.includes('SUPER ADMINISTRADOR');
@@ -271,7 +277,7 @@ export function CargaRetroactivaAsistenciaPage() {
                 {instructores.length > 1 && <option value="">Seleccione instructor…</option>}
                 {instructores.map((i) => (
                   <option key={i.id} value={i.id}>
-                    {i.instructor_nombre?.trim() || `Instructor #${i.instructor_id}`}
+                    {etiquetaInstructorRetroactiva(i)}
                     {i.competencia_nombre ? ` — ${i.competencia_nombre}` : ''}
                   </option>
                 ))}

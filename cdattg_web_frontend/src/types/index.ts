@@ -488,6 +488,7 @@ export interface InstructorFichaResponse {
   id: number;
   instructor_id: number;
   instructor_nombre: string;
+  instructor_email?: string;
   ficha_id: number;
   competencia_id?: number;
   competencia_nombre?: string;

@@ -646,7 +646,8 @@ class ApiService {
   // Instructores de una ficha
   async getFichaInstructores(fichaId: number): Promise<InstructorFichaResponse[]> {
     const response = await this.api.get<{ data: InstructorFichaResponse[] }>(`/fichas-caracterizacion/${fichaId}/instructores`);
-    return response.data.data;
+    const list = response.data?.data;
+    return Array.isArray(list) ? list : [];
   }
 
   async asignarInstructores(fichaId: number, data: AsignarInstructoresRequest): Promise<void> {

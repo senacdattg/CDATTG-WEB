@@ -43,6 +43,7 @@ type InstructorFichaResponse struct {
 	FichaID               uint       `json:"ficha_id"`
 	CompetenciaID         *uint      `json:"competencia_id"`
 	CompetenciaNombre     string     `json:"competencia_nombre,omitempty"`
+	InstructorEmail       string     `json:"instructor_email,omitempty"`
 	FechaInicio           *time.Time `json:"fecha_inicio"`
 	FechaFin              *time.Time `json:"fecha_fin"`
 	TotalHorasInstructor  *int       `json:"total_horas_instructor"`

@@ -69,6 +69,7 @@ type AsistenciaService interface {
 	GetSesionesSinAsistenciaTomada(userID uint, roles []string, dias int, regionalID, sedeID *uint) (*dto.SesionesSinAsistenciaTomadaResponse, error)
 	AjustarEstadoAprendiz(asistenciaAprendizID uint, estado, motivo string, instructorFichaIDRegistroSalida *uint) (*dto.AsistenciaAprendizResponse, error)
 	ListPendientesRevision(instructorID uint, fecha string) ([]dto.AsistenciaAprendizResponse, error)
+	RegistrarAsistenciaRetroactiva(req dto.AsistenciaRetroactivaRequest) (*dto.AsistenciaRetroactivaResponse, error)
 	FinalizarSesionesVencidas()
 }
 

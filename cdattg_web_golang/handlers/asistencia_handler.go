@@ -73,6 +73,22 @@ func (h *AsistenciaHandler) CreateSesion(c *gin.Context) {
 	c.JSON(http.StatusCreated, resp)
 }
 
+// RegistrarAsistenciaRetroactiva carga asistencia de un día pasado (solo superadministrador).
+func (h *AsistenciaHandler) RegistrarAsistenciaRetroactiva(c *gin.Context) {
+	var req dto.AsistenciaRetroactivaRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": errMsgDatosInvalidos, "details": err.Error()})
+		return
+	}
+	resp, err := h.svc.RegistrarAsistenciaRetroactiva(req)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	GetAsistenciaDashboardHub().BroadcastRefresh()
+	c.JSON(http.StatusCreated, resp)
+}
+
 // EntrarTomarAsistencia obtiene o crea la sesión de asistencia del instructor actual para la ficha. Resuelve instructor por persona_id (igual que la lista de fichas).
 func (h *AsistenciaHandler) EntrarTomarAsistencia(c *gin.Context) {
 	var req dto.EntrarTomarAsistenciaRequest

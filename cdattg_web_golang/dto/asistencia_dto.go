@@ -19,6 +19,21 @@ type AsistenciaRequest struct {
 	HoraInicio        *time.Time `json:"hora_inicio"`
 }
 
+// AsistenciaRetroactivaRequest carga tardía de asistencia (solo superadministrador).
+type AsistenciaRetroactivaRequest struct {
+	InstructorFichaID uint   `json:"instructor_ficha_id" binding:"required"`
+	Fecha             string `json:"fecha" binding:"required"` // YYYY-MM-DD, día pasado
+	AprendizIDs       []uint `json:"aprendiz_ids" binding:"required,min=1"`
+	Motivo            string `json:"motivo" binding:"required"`
+}
+
+// AsistenciaRetroactivaResponse resultado de la carga retroactiva.
+type AsistenciaRetroactivaResponse struct {
+	Asistencia  AsistenciaResponse `json:"asistencia"`
+	Registrados int                `json:"registrados"`
+	Omitidos    int                `json:"omitidos"`
+}
+
 // AsistenciaObservacionesRequest actualizar observaciones de una sesión de asistencia (clase del día).
 type AsistenciaObservacionesRequest struct {
 	Observaciones string `json:"observaciones"`

@@ -55,13 +55,23 @@ function SesionFichaCard({ page }: Readonly<{ page: AsistenciaSesionPageState }>
           </div>
           <p className="text-xs text-gray-500 dark:text-gray-400">
             {sesionSoloLectura
-              ? 'La sesión se cerró automáticamente al terminar el horario de la jornada (más la extensión). Los registros se conservan.'
-              : 'La sesión se cierra automáticamente al terminar el horario de la jornada (más la extensión).'}
+              ? 'La sesión está cerrada. Los registros se conservan; no puede agregar ingresos ni salidas.'
+              : 'Puede finalizar la sesión manualmente cuando termine, o se cerrará automáticamente al terminar el horario de la jornada (más la extensión).'}
           </p>
         </>
       }
       actions={
         <>
+          {sesionSoloLectura ? null : (
+            <button
+              type="button"
+              onClick={() => void page.handleFinalizarSesion()}
+              disabled={page.finalizandoSesion}
+              className="btn-primary text-sm"
+            >
+              {page.finalizandoSesion ? 'Finalizando…' : 'Finalizar sesión'}
+            </button>
+          )}
           <button type="button" onClick={abrirObservacionSesion} className="btn-secondary text-sm">
             Observación de sesión
           </button>
@@ -92,7 +102,7 @@ export function AsistenciaTomarSesionView({ page }: Props) {
             </p>
             {sesionSoloLectura ? (
               <p className="mt-1 text-xs text-amber-700 dark:text-amber-300">
-                Sesión cerrada automáticamente. Los registros se conservan; no puede agregar ingresos ni salidas.
+                Sesión cerrada. Los registros se conservan; no puede agregar ingresos ni salidas.
               </p>
             ) : (
               <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">

@@ -814,6 +814,12 @@ class ApiService {
     return response.data;
   }
 
+  /** Finaliza la sesión de asistencia del instructor (cierre manual). */
+  async finalizarSesionAsistencia(asistenciaId: number): Promise<AsistenciaResponse> {
+    const response = await this.api.put<AsistenciaResponse>(`/asistencias/${asistenciaId}/finalizar-sesion`);
+    return response.data;
+  }
+
   /** Dashboard de asistencia detallado. Params opcionales: sede_id, fecha (YYYY-MM-DD). */
   async getAsistenciaDashboard(params?: { sede_id?: number; fecha?: string }): Promise<AsistenciaDashboardResponse> {
     const response = await this.api.get<AsistenciaDashboardResponse>('/asistencias/dashboard', { params });

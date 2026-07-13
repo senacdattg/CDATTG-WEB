@@ -20,6 +20,8 @@ import {
   mostrarToastResultadoDocumento,
   mostrarToastErrorRegistroDocumento,
   confirmEliminarRegistroAsistencia,
+  confirmFinalizarSesionAsistencia,
+  mostrarToastInfoAsistencia,
 } from './asistenciaToast';
 import {
   extraerMensajeErrorRegistroAsistencia,
@@ -56,6 +58,7 @@ export function useAsistenciaRegistro({
   const [observacionesGuardando, setObservacionesGuardando] = useState(false);
   const [observacionesSesionModal, setObservacionesSesionModal] = useState<{ observaciones: string } | null>(null);
   const [observacionesSesionGuardando, setObservacionesSesionGuardando] = useState(false);
+  const [finalizandoSesion, setFinalizandoSesion] = useState(false);
   const [estadoModal, setEstadoModal] = useState<AsistenciaModalsModel['estadoModal']>(null);
   const [estadoGuardando, setEstadoGuardando] = useState(false);
   const [selectedAprendizIds, setSelectedAprendizIds] = useState<Set<number>>(() => new Set());
@@ -274,6 +277,32 @@ export function useAsistenciaRegistro({
     }
   };
 
+  const handleFinalizarSesion = async () => {
+    if (sesionSoloLectura || !sesionActual || finalizandoSesion) return;
+
+    const ingresosCount = aprendicesEnSesion.filter((aa) => Boolean(aa.hora_ingreso?.trim())).length;
+    if (ingresosCount === 0) {
+      mostrarToastErrorAsistencia(
+        'No se puede finalizar la sesión',
+        'Debe registrar al menos un ingreso antes de finalizar.',
+      );
+      return;
+    }
+
+    const confirmado = await confirmFinalizarSesionAsistencia(ingresosCount);
+    if (!confirmado) return;
+
+    setFinalizandoSesion(true);
+    try {
+      setSesionActual(await apiService.finalizarSesionAsistencia(sesionActual.id));
+      mostrarToastInfoAsistencia('Sesión finalizada', 'La sesión se cerró correctamente.');
+    } catch (e: unknown) {
+      mostrarToastErrorAsistencia('No se pudo finalizar la sesión', axiosErrorMessage(e));
+    } finally {
+      setFinalizandoSesion(false);
+    }
+  };
+
   const handleRegistrarPorDocumento = async (numeroDocumento: string) => {
     const doc = normalizarDocumentoEscaneado(numeroDocumento);
     if (sesionSoloLectura || !sesionActual || !doc) return;
@@ -415,6 +444,7 @@ export function useAsistenciaRegistro({
   };
 
   const enSesionCount = new Set(aprendicesEnSesion.map((aa) => aa.aprendiz_id)).size;
+  const ingresosEnSesionCount = aprendicesEnSesion.filter((aa) => Boolean(aa.hora_ingreso?.trim())).length;
   const todosFiltradosSeleccionados =
     aprendicesFiltrados.length > 0 && aprendicesFiltrados.every((a) => selectedAprendizIds.has(a.id));
 
@@ -455,6 +485,8 @@ export function useAsistenciaRegistro({
     aprendicesFiltrados,
     bulkCounts,
     enSesionCount,
+    ingresosEnSesionCount,
+    finalizandoSesion,
     todosFiltradosSeleccionados,
     handleRegistrarIngreso,
     handleRegistrarSalida,
@@ -463,6 +495,7 @@ export function useAsistenciaRegistro({
     handleGuardarObservaciones,
     handleGuardarEstado,
     handleGuardarObservacionesSesion,
+    handleFinalizarSesion,
     handleRegistrarPorDocumento,
     toggleSelectAprendiz,
     handleBulkEntrada,

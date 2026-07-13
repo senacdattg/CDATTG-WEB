@@ -171,7 +171,7 @@ func (h *AsistenciaHandler) ListByFichaAndFechas(c *gin.Context) {
 }
 
 // StartAsistenciaAutoFinalize inicia la goroutine que finaliza sesiones al terminar el horario de la jornada (más extensión).
-// Los instructores no pueden finalizar manualmente; la finalización es automática.
+// Complementa la finalización manual que el instructor puede hacer desde la toma de asistencia.
 // Sin DB inicializada (p. ej. tests de router) no hace nada para evitar panic en repositorios.
 func StartAsistenciaAutoFinalize(h *AsistenciaHandler) {
 	if database.GetDB() == nil {
@@ -255,6 +255,33 @@ func (h *AsistenciaHandler) RegistrarSalida(c *gin.Context) {
 	}
 	instructorFichaID := h.getInstructorFichaIDForCurrentUser(c, fichaID)
 	resp, err := h.svc.RegistrarSalida(uint(id), instructorFichaID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	GetAsistenciaDashboardHub().BroadcastRefresh()
+	c.JSON(http.StatusOK, resp)
+}
+
+func (h *AsistenciaHandler) FinalizarSesion(c *gin.Context) {
+	id, err := strconv.ParseUint(c.Param("id"), 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": errMsgIDInvalido})
+		return
+	}
+	asist, err := h.asistenciaRepo.FindByID(uint(id))
+	if err != nil || asist == nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "sesión no encontrada"})
+		return
+	}
+	var fichaID uint
+	if asist.InstructorFicha != nil {
+		fichaID = asist.InstructorFicha.FichaID
+	} else if ifc, _ := h.instFichaRepo.FindByID(asist.InstructorFichaID); ifc != nil {
+		fichaID = ifc.FichaID
+	}
+	instructorFichaID := h.getInstructorFichaIDForCurrentUser(c, fichaID)
+	resp, err := h.svc.FinalizarSesionManual(uint(id), instructorFichaID)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return

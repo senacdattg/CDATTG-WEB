@@ -80,6 +80,14 @@ export const asistenciaRoutes: RouteObject = {
       },
     },
     {
+      path: 'carga-retroactiva',
+      handle: { breadcrumb: { label: 'Carga retroactiva de asistencia' } },
+      lazy: async () => {
+        const { CargaRetroactivaAsistenciaPage } = await import('../../pages/asistencia/CargaRetroactivaAsistenciaPage');
+        return { Component: CargaRetroactivaAsistenciaPage };
+      },
+    },
+    {
       path: 'analisis',
       handle: { breadcrumb: { label: 'Panel analítico de asistencia' } },
       lazy: async () => {

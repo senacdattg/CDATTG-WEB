@@ -42,6 +42,7 @@ export const asistenciaPaths = {
   },
   tiposObservacion: '/asistencia/tipos-observacion',
   sesionesSinAsistenciaTomada: '/asistencia/sesiones-sin-asistencia-tomada',
+  cargaRetroactiva: '/asistencia/carga-retroactiva',
   analisis: '/asistencia/analisis',
 } as const;
 

@@ -545,6 +545,19 @@ export interface AsistenciaRequest {
   hora_inicio?: string;
 }
 
+export interface AsistenciaRetroactivaRequest {
+  instructor_ficha_id: number;
+  fecha: string;
+  aprendiz_ids: number[];
+  motivo: string;
+}
+
+export interface AsistenciaRetroactivaResponse {
+  asistencia: AsistenciaResponse;
+  registrados: number;
+  omitidos: number;
+}
+
 export interface AsistenciaResponse {
   id: number;
   instructor_ficha_id: number;

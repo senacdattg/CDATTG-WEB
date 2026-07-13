@@ -30,6 +30,8 @@ import type {
   CreateInstructorRequest,
   UpdateInstructorRequest,
   AsistenciaRequest,
+  AsistenciaRetroactivaRequest,
+  AsistenciaRetroactivaResponse,
   AsistenciaReglasResponse,
   AsistenciaResponse,
   AsistenciaAprendizRequest,
@@ -789,6 +791,12 @@ class ApiService {
 
   async createAsistenciaSesion(data: AsistenciaRequest): Promise<AsistenciaResponse> {
     const response = await this.api.post<AsistenciaResponse>('/asistencias', data);
+    return response.data;
+  }
+
+  /** Carga tardía de asistencia (solo superadministrador). */
+  async registrarAsistenciaRetroactiva(data: AsistenciaRetroactivaRequest): Promise<AsistenciaRetroactivaResponse> {
+    const response = await this.api.post<AsistenciaRetroactivaResponse>('/asistencias/carga-retroactiva', data);
     return response.data;
   }
 

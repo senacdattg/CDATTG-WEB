@@ -136,6 +136,14 @@ export const SIDEBAR_MANIFEST: SidebarManifestItem[] = [
   },
   {
     section: 'Asistencia',
+    path: asistenciaPaths.cargaRetroactiva,
+    label: 'Carga retroactiva',
+    permission: null,
+    rolesRequired: ['SUPER ADMINISTRADOR'],
+    iconKey: 'asistencia/historial',
+  },
+  {
+    section: 'Asistencia',
     path: asistenciaPaths.tiposObservacion,
     label: 'Tipos de observación',
     permission: null,

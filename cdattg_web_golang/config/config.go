@@ -17,7 +17,24 @@ type Config struct {
 	Inventario InventarioConfig
 	SMTP       SMTPConfig
 	Alertas    AlertasConfig
+	Sofia      SofiaConfig
 	Env        string
+}
+
+// SofiaConfig credenciales y ajustes para automatizar consultas en SofiaPlus (módulo Complementarios).
+// La contraseña NUNCA se versiona: se define en el .env local (ver .gitignore).
+type SofiaConfig struct {
+	LoginURL      string // URL de "INGRESO USUARIOS REGISTRADOS"
+	Usuario       string // número de documento del usuario institucional
+	TipoDocumento string // tipo de documento del login (ej. "Cédula de Ciudadanía")
+	Password      string // contraseña del usuario institucional (solo en .env local)
+	Rol           string // rol a seleccionar tras el login
+	Headless      bool   // false para VER el navegador mientras se prueba local
+	TimeoutSegundos int  // tiempo máximo por consulta
+	ChromePath    string // ruta a chrome.exe si no se autodetecta (opcional)
+	Diagnostico     bool   // guardar capturas + HTML de cada paso (para afinar selectores)
+	EncKey          string // clave para cifrar las credenciales SofiaPlus de cada operador (AES-GCM)
+	ScraperURL      string // URL del microservicio Python (Scrapling), ej. http://sofia-scraper:8090
 }
 
 // SMTPConfig para envío de correos (alertas al coordinador).
@@ -140,6 +157,19 @@ func LoadConfig() {
 		Alertas: AlertasConfig{
 			MinutosDespuesInicioJornada: getEnvAsInt("ALERTAS_MINUTOS_DESPUES_INICIO_JORNADA", 90),
 			Enabled:                     getEnvAsBool("ALERTAS_ASISTENCIA_ENABLED", true),
+		},
+		Sofia: SofiaConfig{
+			LoginURL:        getEnv("SOFIA_LOGIN_URL", "http://senasofiaplus.edu.co/sofia/josso_login/"),
+			Usuario:         getEnv("SOFIA_USUARIO", ""),
+			TipoDocumento:   getEnv("SOFIA_TIPO_DOCUMENTO", "Cédula de Ciudadanía"),
+			Password:        getEnv("SOFIA_PASSWORD", ""),
+			Rol:             getEnv("SOFIA_ROL", "Encargado de ingreso centro formación"),
+			Headless:        getEnvAsBool("SOFIA_HEADLESS", true),
+			TimeoutSegundos: getEnvAsInt("SOFIA_TIMEOUT_SEGUNDOS", 120),
+			ChromePath:      getEnv("SOFIA_CHROME_PATH", ""),
+			Diagnostico:     getEnvAsBool("SOFIA_DIAGNOSTICO", true),
+			EncKey:          getEnv("SOFIA_ENC_KEY", ""),
+			ScraperURL:      getEnv("SOFIA_SCRAPER_URL", "http://sofia-scraper:8090"),
 		},
 		Env: getEnv("ENV", "development"),
 	}

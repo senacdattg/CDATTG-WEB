@@ -74,6 +74,7 @@ func SetupRouter() *gin.Engine {
 	diaSinFormacionHandler := handlers.NewDiaSinFormacionSedeHandler()
 	configAsistenciaHandler := handlers.NewConfiguracionAsistenciaHandler()
 	eleccionHandler := handlers.NewEleccionHandler()
+	complementariosHandler := handlers.NewComplementariosHandler()
 
 	// Rutas públicas
 	api := r.Group("/api")
@@ -267,6 +268,24 @@ func SetupRouter() *gin.Engine {
 
 			elecciones := protected.Group("/elecciones")
 			registerEleccionRoutes(elecciones, eleccionHandler)
+
+			// Complementarios (FPI): credenciales SofiaPlus por operador + verificación de aspirantes
+			complementarios := protected.Group("/complementarios")
+			complementarios.Use(middleware.RequireSuperAdminAdminOrCoordinator())
+			{
+				complementarios.GET("/credenciales", complementariosHandler.GetCredencialEstado)
+				complementarios.POST("/credenciales", complementariosHandler.GuardarCredencial)
+				complementarios.DELETE("/credenciales", complementariosHandler.EliminarCredencial)
+				complementarios.POST("/verificar-aspirante", complementariosHandler.VerificarAspirante)
+				complementarios.GET("/plantilla", complementariosHandler.DescargarPlantilla)
+				complementarios.POST("/verificar-lote", complementariosHandler.VerificarLote)
+
+				betowa := complementarios.Group("/betowa")
+				{
+					betowa.POST("/verificar-aspirante", complementariosHandler.VerificarAspiranteBetowa)
+					betowa.POST("/verificar-lote", complementariosHandler.VerificarLoteBetowa)
+				}
+			}
 
 			// Inventario desactivado: rutas /inventario, /productos, /ordenes, /aprobaciones, /devoluciones, /proveedores, /categorias, /marcas, /contratos-convenios no registradas
 

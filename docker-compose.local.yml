@@ -6,13 +6,15 @@ services:
   backend:
     environment:
       ENV: development
-      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:9080,http://127.0.0.1:9080}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:9082,http://127.0.0.1:9082,http://localhost:9080}
       SMTP_ENABLED: ${SMTP_ENABLED:-false}
 
   frontend:
     depends_on:
       backend:
         condition: service_started
+    ports:
+      - "127.0.0.1:${FRONTEND_PORT:-9082}:80"
     build:
       context: ./cdattg_web_frontend
       dockerfile: Dockerfile.dev

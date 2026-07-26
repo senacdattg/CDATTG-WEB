@@ -58,6 +58,11 @@ import type {
   MunicipioItem,
   ParametroItem,
   RegionalItem,
+  VerificarAspiranteRequest,
+  VerificarAspiranteResponse,
+  VerificarLoteResponse,
+  GuardarCredencialSofiaRequest,
+  CredencialSofiaEstado,
   SedeCreateRequest,
   SedeUpdateRequest,
   SedeResponse,
@@ -1211,6 +1216,72 @@ class ApiService {
   async getHistorialRepresentantes(regionalId: number): Promise<RepresentanteAprendiz[]> {
     const response = await this.api.get<{ data: RepresentanteAprendiz[] }>(
       `/elecciones/regionales/${regionalId}/historial-representantes`,
+    );
+    return response.data.data;
+  }
+
+  // Complementarios (FPI): verificación de aspirantes en SofiaPlus.
+  // La 1.ª consulta abre Chromium + login SENA y puede tardar varios minutos.
+  async verificarAspirante(data: VerificarAspiranteRequest): Promise<VerificarAspiranteResponse> {
+    const response = await this.api.post<{ data: VerificarAspiranteResponse }>(
+      '/complementarios/verificar-aspirante',
+      data,
+      { timeout: 300000 },
+    );
+    return response.data.data;
+  }
+
+  // Complementarios: credenciales SofiaPlus del operador (contraseña cifrada en el backend).
+  async getCredencialSofia(): Promise<CredencialSofiaEstado> {
+    const response = await this.api.get<{ data: CredencialSofiaEstado }>('/complementarios/credenciales');
+    return response.data.data;
+  }
+
+  async guardarCredencialSofia(data: GuardarCredencialSofiaRequest): Promise<CredencialSofiaEstado> {
+    const response = await this.api.post<{ data: CredencialSofiaEstado }>('/complementarios/credenciales', data);
+    return response.data.data;
+  }
+
+  async eliminarCredencialSofia(): Promise<void> {
+    await this.api.delete('/complementarios/credenciales');
+  }
+
+  // Complementarios: carga masiva por Excel.
+  async descargarPlantillaLote(): Promise<Blob> {
+    const response = await this.api.get('/complementarios/plantilla', { responseType: 'blob' });
+    return response.data as Blob;
+  }
+
+  async verificarLote(file: File): Promise<VerificarLoteResponse> {
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await this.api.post<{ data: VerificarLoteResponse }>('/complementarios/verificar-lote', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+      timeout: 900000, // el lote abre un navegador por cada documento: puede tardar
+    });
+    return response.data.data;
+  }
+
+  // Complementarios (Betowa): verificación sin credenciales SENA.
+  async verificarAspiranteBetowa(data: VerificarAspiranteRequest): Promise<VerificarAspiranteResponse> {
+    const response = await this.api.post<{ data: VerificarAspiranteResponse }>(
+      '/complementarios/betowa/verificar-aspirante',
+      data,
+      { timeout: 180000 },
+    );
+    return response.data.data;
+  }
+
+  async verificarLoteBetowa(file: File): Promise<VerificarLoteResponse> {
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await this.api.post<{ data: VerificarLoteResponse }>(
+      '/complementarios/betowa/verificar-lote',
+      formData,
+      {
+        headers: { 'Content-Type': 'multipart/form-data' },
+        timeout: 1800000,
+      },
     );
     return response.data.data;
   }

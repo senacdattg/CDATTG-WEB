@@ -14,6 +14,7 @@ import {
   programasPaths,
   instructoresPaths,
   vigilanciaPaths,
+  complementariosPaths,
 } from '../../routes/paths';
 import type { SidebarManifestItem } from './types';
 
@@ -141,6 +142,24 @@ export const SIDEBAR_MANIFEST: SidebarManifestItem[] = [
     permission: null,
     rolesRequired: ['SUPER ADMINISTRADOR'],
     iconKey: 'asistencia/tipos-observacion',
+  },
+
+  // —— FPI ——
+  {
+    section: 'FPI',
+    path: complementariosPaths.verificacion,
+    label: 'Complementarios (SofiaPlus)',
+    permission: null,
+    rolesRequired: ['SUPER ADMINISTRADOR', 'ADMINISTRADOR', 'COORDINADOR'],
+    iconKey: 'complementarios',
+  },
+  {
+    section: 'FPI',
+    path: complementariosPaths.betowa,
+    label: 'Complementarios (Betowa)',
+    permission: null,
+    rolesRequired: ['SUPER ADMINISTRADOR', 'ADMINISTRADOR', 'COORDINADOR'],
+    iconKey: 'complementarios',
   },
 
   // —— Bienestar ——

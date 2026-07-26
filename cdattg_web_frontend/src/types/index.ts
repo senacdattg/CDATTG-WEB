@@ -1027,3 +1027,43 @@ export interface DefinicionesPermisosResponse {
   roles: string[];
   permisos: PermisoPair[];
 }
+
+// —— Complementarios (FPI): verificación de aspirantes en SofiaPlus ——
+export type VerificacionEstado = 'REGISTRADO' | 'NO_REGISTRADO' | 'NO_VERIFICADO';
+
+export interface VerificarAspiranteRequest {
+  numero_documento: string;
+  tipo_documento?: string;
+}
+
+export interface VerificarAspiranteResponse {
+  numero_documento: string;
+  estado: VerificacionEstado;
+  tipo_encontrado?: string;
+  nombre?: string;
+  detalle?: string;
+  mensaje?: string;
+}
+
+export interface VerificarLoteResponse {
+  total: number;
+  registrados: number;
+  no_registrados: number;
+  no_verificados: number;
+  resultados: VerificarAspiranteResponse[];
+}
+
+export interface GuardarCredencialSofiaRequest {
+  tipo_documento: string;
+  usuario: string;
+  password: string;
+  rol?: string;
+}
+
+export interface CredencialSofiaEstado {
+  tiene: boolean;
+  tipo_documento?: string;
+  usuario?: string;
+  rol?: string;
+  actualizada_en?: string;
+}

@@ -147,3 +147,10 @@ def betowa_verificar_lote(body: BetowaVerificarLoteIn):
     ]
     resultados = betowa_scraper.verificar_lote(docs)
     return VerificarLoteOut(resultados=[_to_out(r) for r in resultados])
+
+
+# ============================================================================
+# Consultar Inscripción (SofiaPlus) — extrae inscripciones de un aspirante
+# ============================================================================
+
+

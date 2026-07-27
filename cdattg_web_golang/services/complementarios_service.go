@@ -182,3 +182,5 @@ func (s *ComplementariosService) VerificarLoteBetowa(contenido []byte) (dto.Veri
 	}
 	return out, nil
 }
+
+//

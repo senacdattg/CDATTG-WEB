@@ -178,3 +178,4 @@ func (h *ComplementariosHandler) VerificarLoteBetowa(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, gin.H{"data": res})
 }
+

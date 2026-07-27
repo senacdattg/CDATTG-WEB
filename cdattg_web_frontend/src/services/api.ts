@@ -96,6 +96,7 @@ import type {
   UsuarioPermisosResponse,
   UsuarioRegionalesResponse,
   DefinicionesPermisosResponse,
+  
 } from '../types';
 import type { InstructorAgendaResponse } from '../types/agenda';
 import type {
@@ -1285,6 +1286,7 @@ class ApiService {
     );
     return response.data.data;
   }
+
 }
 
 export const apiService = new ApiService();

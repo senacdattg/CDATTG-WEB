@@ -1067,3 +1067,5 @@ export interface CredencialSofiaEstado {
   rol?: string;
   actualizada_en?: string;
 }
+
+

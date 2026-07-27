@@ -110,6 +110,5 @@ export const eleccionAprendizPaths = {
 
 export const complementariosPaths = {
   index: '/complementarios',
-  verificacion: '/complementarios/verificacion',
   betowa: '/complementarios/betowa',
 } as const;

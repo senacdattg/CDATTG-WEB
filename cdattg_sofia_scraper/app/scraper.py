@@ -1197,3 +1197,5 @@ def verificar_lote(cred: Credenciales, docs: list[DocumentoLote]) -> list[Result
         return ctx.resultados
     msg = "No se obtuvo respuesta del scraper"
     return [_no_verificado(d.numero_documento, msg) for d in docs]
+
+

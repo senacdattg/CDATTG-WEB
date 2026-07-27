@@ -180,3 +180,5 @@ func (s *SofiaScraper) VerificarLote(cred SofiaCredenciales, docs []dto.LoteDocu
 	}
 	return out
 }
+
+// payloads para ConsultarInscripcion

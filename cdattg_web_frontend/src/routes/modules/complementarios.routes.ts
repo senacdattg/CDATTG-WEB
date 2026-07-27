@@ -1,31 +1,16 @@
-import { Outlet } from 'react-router-dom';
+import { createElement } from 'react';
+import { Navigate, Outlet } from 'react-router-dom';
 import type { RouteObject } from 'react-router-dom';
 import { complementariosPaths } from '../paths';
 
 export const complementariosRoutes: RouteObject = {
   path: complementariosPaths.index,
   Component: Outlet,
-  handle: { breadcrumb: { label: 'Complementarios', to: complementariosPaths.index } },
+  handle: { breadcrumb: { label: 'Complementarios' } },
   children: [
     {
       index: true,
-      handle: { breadcrumb: { label: 'Verificación de aspirantes' } },
-      lazy: async () => {
-        const { ComplementariosVerificacionPage } = await import(
-          '../../pages/complementarios/ComplementariosVerificacionPage'
-        );
-        return { Component: ComplementariosVerificacionPage };
-      },
-    },
-    {
-      path: 'verificacion',
-      handle: { breadcrumb: { label: 'Verificación de aspirantes' } },
-      lazy: async () => {
-        const { ComplementariosVerificacionPage } = await import(
-          '../../pages/complementarios/ComplementariosVerificacionPage'
-        );
-        return { Component: ComplementariosVerificacionPage };
-      },
+      element: createElement(Navigate, { to: complementariosPaths.betowa, replace: true }),
     },
     {
       path: 'betowa',

@@ -9,6 +9,7 @@ from pydantic import BaseModel, Field
 
 from app import betowa_scraper, scraper
 from app.config import BETOWA_REGISTRO_URL, HEADLESS, TIMEOUT_SEGUNDOS, require_login_url
+from app.scraper import DocumentoLote
 
 
 @asynccontextmanager
@@ -126,34 +127,23 @@ class BetowaVerificarLoteIn(BaseModel):
     documentos: list[DocumentoIn] = Field(min_length=1)
 
 
-def _to_betowa_out(r: scraper.ResultadoVerificacion) -> ResultadoOut:
-    return ResultadoOut(
-        numero_documento=r.numero_documento,
-        estado=r.estado,
-        tipo_encontrado=r.tipo_encontrado,
-        nombre=r.nombre,
-        detalle=r.detalle,
-        mensaje=r.mensaje,
-    )
-
-
 @app.post("/betowa/verificar", response_model=ResultadoOut)
 def betowa_verificar(body: BetowaVerificarIn):
     r = betowa_scraper.verificar_documento(
         body.numero_documento.strip(),
         body.tipo_documento.strip(),
     )
-    return _to_betowa_out(r)
+    return _to_out(r)
 
 
 @app.post("/betowa/verificar-lote", response_model=VerificarLoteOut)
 def betowa_verificar_lote(body: BetowaVerificarLoteIn):
     docs = [
-        scraper.DocumentoLote(
+        DocumentoLote(
             numero_documento=d.numero_documento.strip(),
             tipo_documento=d.tipo_documento.strip(),
         )
         for d in body.documentos
     ]
     resultados = betowa_scraper.verificar_lote(docs)
-    return VerificarLoteOut(resultados=[_to_betowa_out(r) for r in resultados])
+    return VerificarLoteOut(resultados=[_to_out(r) for r in resultados])

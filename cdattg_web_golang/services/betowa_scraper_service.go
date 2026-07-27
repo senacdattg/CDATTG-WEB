@@ -14,19 +14,19 @@ import (
 )
 
 const (
-	betowaWorkersDefault     = 4
-	betowaSegundosPorDoc     = 45
-	betowaSegundosBaseLote   = 90
-	betowaTimeoutMaxSegundos = 1800
+	betowaTimeoutIndividualSegundos = 30   // ~150ms real, margen amplio
+	betowaTimeoutBaseLoteSegundos   = 10
+	betowaSegundosPorDoc            = 1   // 1s por doc en lote
+	betowaTimeoutMaxSegundos        = 60  // 1 minuto máximo
 )
 
-// BetowaScraper delega la verificación al microservicio Python (formulario Betowa, sin credenciales).
+// BetowaScraper delega la verificación al microservicio Python (Server Action directa, ~150ms/doc).
 type BetowaScraper struct {
 	baseURL string
 	client  *http.Client
 }
 
-// NewBetowaScraper crea el cliente del scraper Betowa (misma URL base que Sofia).
+// NewBetowaScraper crea el cliente del scraper Betowa (Server Action directa, ~150ms/doc).
 func NewBetowaScraper() *BetowaScraper {
 	return &BetowaScraper{
 		baseURL: strings.TrimRight(config.AppConfig.Sofia.ScraperURL, "/"),
@@ -34,28 +34,15 @@ func NewBetowaScraper() *BetowaScraper {
 	}
 }
 
-func timeoutBaseSegundos() time.Duration {
-	seg := config.AppConfig.Sofia.TimeoutSegundos
-	if seg <= 0 {
-		seg = 120
-	}
-	return time.Duration(seg) * time.Second
-}
-
 func timeoutBetowaIndividual() time.Duration {
-	return timeoutBaseSegundos() + 90*time.Second
+	return betowaTimeoutIndividualSegundos * time.Second
 }
 
 func timeoutBetowaLote(cantidad int) time.Duration {
 	if cantidad <= 0 {
 		return timeoutBetowaIndividual()
 	}
-	workers := betowaWorkersDefault
-	lotes := (cantidad + workers - 1) / workers
-	seg := betowaSegundosBaseLote + lotes*betowaSegundosPorDoc
-	if seg < int(timeoutBetowaIndividual()/time.Second) {
-		seg = int(timeoutBetowaIndividual() / time.Second)
-	}
+	seg := betowaTimeoutBaseLoteSegundos + cantidad*betowaSegundosPorDoc
 	if seg > betowaTimeoutMaxSegundos {
 		seg = betowaTimeoutMaxSegundos
 	}
@@ -119,7 +106,8 @@ func noVerificadoBetowa(numero, mensaje string) dto.VerificarAspiranteResponse {
 	}
 }
 
-// VerificarDocumento consulta un documento vía formulario de registro Betowa.
+// VerificarDocumento consulta un documento vía Server Action directa de Betowa.
+// Tiempo típico: ~150ms (antes ~30s con navegador).
 func (b *BetowaScraper) VerificarDocumento(numero, tipoCodigo string) dto.VerificarAspiranteResponse {
 	var res scraperResultadoPayload
 	err := b.postJSON("/betowa/verificar", betowaVerificarPayload{

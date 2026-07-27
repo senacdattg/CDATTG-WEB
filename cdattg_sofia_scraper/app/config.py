@@ -18,6 +18,10 @@ BETOWA_DIAG_DIR = os.getenv("BETOWA_DIAG_DIR", "storage/betowa_diagnostico")
 BETOWA_PARALLEL_WORKERS = max(1, int(os.getenv("BETOWA_PARALLEL_WORKERS", "4")))
 BETOWA_DIAGNOSTICO = os.getenv("BETOWA_DIAGNOSTICO", "false").lower() in ("1", "true", "yes")
 BETOWA_WAIT_SUBMIT_MS = max(1500, int(os.getenv("BETOWA_WAIT_SUBMIT_MS", "3500")))
+BETOWA_ACCION_VALIDAR = os.getenv(
+    "BETOWA_ACCION_VALIDAR",
+    "78fff68709d8ce196a2dcede61ed43866dc9e21a39",
+).strip()
 
 
 def require_login_url() -> str:

@@ -31,6 +31,7 @@ func RunAll() error {
 		RunGenerosSeeder,
 		RunPersonaCaracterizacionSeeder,
 		RunJornadasSeeder,
+		RunDiasFormacionSeeder,
 		RunJornadaBloquesSeeder,
 		RunModalidadesSeeder,
 		RunSedeSeeder,

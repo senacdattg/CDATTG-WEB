@@ -18,7 +18,6 @@ COPY requirements.txt .
 RUN uv pip install --python /app/.venv/bin/python --no-cache-dir -r requirements.txt
 
 COPY app ./app
-COPY scripts ./scripts
 COPY entrypoint.sh ./entrypoint.sh
 RUN sed -i 's/\r$//' /srv/sofia-scraper/entrypoint.sh \
     && chmod +x /srv/sofia-scraper/entrypoint.sh

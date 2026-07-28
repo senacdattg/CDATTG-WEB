@@ -92,6 +92,7 @@ func patchJornadasHorarios() error {
 		INSERT INTO jornada_bloques (created_at, updated_at, jornada_id, dia_formacion_id, hora_inicio, hora_fin, orden)
 		SELECT NOW(), NOW(), 1, d.dia, '06:30', '13:00', 0
 		FROM (VALUES (1), (2), (3), (4), (5)) AS d(dia)
+		INNER JOIN dias_formacion df ON df.id = d.dia AND df.deleted_at IS NULL
 		WHERE EXISTS (SELECT 1 FROM jornadas WHERE id = 1)
 		  AND NOT EXISTS (SELECT 1 FROM jornada_bloques WHERE jornada_id = 1)
 	`); err != nil {

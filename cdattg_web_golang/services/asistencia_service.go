@@ -63,8 +63,8 @@ type AsistenciaService interface {
 	EliminarTipoObservacionAsistencia(id uint) error
 	EliminarRegistroAprendiz(asistenciaAprendizID uint) error
 	GetDashboard(sedeID *uint, fecha string) (*dto.AsistenciaDashboardResponse, error)
-	GetCasosBienestar(sedeID *uint, dias, minFallas int) (*dto.CasosBienestarResponse, error)
-	GetDetalleInasistenciasAprendiz(fichaNumero string, aprendizID uint, dias int, sedeNombre string) (*dto.CasoBienestarAprendizDetalleResponse, error)
+	GetCasosBienestar(sedeID *uint, dias, minFallas int, instructorLiderID *uint) (*dto.CasosBienestarResponse, error)
+	GetDetalleInasistenciasAprendiz(fichaNumero string, aprendizID uint, dias int, sedeNombre string, instructorLiderID *uint) (*dto.CasoBienestarAprendizDetalleResponse, error)
 	GetMisInasistencias(personaID uint, dias int) (*dto.MisInasistenciasResponse, error)
 	GetSesionesSinAsistenciaTomada(userID uint, roles []string, dias int, regionalID, sedeID *uint) (*dto.SesionesSinAsistenciaTomadaResponse, error)
 	AjustarEstadoAprendiz(asistenciaAprendizID uint, estado, motivo string, instructorFichaIDRegistroSalida *uint) (*dto.AsistenciaAprendizResponse, error)
@@ -808,7 +808,7 @@ func (s *asistenciaService) GetDashboard(sedeID *uint, fecha string) (*dto.Asist
 	return resp, nil
 }
 
-func (s *asistenciaService) GetCasosBienestar(sedeID *uint, dias, minFallas int) (*dto.CasosBienestarResponse, error) {
+func (s *asistenciaService) GetCasosBienestar(sedeID *uint, dias, minFallas int, instructorLiderID *uint) (*dto.CasosBienestarResponse, error) {
 	if minFallas <= 0 {
 		minFallas = 3
 	}
@@ -819,7 +819,7 @@ func (s *asistenciaService) GetCasosBienestar(sedeID *uint, dias, minFallas int)
 	fechaInicioStr := rango.FechaInicio.Format(time.DateOnly)
 	fechaFinStr := rango.FechaFin.Format(time.DateOnly)
 
-	rows, err := NewCasosBienestarCalculator().Calcular(sedeID, fechaInicioStr, fechaFinStr, minFallas)
+	rows, err := NewCasosBienestarCalculator().Calcular(sedeID, instructorLiderID, fechaInicioStr, fechaFinStr, minFallas)
 	if err != nil {
 		return nil, err
 	}
@@ -849,24 +849,43 @@ func (s *asistenciaService) GetCasosBienestar(sedeID *uint, dias, minFallas int)
 			InasistenciasJustificadas: rows[i].InasistenciasJustificadas,
 		}
 	}
-	// Resumen por instructor: cantidad de aprendices con registros pendientes de revisión (sin salida, REGISTRO_POR_CORREGIR) en el mismo rango.
-	if instrRows, errInstr := s.repo.GetPendientesRevisionPorInstructor(sedeID, fechaInicioStr, fechaFinStr); errInstr == nil && len(instrRows) > 0 {
-		resp.Instructores = make([]dto.InstructorPendienteItem, len(instrRows))
-		for i := range instrRows {
-			resp.Instructores[i] = dto.InstructorPendienteItem{
-				InstructorID:                instrRows[i].InstructorID,
-				InstructorNombre:            instrRows[i].InstructorNombre,
-				NumeroDocumento:             instrRows[i].NumeroDocumento,
-				CantidadAprendicesSinSalida: instrRows[i].CantidadAprendicesSinSalida,
+	// Resumen por instructor: solo para vista de oficina (sin alcance a líder de ficha).
+	if instructorLiderID == nil {
+		if instrRows, errInstr := s.repo.GetPendientesRevisionPorInstructor(sedeID, fechaInicioStr, fechaFinStr); errInstr == nil && len(instrRows) > 0 {
+			resp.Instructores = make([]dto.InstructorPendienteItem, len(instrRows))
+			for i := range instrRows {
+				resp.Instructores[i] = dto.InstructorPendienteItem{
+					InstructorID:                instrRows[i].InstructorID,
+					InstructorNombre:            instrRows[i].InstructorNombre,
+					NumeroDocumento:             instrRows[i].NumeroDocumento,
+					CantidadAprendicesSinSalida: instrRows[i].CantidadAprendicesSinSalida,
+				}
 			}
 		}
 	}
 	return resp, nil
 }
 
-func (s *asistenciaService) GetDetalleInasistenciasAprendiz(fichaNumero string, aprendizID uint, dias int, sedeNombre string) (*dto.CasoBienestarAprendizDetalleResponse, error) {
+func (s *asistenciaService) esInstructorLiderDeFicha(instructorID uint, fichaNumero string) (bool, error) {
+	f, err := s.fichaRepo.FindByFicha(strings.TrimSpace(fichaNumero))
+	if err != nil || f == nil {
+		return false, err
+	}
+	return f.InstructorID != nil && *f.InstructorID == instructorID, nil
+}
+
+func (s *asistenciaService) GetDetalleInasistenciasAprendiz(fichaNumero string, aprendizID uint, dias int, sedeNombre string, instructorLiderID *uint) (*dto.CasoBienestarAprendizDetalleResponse, error) {
 	if strings.TrimSpace(fichaNumero) == "" || aprendizID == 0 {
 		return nil, errors.New("ficha y aprendiz son requeridos")
+	}
+	if instructorLiderID != nil && *instructorLiderID > 0 {
+		ok, err := s.esInstructorLiderDeFicha(*instructorLiderID, fichaNumero)
+		if err != nil {
+			return nil, errors.New("ficha no encontrada")
+		}
+		if !ok {
+			return nil, errors.New("solo puede consultar casos de bienestar de las fichas donde es instructor líder")
+		}
 	}
 	rango, err := resolverRangoCasosBienestar(s.repo, nil, dias)
 	if err != nil {
@@ -929,7 +948,7 @@ func (s *asistenciaService) GetMisInasistencias(personaID uint, dias int) (*dto.
 	if strings.TrimSpace(fichaNumero) == "" {
 		return nil, errors.New("ficha de caracterización no encontrada para el aprendiz")
 	}
-	detalle, err := s.GetDetalleInasistenciasAprendiz(fichaNumero, aprendiz.ID, dias, sedeNombre)
+	detalle, err := s.GetDetalleInasistenciasAprendiz(fichaNumero, aprendiz.ID, dias, sedeNombre, nil)
 	if err != nil {
 		return nil, err
 	}

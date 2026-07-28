@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { apiService } from '../../../../services/api';
 import { axiosErrorMessage } from '../../../../utils/httpError';
 import type { CasosBienestarResponse } from '../../../../types';
+import { MENSAJE_SIN_PERMISO_CASOS_BIENESTAR } from '../casosBienestarPermissions';
 
 type UseCasosBienestarParams = Readonly<{
   enabled: boolean;
@@ -24,7 +25,7 @@ export function useCasosBienestar({ enabled, dias, minFallas }: UseCasosBienesta
     } catch (e: unknown) {
       const status = (e as { response?: { status?: number } }).response?.status;
       if (status === 403) {
-        setError('Solo el superadministrador puede ver los casos de bienestar.');
+        setError(MENSAJE_SIN_PERMISO_CASOS_BIENESTAR);
       } else {
         setError(axiosErrorMessage(e, 'Error al cargar los casos.'));
       }

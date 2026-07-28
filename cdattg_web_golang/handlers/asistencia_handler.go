@@ -58,6 +58,35 @@ func (h *AsistenciaHandler) getInstructorFichaIDForCurrentUser(c *gin.Context, f
 	return &ifc.ID
 }
 
+func hasCasosBienestarFullAccess(roles []string) bool {
+	for _, r := range roles {
+		if r == "SUPER ADMINISTRADOR" || r == "BIENESTAR AL APRENDIZ" {
+			return true
+		}
+	}
+	return false
+}
+
+// resolveInstructorLiderScopeCasosBienestar: nil = vista completa (oficina);
+// *uint = limitar a fichas donde el usuario es instructor líder.
+func (h *AsistenciaHandler) resolveInstructorLiderScopeCasosBienestar(c *gin.Context) (instructorLiderID *uint, ok bool) {
+	if hasCasosBienestarFullAccess(rolesFromContext(c)) {
+		return nil, true
+	}
+	u, _ := c.Get("user")
+	user, _ := u.(*models.User)
+	if user == nil || user.PersonaID == nil {
+		c.JSON(http.StatusForbidden, gin.H{"error": errMsgCuentaNoInstructor})
+		return nil, false
+	}
+	inst, err := h.instRepo.FindByPersonaID(*user.PersonaID)
+	if err != nil || inst == nil {
+		c.JSON(http.StatusForbidden, gin.H{"error": errMsgCuentaNoInstructor})
+		return nil, false
+	}
+	return &inst.ID, true
+}
+
 func (h *AsistenciaHandler) CreateSesion(c *gin.Context) {
 	var req dto.AsistenciaRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -511,32 +540,47 @@ func (h *AsistenciaHandler) GetDashboard(c *gin.Context) {
 	c.JSON(http.StatusOK, resp)
 }
 
-// GetCasosBienestar devuelve aprendices con N+ inasistencias en el período (oficina de bienestar). Query: dias (default 30, 0=histórico completo), min_fallas (default 3), sede_id (opcional).
+// parseDiasAnalisisQuery: dias de ventana (default 30; 0 = histórico completo).
+func parseDiasAnalisisQuery(c *gin.Context) int {
+	const defaultDias = 30
+	s := c.Query("dias")
+	if s == "" {
+		return defaultDias
+	}
+	n, err := strconv.Atoi(s)
+	if err != nil || n < 0 {
+		return defaultDias
+	}
+	return n
+}
+
+func parseMinFallasQuery(c *gin.Context) int {
+	const defaultMinFallas = 3
+	s := c.Query("min_fallas")
+	if s == "" {
+		return defaultMinFallas
+	}
+	n, err := strconv.Atoi(s)
+	if err != nil || n < 0 {
+		return defaultMinFallas
+	}
+	return n
+}
+
+// GetCasosBienestar devuelve aprendices con N+ inasistencias en el período (oficina de bienestar).
+// Query: dias (default 30, 0=histórico completo), min_fallas (default 3), sede_id (opcional).
+// Instructores solo ven fichas donde son instructor líder.
 func (h *AsistenciaHandler) GetCasosBienestar(c *gin.Context) {
-	dias := 30
-	if s := c.Query("dias"); s != "" {
-		if n, err := strconv.Atoi(s); err == nil {
-			if n == 0 {
-				dias = 0
-			} else if n > 0 {
-				dias = n
-			}
-		}
+	instructorLiderID, ok := h.resolveInstructorLiderScopeCasosBienestar(c)
+	if !ok {
+		return
 	}
-	minFallas := 3
-	if s := c.Query("min_fallas"); s != "" {
-		if n, err := strconv.Atoi(s); err == nil && n >= 0 {
-			minFallas = n
-		}
-	}
-	var sedeID *uint
-	if s := c.Query("sede_id"); s != "" {
-		if id, err := strconv.ParseUint(s, 10, 32); err == nil {
-			u := uint(id)
-			sedeID = &u
-		}
-	}
-	resp, err := h.svc.GetCasosBienestar(sedeID, dias, minFallas)
+	resp, err := h.svc.GetCasosBienestar(
+		parseUintQuery(c, "sede_id"),
+		parseDiasAnalisisQuery(c),
+		parseMinFallasQuery(c),
+		instructorLiderID,
+	)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -546,24 +590,23 @@ func (h *AsistenciaHandler) GetCasosBienestar(c *gin.Context) {
 
 // GetDetalleInasistenciasAprendiz devuelve las fechas de inasistencia y observaciones de un aprendiz en una ficha.
 func (h *AsistenciaHandler) GetDetalleInasistenciasAprendiz(c *gin.Context) {
+	instructorLiderID, ok := h.resolveInstructorLiderScopeCasosBienestar(c)
+	if !ok {
+		return
+	}
 	fichaNumero := c.Param("fichaNumero")
 	aprendizID64, err := strconv.ParseUint(c.Param("aprendizId"), 10, 32)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "aprendiz_id inválido"})
 		return
 	}
-	dias := 30
-	if s := c.Query("dias"); s != "" {
-		if n, err := strconv.Atoi(s); err == nil {
-			if n == 0 {
-				dias = 0
-			} else if n > 0 {
-				dias = n
-			}
-		}
-	}
-	sedeNombre := c.Query("sede")
-	resp, err := h.svc.GetDetalleInasistenciasAprendiz(fichaNumero, uint(aprendizID64), dias, sedeNombre)
+	resp, err := h.svc.GetDetalleInasistenciasAprendiz(
+		fichaNumero,
+		uint(aprendizID64),
+		parseDiasAnalisisQuery(c),
+		c.Query("sede"),
+		instructorLiderID,
+	)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -579,17 +622,7 @@ func (h *AsistenciaHandler) GetMisInasistencias(c *gin.Context) {
 		c.JSON(http.StatusForbidden, gin.H{"error": "Su cuenta no está vinculada a una persona."})
 		return
 	}
-	dias := 30
-	if s := c.Query("dias"); s != "" {
-		if n, err := strconv.Atoi(s); err == nil {
-			if n == 0 {
-				dias = 0
-			} else if n > 0 {
-				dias = n
-			}
-		}
-	}
-	resp, err := h.svc.GetMisInasistencias(*user.PersonaID, dias)
+	resp, err := h.svc.GetMisInasistencias(*user.PersonaID, parseDiasAnalisisQuery(c))
 	if err != nil {
 		if err.Error() == "no está matriculado como aprendiz activo" {
 			c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
@@ -606,31 +639,13 @@ func (h *AsistenciaHandler) GetSesionesSinAsistenciaTomada(c *gin.Context) {
 	userID, _ := c.Get("userID")
 	roles := rolesFromContext(c)
 
-	dias := 30
-	if s := c.Query("dias"); s != "" {
-		if n, err := strconv.Atoi(s); err == nil {
-			if n == 0 {
-				dias = 0
-			} else if n > 0 {
-				dias = n
-			}
-		}
-	}
-	var regionalID, sedeID *uint
-	if v := c.Query("regional_id"); v != "" {
-		if id, err := strconv.ParseUint(v, 10, 64); err == nil {
-			u := uint(id)
-			regionalID = &u
-		}
-	}
-	if v := c.Query("sede_id"); v != "" {
-		if id, err := strconv.ParseUint(v, 10, 64); err == nil {
-			u := uint(id)
-			sedeID = &u
-		}
-	}
-
-	resp, err := h.svc.GetSesionesSinAsistenciaTomada(userID.(uint), roles, dias, regionalID, sedeID)
+	resp, err := h.svc.GetSesionesSinAsistenciaTomada(
+		userID.(uint),
+		roles,
+		parseDiasAnalisisQuery(c),
+		parseUintQuery(c, "regional_id"),
+		parseUintQuery(c, "sede_id"),
+	)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return

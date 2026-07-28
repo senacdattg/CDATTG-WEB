@@ -222,6 +222,7 @@ type casosBienestarRangoPreparado struct {
 
 func (c *CasosBienestarCalculator) prepararRango(
 	sedeID *uint,
+	instructorLiderID *uint,
 	fechaInicio, fechaFin string,
 ) (*casosBienestarRangoPreparado, error) {
 	tInicio, err := time.Parse(time.DateOnly, fechaInicio)
@@ -233,7 +234,7 @@ func (c *CasosBienestarCalculator) prepararRango(
 		return nil, err
 	}
 
-	sesiones, err := c.repo.ListSesionesCasosBienestarEnRango(sedeID, fechaInicio, fechaFin)
+	sesiones, err := c.repo.ListSesionesCasosBienestarEnRango(sedeID, instructorLiderID, fechaInicio, fechaFin)
 	if err != nil {
 		return nil, err
 	}
@@ -296,15 +297,16 @@ func agruparDetalleSesionesPorAsistenciaID(
 
 func (c *CasosBienestarCalculator) Calcular(
 	sedeID *uint,
+	instructorLiderID *uint,
 	fechaInicio, fechaFin string,
 	minFallas int,
 ) ([]repositories.CasosBienestarRow, error) {
-	prep, err := c.prepararRango(sedeID, fechaInicio, fechaFin)
+	prep, err := c.prepararRango(sedeID, instructorLiderID, fechaInicio, fechaFin)
 	if err != nil {
 		return nil, err
 	}
 
-	aprendices, err := c.repo.ListAprendicesActivosCasosBienestar(sedeID)
+	aprendices, err := c.repo.ListAprendicesActivosCasosBienestar(sedeID, instructorLiderID)
 	if err != nil {
 		return nil, err
 	}
@@ -391,7 +393,7 @@ func (c *CasosBienestarCalculator) CalcularDetalle(
 		return nil, nil, errors.New("ficha y aprendiz son requeridos")
 	}
 
-	prep, err := c.prepararRango(nil, fechaInicio, fechaFin)
+	prep, err := c.prepararRango(nil, nil, fechaInicio, fechaFin)
 	if err != nil {
 		return nil, nil, err
 	}

@@ -3,7 +3,7 @@ import { AsistenciaDashboard } from '../AsistenciaDashboard';
 import { asistenciaFichaPath, parseAsistenciaFichaIdParam } from './asistenciaPaths';
 import { asistenciaPaths } from '../../routes/paths';
 import { useAuth } from '../../context/AuthContext';
-import { canViewCasosBienestar } from '../bienestar/casos/casosBienestarPermissions';
+import { canViewAsistenciaDashboardGlobal } from '../bienestar/casos/casosBienestarPermissions';
 
 /** Index del módulo asistencia: dashboard global o redirección a fichas del instructor. */
 export function AsistenciaModuleIndex() {
@@ -15,7 +15,7 @@ export function AsistenciaModuleIndex() {
     return <Navigate to={asistenciaFichaPath(fichaId)} replace />;
   }
 
-  if (canViewCasosBienestar(roles)) {
+  if (canViewAsistenciaDashboardGlobal(roles)) {
     return <AsistenciaDashboard />;
   }
 

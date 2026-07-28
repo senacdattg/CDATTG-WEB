@@ -149,7 +149,7 @@ export const SIDEBAR_MANIFEST: SidebarManifestItem[] = [
     path: bienestarPaths.casos.index,
     label: 'Casos bienestar',
     permission: null,
-    rolesRequired: ['SUPER ADMINISTRADOR', 'BIENESTAR AL APRENDIZ'],
+    rolesRequired: ['SUPER ADMINISTRADOR', 'BIENESTAR AL APRENDIZ', 'INSTRUCTOR'],
     iconKey: 'bienestar/casos',
   },
 

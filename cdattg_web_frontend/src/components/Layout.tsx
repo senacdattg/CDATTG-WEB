@@ -148,7 +148,7 @@ export const Layout = ({ children }: LayoutProps) => {
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       <nav className="app-header border-b border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800">
         <div className="container-fluid flex h-14 items-center justify-between px-3 sm:h-[3.5rem] sm:px-4">
-          <ul className="navbar-nav flex min-w-0 items-center">
+          <ul className="navbar-nav flex shrink-0 items-center">
             <li className="nav-item">
               <button
                 type="button"
@@ -160,7 +160,7 @@ export const Layout = ({ children }: LayoutProps) => {
               </button>
             </li>
             {showNavbarBrand ? (
-              <li className="nav-item min-w-0">
+              <li className="nav-item shrink-0">
                 <LayoutBrandLink
                   to={brandPath}
                   variant="navbar"
@@ -169,7 +169,7 @@ export const Layout = ({ children }: LayoutProps) => {
                 />
               </li>
             ) : (
-              <li className="nav-item min-w-0 md:hidden">
+              <li className="nav-item shrink-0 md:hidden">
                 <LayoutBrandLink
                   to={brandPath}
                   variant="navbar"

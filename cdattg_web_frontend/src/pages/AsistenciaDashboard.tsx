@@ -21,7 +21,7 @@ import type {
   AsistenciaDashboardResponse,
 } from '../types';
 import { asistenciaPaths, bienestarPaths } from '../routes/paths';
-import { canViewCasosBienestar } from './bienestar/casos/casosBienestarPermissions';
+import { canViewAsistenciaDashboardGlobal } from './bienestar/casos/casosBienestarPermissions';
 import {
   filtrarFilasFicha,
   filasPorJornada,
@@ -510,7 +510,7 @@ export const AsistenciaDashboard = () => {
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const canViewBienestar = canViewCasosBienestar(roles);
+  const canViewBienestar = canViewAsistenciaDashboardGlobal(roles);
 
   const fetchDashboard = useCallback(async () => {
     try {

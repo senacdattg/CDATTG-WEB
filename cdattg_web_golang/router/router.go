@@ -173,10 +173,11 @@ func SetupRouter() *gin.Engine {
 			instructores.DELETE("/:id", middleware.RequirePermission("instructor", "ELIMINAR INSTRUCTOR"), instructorHandler.Delete)
 
 			asistencias := protected.Group("/asistencias")
-			// Dashboard de asistencia y Casos de Bienestar: accesible para SUPER ADMINISTRADOR y BIENESTAR AL APRENDIZ
+			// Dashboard de asistencia: SUPER ADMINISTRADOR y BIENESTAR AL APRENDIZ
 			asistencias.GET("/dashboard", middleware.RequireSuperAdminOrBienestar(), asistenciaHandler.GetDashboard)
-			asistencias.GET("/dashboard/casos-bienestar", middleware.RequireSuperAdminOrBienestar(), asistenciaHandler.GetCasosBienestar)
-			asistencias.GET("/dashboard/casos-bienestar/ficha/:fichaNumero/aprendiz/:aprendizId/detalle", middleware.RequireSuperAdminOrBienestar(), asistenciaHandler.GetDetalleInasistenciasAprendiz)
+			// Casos de Bienestar: oficina (superadmin/bienestar) o instructor líder (alcance a sus fichas)
+			asistencias.GET("/dashboard/casos-bienestar", middleware.RequireSuperAdminBienestarOrInstructor(), asistenciaHandler.GetCasosBienestar)
+			asistencias.GET("/dashboard/casos-bienestar/ficha/:fichaNumero/aprendiz/:aprendizId/detalle", middleware.RequireSuperAdminBienestarOrInstructor(), asistenciaHandler.GetDetalleInasistenciasAprendiz)
 			asistencias.GET("/mis-inasistencias", middleware.RequirePermission("asistencia", permVerMisInasistencias), asistenciaHandler.GetMisInasistencias)
 			asistencias.GET("/dashboard/pendientes-revision-instructor", middleware.RequireSuperAdminOrBienestar(), asistenciaHandler.ListPendientesRevisionAdmin)
 			asistencias.GET("/dashboard/sesiones-sin-asistencia-tomada", middleware.RequireSuperAdminAdminOrCoordinator(), asistenciaHandler.GetSesionesSinAsistenciaTomada)

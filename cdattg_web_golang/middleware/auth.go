@@ -29,6 +29,7 @@ const (
 	roleAdministrador             = "ADMINISTRADOR"
 	roleCoordinador               = "COORDINADOR"
 	roleBienestarAprendiz         = "BIENESTAR AL APRENDIZ"
+	roleInstructor                = "INSTRUCTOR"
 	actVerPersona                 = "VER PERSONA"
 	actVerFicha                   = "VER FICHA"
 	actVerAsistencia              = "VER ASISTENCIA"
@@ -594,6 +595,20 @@ func RequireSuperAdmin() gin.HandlerFunc {
 // RequireSuperAdminOrBienestar permite acceso a dashboard de asistencia y módulo de bienestar
 // a usuarios con rol "SUPER ADMINISTRADOR" o "BIENESTAR AL APRENDIZ".
 func RequireSuperAdminOrBienestar() gin.HandlerFunc {
+	return requireAnyRole(roleSuperAdministrador, roleBienestarAprendiz)
+}
+
+// RequireSuperAdminBienestarOrInstructor permite Casos de Bienestar a oficina (superadmin/bienestar)
+// o a instructores (el handler limita a fichas donde son instructor líder).
+func RequireSuperAdminBienestarOrInstructor() gin.HandlerFunc {
+	return requireAnyRole(roleSuperAdministrador, roleBienestarAprendiz, roleInstructor)
+}
+
+func requireAnyRole(allowed ...string) gin.HandlerFunc {
+	allowedSet := make(map[string]struct{}, len(allowed))
+	for _, r := range allowed {
+		allowedSet[r] = struct{}{}
+	}
 	return func(c *gin.Context) {
 		userID, ok := requireAuthenticatedUserID(c)
 		if !ok {
@@ -610,8 +625,9 @@ func RequireSuperAdminOrBienestar() gin.HandlerFunc {
 			c.Abort()
 			return
 		}
+		c.Set("userRoles", roles)
 		for _, r := range roles {
-			if r == roleSuperAdministrador || r == roleBienestarAprendiz {
+			if _, ok := allowedSet[r]; ok {
 				c.Next()
 				return
 			}

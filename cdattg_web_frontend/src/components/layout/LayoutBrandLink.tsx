@@ -23,7 +23,9 @@ export function LayoutBrandLink({
     <Link
       to={to}
       onClick={onClick}
-      className={`brand-link flex min-w-0 items-center transition-opacity hover:opacity-90 ${className}`}
+      className={`brand-link flex items-center transition-opacity hover:opacity-90 ${
+        isSidebar ? 'min-w-0' : 'shrink-0'
+      } ${className}`}
     >
       <img
         src={LogoSena}
@@ -31,8 +33,10 @@ export function LayoutBrandLink({
         className="brand-image max-h-[33px] w-auto shrink-0 opacity-75 shadow"
       />
       <span
-        className={`brand-text ml-2 truncate text-xl font-light leading-tight ${
-          isSidebar ? 'text-white' : 'text-gray-800 dark:text-gray-100'
+        className={`brand-text ml-2 text-xl font-light leading-tight ${
+          isSidebar
+            ? 'truncate text-white'
+            : 'whitespace-nowrap text-gray-800 dark:text-gray-100'
         }`}
       >
         {APP_BRAND_NAME}

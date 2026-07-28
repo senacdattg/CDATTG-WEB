@@ -16,6 +16,7 @@ const (
 	asistPreloadAAAprendizPersona           = "AsistenciaAprendices.Aprendiz.Persona"
 	asistCondFichaID                        = "ficha_id = ?"
 	asistSQLFilterSedeFicha                 = " AND fc.sede_id = ?"
+	asistSQLFilterInstructorLiderFicha      = " AND fc.instructor_id = ?"
 	// Coherente con ListAsistenciasEfectivasEnSesiones / historial de asistencia.
 	asistSQLAsistioEfectivo = `aa_sesion.hora_ingreso IS NOT NULL
     AND (aa_sesion.estado IS NULL OR aa_sesion.estado = '' OR aa_sesion.estado = 'ASISTENCIA_COMPLETA' OR aa_sesion.estado = 'ASISTENCIA_PARCIAL')`
@@ -64,8 +65,8 @@ type AsistenciaRepository interface {
 	// GetFichasSinSesionHoy lista fichas activas (no eliminadas) sin ninguna sesión de asistencia en la fecha dada.
 	GetFichasSinSesionHoy(sedeID *uint, fecha string) ([]DashboardFichaSinSesionRow, error)
 	CountPendientesRevisionByFecha(sedeID *uint, fecha string) (int, error)
-	ListSesionesCasosBienestarEnRango(sedeID *uint, fechaInicio, fechaFin string) ([]SesionCasosBienestarRaw, error)
-	ListAprendicesActivosCasosBienestar(sedeID *uint) ([]AprendizCasosBienestarRaw, error)
+	ListSesionesCasosBienestarEnRango(sedeID *uint, instructorLiderID *uint, fechaInicio, fechaFin string) ([]SesionCasosBienestarRaw, error)
+	ListAprendicesActivosCasosBienestar(sedeID *uint, instructorLiderID *uint) ([]AprendizCasosBienestarRaw, error)
 	ListAsistenciasEfectivasEnSesiones(asistenciaIDs []uint) ([]AsistenciaEfectivaRaw, error)
 	ListInasistenciasJustificadasEnSesiones(asistenciaIDs []uint) ([]InasistenciaJustificadaRaw, error)
 	ListDetalleSesionesCasosBienestar(fichaNumero string, aprendizID uint, fechaInicio, fechaFin string, sedeNombre string) ([]DetalleSesionCasosBienestarRaw, error)
@@ -518,7 +519,7 @@ func (r *asistenciaRepository) CountPendientesRevisionByFecha(sedeID *uint, fech
 	return int(count), nil
 }
 
-func (r *asistenciaRepository) ListSesionesCasosBienestarEnRango(sedeID *uint, fechaInicio, fechaFin string) ([]SesionCasosBienestarRaw, error) {
+func (r *asistenciaRepository) ListSesionesCasosBienestarEnRango(sedeID *uint, instructorLiderID *uint, fechaInicio, fechaFin string) ([]SesionCasosBienestarRaw, error) {
 	tInicio, err := time.Parse(time.DateOnly, fechaInicio)
 	if err != nil {
 		return nil, err
@@ -553,6 +554,10 @@ WHERE a.fecha >= ? AND a.fecha < ?
 		raw += asistSQLFilterSedeFicha
 		args = append(args, *sedeID)
 	}
+	if instructorLiderID != nil && *instructorLiderID > 0 {
+		raw += asistSQLFilterInstructorLiderFicha
+		args = append(args, *instructorLiderID)
+	}
 	var rows []row
 	if err := r.db.Raw(raw, args...).Scan(&rows).Error; err != nil {
 		return nil, err
@@ -570,7 +575,7 @@ WHERE a.fecha >= ? AND a.fecha < ?
 	return out, nil
 }
 
-func (r *asistenciaRepository) ListAprendicesActivosCasosBienestar(sedeID *uint) ([]AprendizCasosBienestarRaw, error) {
+func (r *asistenciaRepository) ListAprendicesActivosCasosBienestar(sedeID *uint, instructorLiderID *uint) ([]AprendizCasosBienestarRaw, error) {
 	type row struct {
 		AprendizID       uint   `gorm:"column:aprendiz_id"`
 		FichaID          uint   `gorm:"column:ficha_id"`
@@ -619,6 +624,10 @@ WHERE ap.estado = true
 	if sedeID != nil && *sedeID > 0 {
 		raw += asistSQLFilterSedeFicha
 		args = append(args, *sedeID)
+	}
+	if instructorLiderID != nil && *instructorLiderID > 0 {
+		raw += asistSQLFilterInstructorLiderFicha
+		args = append(args, *instructorLiderID)
 	}
 	raw += " ORDER BY ap.id"
 	var rows []row

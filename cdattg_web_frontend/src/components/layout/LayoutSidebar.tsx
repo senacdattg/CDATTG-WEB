@@ -7,6 +7,7 @@ import {
   ChevronDoubleRightIcon,
   XMarkIcon,
 } from '@heroicons/react/24/outline';
+import { APP_VERSION_LABEL } from '../../config/appVersion';
 import { type SidebarManifestItem } from '../../navigation/sidebar';
 import { LayoutBrandLink } from './LayoutBrandLink';
 
@@ -228,6 +229,14 @@ export function LayoutSidebar({
           })}
         </div>
       </nav>
+
+      {sidebarHidden ? null : (
+        <div className="shrink-0 border-t border-gray-200 px-3 py-2 dark:border-gray-700">
+          <p className="text-center text-xs text-gray-400 dark:text-gray-500" title="Versión del sistema">
+            {APP_VERSION_LABEL}
+          </p>
+        </div>
+      )}
     </aside>
   );
 }

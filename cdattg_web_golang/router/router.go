@@ -78,6 +78,8 @@ func SetupRouter() *gin.Engine {
 	// Rutas públicas
 	api := r.Group("/api")
 	{
+		api.GET("/version", handlers.GetVersion)
+
 		// WebSocket dashboard asistencia (token por query; solo superadmin; sin AuthMiddleware)
 		api.GET("/asistencias/dashboard/ws", handlers.DashboardWebSocket)
 

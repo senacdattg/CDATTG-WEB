@@ -22,6 +22,7 @@ COPY repositories ./repositories
 COPY router ./router
 COPY services ./services
 COPY utils ./utils
+COPY version ./version
 
 RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-w -s" -o /app/cdattg-api .
 RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-w -s" -o /app/seed ./cmd/seed

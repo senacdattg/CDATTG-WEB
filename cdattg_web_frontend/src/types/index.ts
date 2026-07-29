@@ -714,6 +714,8 @@ export interface AsistenciaAnalisisResponse {
   hora_toma: {
     promedio_hora: string;
     promedio_minutos_dia: number;
+    promedio_hora_salida: string;
+    promedio_minutos_salida: number;
     total_sesiones: number;
     total_dias_con_sesion: number;
     detalle_por_ficha: Array<{
@@ -721,7 +723,9 @@ export interface AsistenciaAnalisisResponse {
       ficha_numero: string;
       programa_nombre: string;
       jornada_nombre: string;
+      ficha_activa: boolean;
       promedio_hora: string;
+      promedio_hora_salida: string;
       total_sesiones: number;
       dias_con_sesion: number;
     }>;
@@ -770,6 +774,53 @@ export interface AsistenciaAnalisisResponse {
       pct: number;
     }>;
   };
+}
+
+/** Historial de ingresos/salidas de aprendices en una ficha (panel analítico). */
+export interface AnalisisRegistrosAprendizResponse {
+  ficha_id: number;
+  ficha_numero: string;
+  programa_nombre: string;
+  aprendices: Array<{
+    aprendiz_id: number;
+    numero_documento: string;
+    nombre_completo: string;
+    registros: Array<{
+      asistencia_id: number;
+      fecha: string;
+      hora_ingreso: string | null;
+      hora_salida: string | null;
+    }>;
+  }>;
+}
+
+export interface AnalisisExplorarFichasResponse {
+  query: string;
+  fichas: Array<{
+    ficha_id: number;
+    ficha_numero: string;
+    programa_nombre: string;
+    sede_nombre: string;
+    jornada_nombre: string;
+    modalidad_nombre: string;
+    instructor_nombre: string;
+    ambiente_nombre: string;
+    cantidad_aprendices: number;
+    status: boolean;
+    coincidencias_aprendiz: number;
+  }>;
+}
+
+export interface AnalisisAprendicesFichaResponse {
+  ficha_id: number;
+  ficha_numero: string;
+  programa_nombre: string;
+  aprendices: Array<{
+    aprendiz_id: number;
+    numero_documento: string;
+    nombre_completo: string;
+    total_registros: number;
+  }>;
 }
 
 export interface UsuarioRegionalesResponse {

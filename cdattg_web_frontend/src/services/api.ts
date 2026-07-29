@@ -41,6 +41,9 @@ import type {
   AsistenciaDashboardResponse,
   DashboardResumenResponse,
   AsistenciaAnalisisResponse,
+  AnalisisRegistrosAprendizResponse,
+  AnalisisExplorarFichasResponse,
+  AnalisisAprendicesFichaResponse,
   CasosBienestarResponse,
   SesionesSinAsistenciaTomadaResponse,
   CasoBienestarAprendizDetalleResponse,
@@ -840,10 +843,57 @@ class ApiService {
     sede_id?: number;
     jornada?: string;
     ficha?: string;
+    estado_ficha?: 'activas' | 'inactivas' | 'todas';
     aprendiz_id?: number;
     dia_semana_id?: number;
   }): Promise<AsistenciaAnalisisResponse> {
     const response = await this.api.get<AsistenciaAnalisisResponse>('/stats/asistencia-analisis', { params });
+    return response.data;
+  }
+
+  /** Historial de ingresos/salidas por aprendiz en una ficha (panel analítico). */
+  async getAsistenciaAnalisisRegistrosAprendiz(params: {
+    ficha: string;
+    q?: string;
+    aprendiz_id?: number;
+    fecha_desde?: string;
+    fecha_hasta?: string;
+    regional_id?: number;
+    sede_id?: number;
+  }): Promise<AnalisisRegistrosAprendizResponse> {
+    const response = await this.api.get<AnalisisRegistrosAprendizResponse>(
+      '/stats/asistencia-analisis/registros-aprendiz',
+      { params },
+    );
+    return response.data;
+  }
+
+  /** Explorar fichas por número, programa, nombre o documento de aprendiz. */
+  async getAsistenciaAnalisisExplorarFichas(params: {
+    q: string;
+    regional_id?: number;
+    sede_id?: number;
+  }): Promise<AnalisisExplorarFichasResponse> {
+    const response = await this.api.get<AnalisisExplorarFichasResponse>(
+      '/stats/asistencia-analisis/explorar-fichas',
+      { params },
+    );
+    return response.data;
+  }
+
+  /** Listado de aprendices de una ficha para el panel analítico. */
+  async getAsistenciaAnalisisAprendicesFicha(params: {
+    ficha: string;
+    q?: string;
+    fecha_desde?: string;
+    fecha_hasta?: string;
+    regional_id?: number;
+    sede_id?: number;
+  }): Promise<AnalisisAprendicesFichaResponse> {
+    const response = await this.api.get<AnalisisAprendicesFichaResponse>(
+      '/stats/asistencia-analisis/aprendices-ficha',
+      { params },
+    );
     return response.data;
   }
 

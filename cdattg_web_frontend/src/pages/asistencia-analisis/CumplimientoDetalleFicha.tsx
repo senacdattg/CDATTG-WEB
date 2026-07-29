@@ -3,15 +3,23 @@ import {
   CheckCircleIcon,
   ExclamationTriangleIcon,
   InformationCircleIcon,
+  NoSymbolIcon,
 } from '@heroicons/react/24/outline';
 import type { AsistenciaAnalisisResponse } from '../../types';
 
 type CumplimientoItem = AsistenciaAnalisisResponse['cumplimiento']['items'][number];
 type DetalleDia = CumplimientoItem['detalle_dias'][number];
 
-type DetalleFiltro = 'faltantes' | 'todos';
+type DetalleFiltro = 'faltantes' | 'todos' | 'sin_formacion';
 
 function celdaEstado(dia: DetalleDia): { className: string; label: string } {
+  if (dia.sin_formacion) {
+    const obs = dia.observacion?.trim() ? ` — ${dia.observacion}` : '';
+    return {
+      className: 'bg-red-500 dark:bg-red-600',
+      label: `${dia.fecha}: sin formación (novedad)${obs}`,
+    };
+  }
   if (dia.programado && dia.tiene_sesion) {
     return {
       className: 'bg-green-500 dark:bg-green-600',
@@ -48,6 +56,9 @@ function etiquetaMes(ym: string): string {
 }
 
 function iconoEstado(dia: DetalleDia) {
+  if (dia.sin_formacion) {
+    return <NoSymbolIcon className="w-4 h-4 text-red-600 dark:text-red-400" aria-hidden />;
+  }
   if (dia.tiene_sesion) {
     return <CheckCircleIcon className="w-4 h-4 text-green-600 dark:text-green-400" aria-hidden />;
   }
@@ -55,6 +66,32 @@ function iconoEstado(dia: DetalleDia) {
     return <ExclamationTriangleIcon className="w-4 h-4 text-amber-600 dark:text-amber-400" aria-hidden />;
   }
   return <InformationCircleIcon className="w-4 h-4 text-sky-600 dark:text-sky-400" aria-hidden />;
+}
+
+function etiquetaEstado(dia: DetalleDia) {
+  if (dia.sin_formacion) {
+    return <span className="text-red-700 dark:text-red-400">Sin formación</span>;
+  }
+  if (dia.programado && dia.tiene_sesion) {
+    return <span className="text-green-700 dark:text-green-400">Cumplido</span>;
+  }
+  if (dia.programado && !dia.tiene_sesion) {
+    return <span className="text-amber-700 dark:text-amber-400">Sin toma</span>;
+  }
+  if (!dia.programado && dia.tiene_sesion) {
+    return <span className="text-sky-700 dark:text-sky-400">Fuera de programación</span>;
+  }
+  return <span className="text-gray-500">—</span>;
+}
+
+function mensajeListaVacia(filtro: DetalleFiltro): string {
+  if (filtro === 'faltantes') {
+    return 'No hay días programados sin toma de asistencia en este período.';
+  }
+  if (filtro === 'sin_formacion') {
+    return 'No hay días registrados como sin formación (novedad) en este período.';
+  }
+  return 'Sin días registrados en el detalle.';
 }
 
 type Props = Readonly<{
@@ -69,7 +106,8 @@ export function CumplimientoDetalleFicha({ item, onIrABloqueA }: Props) {
   const diasFiltrados = useMemo(() => {
     const dias = item.detalle_dias ?? [];
     if (filtro === 'todos') return dias;
-    return dias.filter((d) => d.programado && !d.tiene_sesion);
+    if (filtro === 'sin_formacion') return dias.filter((d) => d.sin_formacion);
+    return dias.filter((d) => d.programado && !d.tiene_sesion && !d.sin_formacion);
   }, [item.detalle_dias, filtro]);
 
   const porMes = useMemo(() => agruparPorMes(item.detalle_dias ?? []), [item.detalle_dias]);
@@ -85,6 +123,12 @@ export function CumplimientoDetalleFicha({ item, onIrABloqueA }: Props) {
           <ExclamationTriangleIcon className="w-3.5 h-3.5" aria-hidden />
           {resumen?.dias_sin_toma ?? 0} sin toma
         </span>
+        {(resumen?.dias_sin_formacion ?? 0) > 0 ? (
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-red-100 px-3 py-1 text-xs font-medium text-red-800 dark:bg-red-900/40 dark:text-red-200">
+            <NoSymbolIcon className="w-3.5 h-3.5" aria-hidden />
+            {resumen.dias_sin_formacion} sin formación
+          </span>
+        ) : null}
         {(resumen?.sesiones_fuera_programacion ?? 0) > 0 ? (
           <span className="inline-flex items-center gap-1.5 rounded-full bg-sky-100 px-3 py-1 text-xs font-medium text-sky-800 dark:bg-sky-900/40 dark:text-sky-200">
             <InformationCircleIcon className="w-3.5 h-3.5" aria-hidden />
@@ -98,7 +142,8 @@ export function CumplimientoDetalleFicha({ item, onIrABloqueA }: Props) {
 
       <p className="text-xs text-gray-500 dark:text-gray-400">
         Los días con sesión del bloque B coinciden con el bloque A. Si hay más sesiones que días con sesión,
-        hubo varias tomas el mismo día.
+        hubo varias tomas el mismo día. Los días en rojo son novedades sin formación (no cuentan como falta de
+        toma).
         {onIrABloqueA ? (
           <>
             {' '}
@@ -113,7 +158,6 @@ export function CumplimientoDetalleFicha({ item, onIrABloqueA }: Props) {
         ) : null}
       </p>
 
-      {/* Heatmap mensual */}
       <div className="space-y-3">
         {[...porMes.entries()].map(([mes, dias]) => (
           <div key={mes}>
@@ -152,6 +196,17 @@ export function CumplimientoDetalleFicha({ item, onIrABloqueA }: Props) {
         </button>
         <button
           type="button"
+          onClick={() => setFiltro('sin_formacion')}
+          className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${
+            filtro === 'sin_formacion'
+              ? 'bg-red-600 text-white'
+              : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+          }`}
+        >
+          Sin formación ({resumen?.dias_sin_formacion ?? 0})
+        </button>
+        <button
+          type="button"
           onClick={() => setFiltro('todos')}
           className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${
             filtro === 'todos'
@@ -164,11 +219,7 @@ export function CumplimientoDetalleFicha({ item, onIrABloqueA }: Props) {
       </div>
 
       {diasFiltrados.length === 0 ? (
-        <p className="text-sm text-gray-500 dark:text-gray-400 py-2">
-          {filtro === 'faltantes'
-            ? 'No hay días programados sin toma de asistencia en este período.'
-            : 'Sin días registrados en el detalle.'}
-        </p>
+        <p className="text-sm text-gray-500 dark:text-gray-400 py-2">{mensajeListaVacia(filtro)}</p>
       ) : (
         <div className="overflow-x-auto max-h-64 overflow-y-auto rounded-lg border border-gray-200 dark:border-gray-700">
           <table className="min-w-full text-xs divide-y divide-gray-200 dark:divide-gray-700">
@@ -178,6 +229,7 @@ export function CumplimientoDetalleFicha({ item, onIrABloqueA }: Props) {
                 <th className="px-2 py-1.5 text-left font-medium text-gray-500">Fecha</th>
                 <th className="px-2 py-1.5 text-left font-medium text-gray-500">Día</th>
                 <th className="px-2 py-1.5 text-left font-medium text-gray-500">Estado</th>
+                <th className="px-2 py-1.5 text-left font-medium text-gray-500">Observación</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100 dark:divide-gray-800 bg-white dark:bg-gray-900/50">
@@ -186,16 +238,9 @@ export function CumplimientoDetalleFicha({ item, onIrABloqueA }: Props) {
                   <td className="px-2 py-1.5">{iconoEstado(dia)}</td>
                   <td className="px-2 py-1.5 tabular-nums">{dia.fecha}</td>
                   <td className="px-2 py-1.5">{dia.dia_semana}</td>
-                  <td className="px-2 py-1.5">
-                    {dia.programado && dia.tiene_sesion && (
-                      <span className="text-green-700 dark:text-green-400">Cumplido</span>
-                    )}
-                    {dia.programado && !dia.tiene_sesion && (
-                      <span className="text-amber-700 dark:text-amber-400">Sin toma</span>
-                    )}
-                    {!dia.programado && dia.tiene_sesion && (
-                      <span className="text-sky-700 dark:text-sky-400">Fuera de programación</span>
-                    )}
+                  <td className="px-2 py-1.5">{etiquetaEstado(dia)}</td>
+                  <td className="px-2 py-1.5 text-gray-600 dark:text-gray-300 max-w-[18rem]">
+                    {dia.observacion?.trim() || '—'}
                   </td>
                 </tr>
               ))}
@@ -210,6 +255,9 @@ export function CumplimientoDetalleFicha({ item, onIrABloqueA }: Props) {
         </span>
         <span className="inline-flex items-center gap-1">
           <span className="h-2.5 w-2.5 rounded-sm bg-amber-400" /> Sin toma
+        </span>
+        <span className="inline-flex items-center gap-1">
+          <span className="h-2.5 w-2.5 rounded-sm bg-red-500" /> Sin formación
         </span>
         <span className="inline-flex items-center gap-1">
           <span className="h-2.5 w-2.5 rounded-sm bg-sky-400" /> Fuera de prog.

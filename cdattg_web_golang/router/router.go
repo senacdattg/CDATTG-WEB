@@ -265,6 +265,9 @@ func SetupRouter() *gin.Engine {
 			{
 				stats.GET("/dashboard-resumen", statsHandler.GetDashboardResumen)
 				stats.GET("/asistencia-analisis", statsHandler.GetAsistenciaAnalisis)
+				stats.GET("/asistencia-analisis/explorar-fichas", statsHandler.GetAsistenciaAnalisisExplorarFichas)
+				stats.GET("/asistencia-analisis/aprendices-ficha", statsHandler.GetAsistenciaAnalisisAprendicesFicha)
+				stats.GET("/asistencia-analisis/registros-aprendiz", statsHandler.GetAsistenciaAnalisisRegistrosAprendiz)
 			}
 
 			elecciones := protected.Group("/elecciones")

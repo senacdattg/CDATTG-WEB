@@ -20,6 +20,10 @@ type FichaRepository interface {
 	FindActivasParaFechaConJornada(fecha time.Time, sedeID *uint) ([]models.FichaCaracterizacion, error)
 	// FindActivasSolapandoRango fichas activas cuyo período solapa [desde, hasta] (para análisis histórico).
 	FindActivasSolapandoRango(desde, hasta time.Time, sedeIDs []uint, jornadaNombre string, soloEnFormacion bool) ([]models.FichaCaracterizacion, error)
+	// FindSolapandoRango fichas cuyo período solapa [desde, hasta]; estadoFicha: activas|inactivas|todas.
+	FindSolapandoRango(desde, hasta time.Time, sedeIDs []uint, jornadaNombre string, soloEnFormacion bool, estadoFicha string) ([]models.FichaCaracterizacion, error)
+	// FindIDsByFichaOPrograma busca por número de ficha o nombre de programa (parcial).
+	FindIDsByFichaOPrograma(search string, sedeIDs []uint) ([]uint, error)
 	Search(query string) ([]models.FichaCaracterizacion, error)
 	Create(ficha *models.FichaCaracterizacion) error
 	Update(ficha *models.FichaCaracterizacion) error
@@ -30,7 +34,11 @@ type FichaRepository interface {
 	CountAll(sedeID *uint) (int64, error)
 }
 
-const preloadAmbienteRuta = "Ambiente.Piso.Bloque"
+const (
+	preloadAmbienteRuta      = "Ambiente.Piso.Bloque"
+	fichaCondStatus          = "status = ?"
+	fichaCondFechaFinVigente = "(fecha_fin IS NULL OR fecha_fin >= ?)"
+)
 
 type fichaRepository struct {
 	db *gorm.DB
@@ -91,9 +99,9 @@ func (r *fichaRepository) FindActivasParaFechaConJornada(fecha time.Time, sedeID
 		diaFormacionID = 7
 	}
 	fechaStr := fecha.Format("2006-01-02")
-	q := r.db.Where("status = ?", true)
+	q := r.db.Where(fichaCondStatus, true)
 	if !config.IgnorarVigenciaFicha() {
-		q = q.Where("(fecha_fin IS NULL OR fecha_fin >= ?)", fechaStr)
+		q = q.Where(fichaCondFechaFinVigente, fechaStr)
 	}
 	q = q.Where("id IN (SELECT ficha_id FROM ficha_dias_formacion WHERE dia_formacion_id = ? AND deleted_at IS NULL)", diaFormacionID)
 	if sedeID != nil && *sedeID > 0 {
@@ -107,16 +115,29 @@ func (r *fichaRepository) FindActivasParaFechaConJornada(fecha time.Time, sedeID
 
 // FindActivasSolapandoRango devuelve fichas activas con vigencia que intersecta el rango consultado.
 func (r *fichaRepository) FindActivasSolapandoRango(desde, hasta time.Time, sedeIDs []uint, jornadaNombre string, soloEnFormacion bool) ([]models.FichaCaracterizacion, error) {
+	return r.FindSolapandoRango(desde, hasta, sedeIDs, jornadaNombre, soloEnFormacion, "activas")
+}
+
+// FindSolapandoRango devuelve fichas con vigencia que intersecta el rango; estadoFicha: activas|inactivas|todas.
+func (r *fichaRepository) FindSolapandoRango(desde, hasta time.Time, sedeIDs []uint, jornadaNombre string, soloEnFormacion bool, estadoFicha string) ([]models.FichaCaracterizacion, error) {
 	desdeStr := desde.Format(time.DateOnly)
 	hastaStr := hasta.Format(time.DateOnly)
-	q := r.db.Where("status = ?", true)
+	q := r.db.Model(&models.FichaCaracterizacion{})
+	switch strings.ToLower(strings.TrimSpace(estadoFicha)) {
+	case "inactivas":
+		q = q.Where(fichaCondStatus, false)
+	case "todas":
+		// sin filtro de status
+	default:
+		q = q.Where(fichaCondStatus, true)
+	}
 	if !config.IgnorarVigenciaFicha() {
 		q = q.Where("(fecha_inicio IS NULL OR fecha_inicio <= ?)", hastaStr)
 		if soloEnFormacion {
 			nowStr := time.Now().Format(time.DateOnly)
-			q = q.Where("(fecha_fin IS NULL OR fecha_fin >= ?)", nowStr)
+			q = q.Where(fichaCondFechaFinVigente, nowStr)
 		} else {
-			q = q.Where("(fecha_fin IS NULL OR fecha_fin >= ?)", desdeStr)
+			q = q.Where(fichaCondFechaFinVigente, desdeStr)
 		}
 	}
 	if len(sedeIDs) > 0 {
@@ -129,6 +150,25 @@ func (r *fichaRepository) FindActivasSolapandoRango(desde, hasta time.Time, sede
 	err := q.Preload("Jornada").Preload("ProgramaFormacion").Preload("Sede").Preload("FichaDiasFormacion").
 		Order("ficha ASC").Find(&list).Error
 	return list, err
+}
+
+// FindIDsByFichaOPrograma busca fichas por número o nombre de programa (coincidencia parcial, case-insensitive).
+func (r *fichaRepository) FindIDsByFichaOPrograma(search string, sedeIDs []uint) ([]uint, error) {
+	norm := strings.TrimSpace(search)
+	if norm == "" {
+		return nil, nil
+	}
+	pattern := "%" + strings.ToLower(strings.Join(strings.Fields(norm), "%")) + "%"
+	q := r.db.Model(&models.FichaCaracterizacion{}).
+		Where("LOWER(ficha) LIKE ? OR programa_formacion_id IN (SELECT id FROM programas_formacion WHERE LOWER(nombre) LIKE ? AND deleted_at IS NULL)", pattern, pattern)
+	if len(sedeIDs) > 0 {
+		q = q.Where("sede_id IN ?", sedeIDs)
+	}
+	var ids []uint
+	if err := q.Pluck("id", &ids).Error; err != nil {
+		return nil, err
+	}
+	return ids, nil
 }
 
 func (r *fichaRepository) FindAll(page, pageSize int, programaID *uint, instructorID *uint, search string) ([]models.FichaCaracterizacion, int64, error) {
@@ -207,7 +247,7 @@ func (r *fichaRepository) ExistsByFichaExcludingID(ficha string, excludeID uint)
 
 func (r *fichaRepository) CountAll(sedeID *uint) (int64, error) {
 	var n int64
-	q := r.db.Model(&models.FichaCaracterizacion{}).Where("status = ?", true)
+	q := r.db.Model(&models.FichaCaracterizacion{}).Where(fichaCondStatus, true)
 	if sedeID != nil && *sedeID > 0 {
 		q = q.Where("sede_id = ?", *sedeID)
 	}

@@ -2,6 +2,7 @@ package services
 
 import (
 	"math"
+	"strings"
 	"time"
 
 	"github.com/sena/cdattg-web-golang/dto"
@@ -24,12 +25,22 @@ type semanaDiaResult struct {
 
 // fichaSesionesAgrupadas fuente única de conteo de sesiones (bloques A y B).
 type fichaSesionesAgrupadas struct {
-	numero        string
-	programa      string
-	jornada       string
-	totalSesiones int
-	fechas        map[string]struct{}
-	minutos       []int
+	numero         string
+	programa       string
+	jornada        string
+	activa         bool
+	totalSesiones  int
+	fechas         map[string]struct{}
+	minutosIngreso []int
+	minutosSalida  []int
+}
+
+func minutosDeHora(t *time.Time, loc *time.Location) (int, bool) {
+	if t == nil {
+		return 0, false
+	}
+	local := t.In(loc)
+	return local.Hour()*60 + local.Minute(), true
 }
 
 func agruparSesionesPorFicha(rows []repositories.SesionDetalleRow, loc *time.Location) map[uint]*fichaSesionesAgrupadas {
@@ -39,19 +50,22 @@ func agruparSesionesPorFicha(rows []repositories.SesionDetalleRow, loc *time.Loc
 		entry := out[row.FichaID]
 		if entry == nil {
 			entry = &fichaSesionesAgrupadas{
-				numero:  row.FichaNumero,
+				numero:   row.FichaNumero,
 				programa: row.ProgramaNombre,
-				jornada: row.JornadaNombre,
-				fechas:  make(map[string]struct{}),
+				jornada:  row.JornadaNombre,
+				activa:   row.FichaActiva,
+				fechas:   make(map[string]struct{}),
 			}
 			out[row.FichaID] = entry
 		}
 		entry.totalSesiones++
 		fechaKey := row.Fecha.In(loc).Format(time.DateOnly)
 		entry.fechas[fechaKey] = struct{}{}
-		if row.PrimeraHora != nil {
-			local := row.PrimeraHora.In(loc)
-			entry.minutos = append(entry.minutos, local.Hour()*60+local.Minute())
+		if m, ok := minutosDeHora(row.PrimeraHora, loc); ok {
+			entry.minutosIngreso = append(entry.minutosIngreso, m)
+		}
+		if m, ok := minutosDeHora(row.UltimaHora, loc); ok {
+			entry.minutosSalida = append(entry.minutosSalida, m)
 		}
 	}
 	return out
@@ -89,12 +103,36 @@ func filtrarFichasPorID(fichas []models.FichaCaracterizacion, fichaID *uint) []m
 	if fichaID == nil || *fichaID == 0 {
 		return fichas
 	}
+	return filtrarFichasPorIDs(fichas, []uint{*fichaID})
+}
+
+func filtrarFichasPorIDs(fichas []models.FichaCaracterizacion, fichaIDs []uint) []models.FichaCaracterizacion {
+	if len(fichaIDs) == 0 {
+		return fichas
+	}
+	permitidos := make(map[uint]struct{}, len(fichaIDs))
+	for _, id := range fichaIDs {
+		permitidos[id] = struct{}{}
+	}
+	out := make([]models.FichaCaracterizacion, 0, len(fichaIDs))
 	for i := range fichas {
-		if fichas[i].ID == *fichaID {
-			return []models.FichaCaracterizacion{fichas[i]}
+		if _, ok := permitidos[fichas[i].ID]; ok {
+			out = append(out, fichas[i])
 		}
 	}
-	return nil
+	return out
+}
+
+func fichaPasaFiltroIDs(fichaID uint, fichaIDs []uint) bool {
+	if len(fichaIDs) == 0 {
+		return true
+	}
+	for _, id := range fichaIDs {
+		if id == fichaID {
+			return true
+		}
+	}
+	return false
 }
 
 func sedeIDUnica(sedeIDs []uint) *uint {
@@ -107,11 +145,11 @@ func sedeIDUnica(sedeIDs []uint) *uint {
 func fichaPasaFiltrosAnalisis(
 	f *models.FichaCaracterizacion,
 	d time.Time,
-	fichaID *uint,
+	fichaIDs []uint,
 	jornada string,
 	s *asistenciaAnalisisService,
 ) bool {
-	if fichaID != nil && *fichaID > 0 && f.ID != *fichaID {
+	if !fichaPasaFiltroIDs(f.ID, fichaIDs) {
 		return false
 	}
 	if jornada != "" && (f.Jornada == nil || f.Jornada.Nombre != jornada) {
@@ -232,7 +270,7 @@ func mapVinieronPorFicha(rows []repositories.DashboardFichaRow) map[uint]int {
 func agregarPorJornadaSemana(
 	fichas []models.FichaCaracterizacion,
 	d time.Time,
-	fichaID *uint,
+	fichaIDs []uint,
 	jornada string,
 	s *asistenciaAnalisisService,
 	visibles map[uint]int,
@@ -241,7 +279,7 @@ func agregarPorJornadaSemana(
 	agg := make(map[string]struct{ esperados, vinieron int })
 	for i := range fichas {
 		f := &fichas[i]
-		if !fichaPasaFiltrosAnalisis(f, d, fichaID, jornada, s) {
+		if !fichaPasaFiltrosAnalisis(f, d, fichaIDs, jornada, s) {
 			continue
 		}
 		esp := visibles[f.ID]
@@ -286,28 +324,36 @@ func (s *asistenciaAnalisisService) procesarDiaSemanaAnterior(
 	d time.Time,
 	sedeIDs []uint,
 	jornada string,
-	fichaID *uint,
+	fichaIDs []uint,
+	estadoFicha string,
 ) (semanaDiaResult, error) {
 	diaID := int(WeekdayToDiaFormacionID(d.Weekday()))
 	fechaStr := d.Format(time.DateOnly)
 
-	fichas, err := s.fichaRepo.FindActivasParaFechaConJornada(d, sedeIDUnica(sedeIDs))
+	var fichas []models.FichaCaracterizacion
+	var err error
+	if strings.EqualFold(strings.TrimSpace(estadoFicha), "activas") || strings.TrimSpace(estadoFicha) == "" {
+		fichas, err = s.fichaRepo.FindActivasParaFechaConJornada(d, sedeIDUnica(sedeIDs))
+	} else {
+		fichas, err = s.fichaRepo.FindSolapandoRango(d, d.Add(24*time.Hour), sedeIDs, jornada, false, estadoFicha)
+	}
 	if err != nil {
 		return semanaDiaResult{}, err
 	}
 	fichas = filtrarFichasPorSedes(fichas, sedeIDs)
+	fichas = filtrarFichasPorIDs(fichas, fichaIDs)
 
-	fichaIDs := make([]uint, 0, len(fichas))
+	fichaIDsDia := make([]uint, 0, len(fichas))
 	for i := range fichas {
-		if fichaPasaFiltrosAnalisis(&fichas[i], d, fichaID, jornada, s) {
-			fichaIDs = append(fichaIDs, fichas[i].ID)
+		if fichaPasaFiltrosAnalisis(&fichas[i], d, nil, jornada, s) {
+			fichaIDsDia = append(fichaIDsDia, fichas[i].ID)
 		}
 	}
-	if len(fichaIDs) == 0 {
+	if len(fichaIDsDia) == 0 {
 		return semanaDiaResult{}, nil
 	}
 
-	visibles, err := s.aprendizRepo.CountVisiblesAsistenciaByFichaIDs(fichaIDs)
+	visibles, err := s.aprendizRepo.CountVisiblesAsistenciaByFichaIDs(fichaIDsDia)
 	if err != nil {
 		return semanaDiaResult{}, err
 	}
@@ -316,7 +362,7 @@ func (s *asistenciaAnalisisService) procesarDiaSemanaAnterior(
 		return semanaDiaResult{}, err
 	}
 
-	agg := agregarPorJornadaSemana(fichas, d, fichaID, jornada, s, visibles, mapVinieronPorFicha(porFichaDia))
+	agg := agregarPorJornadaSemana(fichas, d, nil, jornada, s, visibles, mapVinieronPorFicha(porFichaDia))
 	filas, diaEsp, diaVin := filasDesdeAggSemana(fechaStr, diaID, agg)
 	if diaEsp == 0 {
 		return semanaDiaResult{filas: filas}, nil

@@ -297,7 +297,7 @@ export function useAsistenciaRegistro({
       setSesionActual(await apiService.finalizarSesionAsistencia(sesionActual.id));
       mostrarToastInfoAsistencia('Sesión finalizada', 'La sesión se cerró correctamente.');
     } catch (e: unknown) {
-      mostrarToastErrorAsistencia('No se pudo finalizar la sesión', axiosErrorMessage(e));
+      mostrarToastErrorAsistencia('No se pudo finalizar la sesión', axiosErrorMessage(e, 'Error al finalizar la sesión.'));
     } finally {
       setFinalizandoSesion(false);
     }

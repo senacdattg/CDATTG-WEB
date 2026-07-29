@@ -18,6 +18,7 @@ const (
 	routePisos      = "/pisos"
 	routeJornadas   = "/jornadas"
 	routeDiasSinFormacion = "/dias-sin-formacion"
+	routeDiasSinFormacionFicha = "/dias-sin-formacion-ficha"
 	routeConfiguracionAsistencia = "/configuracion-asistencia"
 
 	permVerPersonas     = "VER PERSONAS"
@@ -72,6 +73,7 @@ func SetupRouter() *gin.Engine {
 	_ = handlers.NewContratoConvenioHandler()
 	jornadaHandler := handlers.NewJornadaHandler()
 	diaSinFormacionHandler := handlers.NewDiaSinFormacionSedeHandler()
+	diaSinFormacionFichaHandler := handlers.NewDiaSinFormacionFichaHandler()
 	configAsistenciaHandler := handlers.NewConfiguracionAsistenciaHandler()
 	eleccionHandler := handlers.NewEleccionHandler()
 
@@ -228,6 +230,10 @@ func SetupRouter() *gin.Engine {
 				administracion.POST(routeDiasSinFormacion, diaSinFormacionHandler.Create)
 				administracion.PUT(routeDiasSinFormacion+"/:id", diaSinFormacionHandler.Update)
 				administracion.DELETE(routeDiasSinFormacion+"/:id", diaSinFormacionHandler.Delete)
+
+				administracion.GET(routeDiasSinFormacionFicha, diaSinFormacionFichaHandler.List)
+				administracion.POST(routeDiasSinFormacionFicha, diaSinFormacionFichaHandler.Create)
+				administracion.DELETE(routeDiasSinFormacionFicha+"/:id", diaSinFormacionFichaHandler.Delete)
 
 				administracion.GET(routeConfiguracionAsistencia, configAsistenciaHandler.Get)
 				administracion.PUT(routeConfiguracionAsistencia, configAsistenciaHandler.Update)

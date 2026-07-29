@@ -158,6 +158,7 @@ func patchAutoMigrateDashboardModels() error {
 		&models.InstructorFichaTrasladoFecha{},
 		&models.DiaFestivo{},
 		&models.DiaSinFormacionSede{},
+		&models.DiaSinFormacionFicha{},
 		&models.ConfiguracionAsistencia{},
 		&models.UsuarioRegional{},
 	); err != nil {

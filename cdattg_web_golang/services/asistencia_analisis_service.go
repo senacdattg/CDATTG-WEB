@@ -528,6 +528,9 @@ func (s *asistenciaAnalisisService) fichaTieneFormacionEnDia(f *models.FichaCara
 	if f.SedeID != nil && *f.SedeID > 0 && s.calendario.EsDiaSinFormacionSede(*f.SedeID, dia) {
 		return false
 	}
+	if s.calendario.EsDiaSinFormacionFicha(f.ID, dia) {
+		return false
+	}
 	diaID := WeekdayToDiaFormacionID(dia.Weekday())
 	return len(s.horarioSvc.bloquesDiaFicha(f, diaID)) > 0
 }

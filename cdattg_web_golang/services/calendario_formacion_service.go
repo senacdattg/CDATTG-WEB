@@ -11,30 +11,34 @@ import (
 
 // CalendarioFormacionService centraliza reglas de días hábiles de formación.
 type CalendarioFormacionService struct {
-	fichaRepo             repositories.FichaRepository
-	fichaDiasRepo         repositories.FichaDiasRepository
-	instFichaRepo         repositories.InstructorFichaRepository
-	instFichaDiasRepo     repositories.InstructorFichaDiasRepository
-	trasladoFechaRepo     repositories.InstructorFichaTrasladoFechaRepository
-	diaFestivoRepo        repositories.DiaFestivoRepository
-	diaSinFormacionRepo   repositories.DiaSinFormacionSedeRepository
-	festivosCache         map[string]bool
-	festivosCacheMu       sync.RWMutex
-	sinFormacionSedeCache map[uint]map[string]string
-	sinFormacionCacheMu   sync.RWMutex
+	fichaRepo               repositories.FichaRepository
+	fichaDiasRepo           repositories.FichaDiasRepository
+	instFichaRepo           repositories.InstructorFichaRepository
+	instFichaDiasRepo       repositories.InstructorFichaDiasRepository
+	trasladoFechaRepo       repositories.InstructorFichaTrasladoFechaRepository
+	diaFestivoRepo          repositories.DiaFestivoRepository
+	diaSinFormacionRepo     repositories.DiaSinFormacionSedeRepository
+	diaSinFormacionFichaRepo repositories.DiaSinFormacionFichaRepository
+	festivosCache           map[string]bool
+	festivosCacheMu         sync.RWMutex
+	sinFormacionSedeCache   map[uint]map[string]string
+	sinFormacionFichaCache  map[uint]map[string]string
+	sinFormacionCacheMu     sync.RWMutex
 }
 
 func NewCalendarioFormacionService() *CalendarioFormacionService {
 	return &CalendarioFormacionService{
-		fichaRepo:             repositories.NewFichaRepository(),
-		fichaDiasRepo:         repositories.NewFichaDiasRepository(),
-		instFichaRepo:         repositories.NewInstructorFichaRepository(),
-		instFichaDiasRepo:     repositories.NewInstructorFichaDiasRepository(),
-		trasladoFechaRepo:     repositories.NewInstructorFichaTrasladoFechaRepository(),
-		diaFestivoRepo:        repositories.NewDiaFestivoRepository(),
-		diaSinFormacionRepo:   repositories.NewDiaSinFormacionSedeRepository(),
-		festivosCache:         make(map[string]bool),
-		sinFormacionSedeCache: make(map[uint]map[string]string),
+		fichaRepo:                repositories.NewFichaRepository(),
+		fichaDiasRepo:            repositories.NewFichaDiasRepository(),
+		instFichaRepo:            repositories.NewInstructorFichaRepository(),
+		instFichaDiasRepo:        repositories.NewInstructorFichaDiasRepository(),
+		trasladoFechaRepo:        repositories.NewInstructorFichaTrasladoFechaRepository(),
+		diaFestivoRepo:           repositories.NewDiaFestivoRepository(),
+		diaSinFormacionRepo:      repositories.NewDiaSinFormacionSedeRepository(),
+		diaSinFormacionFichaRepo: repositories.NewDiaSinFormacionFichaRepository(),
+		festivosCache:            make(map[string]bool),
+		sinFormacionSedeCache:    make(map[uint]map[string]string),
+		sinFormacionFichaCache:   make(map[uint]map[string]string),
 	}
 }
 
@@ -90,6 +94,42 @@ func (s *CalendarioFormacionService) MotivoDiaSinFormacionSede(sedeID uint, fech
 
 func (s *CalendarioFormacionService) EsDiaSinFormacionSede(sedeID uint, fecha time.Time) bool {
 	ok, _ := s.MotivoDiaSinFormacionSede(sedeID, fecha)
+	return ok
+}
+
+func (s *CalendarioFormacionService) MotivoDiaSinFormacionFicha(fichaID uint, fecha time.Time) (bool, string) {
+	if fichaID == 0 {
+		return false, ""
+	}
+	key := fechaCalendario(fecha).Format(time.DateOnly)
+	s.sinFormacionCacheMu.RLock()
+	if byFicha, ok := s.sinFormacionFichaCache[fichaID]; ok {
+		if motivo, hit := byFicha[key]; hit {
+			s.sinFormacionCacheMu.RUnlock()
+			return motivo != "", motivo
+		}
+	}
+	s.sinFormacionCacheMu.RUnlock()
+
+	ok, motivo, err := s.diaSinFormacionFichaRepo.ExistsEnFecha(fichaID, fecha)
+	if err != nil {
+		return false, ""
+	}
+	s.sinFormacionCacheMu.Lock()
+	if s.sinFormacionFichaCache[fichaID] == nil {
+		s.sinFormacionFichaCache[fichaID] = make(map[string]string)
+	}
+	if ok {
+		s.sinFormacionFichaCache[fichaID][key] = motivo
+	} else {
+		s.sinFormacionFichaCache[fichaID][key] = ""
+	}
+	s.sinFormacionCacheMu.Unlock()
+	return ok, motivo
+}
+
+func (s *CalendarioFormacionService) EsDiaSinFormacionFicha(fichaID uint, fecha time.Time) bool {
+	ok, _ := s.MotivoDiaSinFormacionFicha(fichaID, fecha)
 	return ok
 }
 
@@ -166,6 +206,9 @@ func (s *CalendarioFormacionService) EsSesionFormacionValida(fichaID, instructor
 	if ficha.SedeID != nil && *ficha.SedeID > 0 && s.EsDiaSinFormacionSede(*ficha.SedeID, fecha) {
 		return false
 	}
+	if s.EsDiaSinFormacionFicha(fichaID, fecha) {
+		return false
+	}
 	ifc, err := s.instFichaRepo.FindByFichaIDAndInstructorID(fichaID, instructorID)
 	if err != nil || ifc == nil {
 		return false
@@ -202,6 +245,9 @@ func (s *CalendarioFormacionService) DebeTomarAsistenciaEnFechaConDatos(
 		return false
 	}
 	if ficha.SedeID != nil && *ficha.SedeID > 0 && s.EsDiaSinFormacionSede(*ficha.SedeID, fecha) {
+		return false
+	}
+	if ficha != nil && s.EsDiaSinFormacionFicha(ficha.ID, fecha) {
 		return false
 	}
 	if config.RelaxarRestriccionAsistencia() {
@@ -250,6 +296,34 @@ func (s *CalendarioFormacionService) PrecargarSinFormacionSede(sedeID uint, desd
 				continue
 			}
 			s.sinFormacionSedeCache[sedeID][d.Format(time.DateOnly)] = row.Motivo
+		}
+	}
+	return nil
+}
+
+// PrecargarSinFormacionFicha calienta caché de novedades sin formación por ficha en un rango.
+func (s *CalendarioFormacionService) PrecargarSinFormacionFicha(fichaID uint, desde, hasta time.Time) error {
+	if fichaID == 0 {
+		return nil
+	}
+	rows, err := s.diaSinFormacionFichaRepo.FindEnRango(fichaID, desde, hasta)
+	if err != nil {
+		return err
+	}
+	s.sinFormacionCacheMu.Lock()
+	defer s.sinFormacionCacheMu.Unlock()
+	if s.sinFormacionFichaCache[fichaID] == nil {
+		s.sinFormacionFichaCache[fichaID] = make(map[string]string)
+	}
+	for d := fechaCalendario(desde); !d.After(hasta); d = d.AddDate(0, 0, 1) {
+		s.sinFormacionFichaCache[fichaID][d.Format(time.DateOnly)] = ""
+	}
+	for _, row := range rows {
+		for d := fechaCalendario(row.FechaInicio); !d.After(row.FechaFin); d = d.AddDate(0, 0, 1) {
+			if d.Before(desde) || d.After(hasta) {
+				continue
+			}
+			s.sinFormacionFichaCache[fichaID][d.Format(time.DateOnly)] = row.Motivo
 		}
 	}
 	return nil

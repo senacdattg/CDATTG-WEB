@@ -453,16 +453,17 @@ func (h *AsistenciaHandler) ListAprendicesEnSesion(c *gin.Context) {
 
 // ListPendientesRevision devuelve los registros de asistencia de aprendices
 // marcados como requiere_revision para el instructor autenticado en una fecha.
+// Si la cuenta no es instructor, responde lista vacía (p. ej. admin/coordinador).
 func (h *AsistenciaHandler) ListPendientesRevision(c *gin.Context) {
 	u, _ := c.Get("user")
 	user, _ := u.(*models.User)
 	if user == nil || user.PersonaID == nil {
-		c.JSON(http.StatusForbidden, gin.H{"error": errMsgCuentaNoInstructor})
+		c.JSON(http.StatusOK, gin.H{"data": []any{}})
 		return
 	}
 	inst, err := h.instRepo.FindByPersonaID(*user.PersonaID)
 	if err != nil || inst == nil {
-		c.JSON(http.StatusForbidden, gin.H{"error": errMsgCuentaNoInstructor})
+		c.JSON(http.StatusOK, gin.H{"data": []any{}})
 		return
 	}
 	fecha := c.Query("fecha")

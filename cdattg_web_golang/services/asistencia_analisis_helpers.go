@@ -171,7 +171,11 @@ func nombresFichaCumplimiento(f *models.FichaCaracterizacion) (programa, jornada
 	return programa, jornada, sede
 }
 
-func actualizarResumenCumplimientoDia(resumen *dto.AnalisisCumplimientoResumen, programado, tieneSesion bool) {
+func actualizarResumenCumplimientoDia(resumen *dto.AnalisisCumplimientoResumen, programado, tieneSesion, sinFormacion bool) {
+	if sinFormacion {
+		resumen.DiasSinFormacion++
+		return
+	}
 	switch {
 	case programado && tieneSesion:
 		resumen.DiasCumplidos++
@@ -182,14 +186,27 @@ func actualizarResumenCumplimientoDia(resumen *dto.AnalisisCumplimientoResumen, 
 	}
 }
 
-func entradaCumplimientoDia(d time.Time, loc *time.Location, programado, tieneSesion bool) dto.AnalisisCumplimientoDia {
+func entradaCumplimientoDia(d time.Time, loc *time.Location, programado, tieneSesion, sinFormacion bool, observacion string) dto.AnalisisCumplimientoDia {
 	diaID := int(WeekdayToDiaFormacionID(d.Weekday()))
 	return dto.AnalisisCumplimientoDia{
-		Fecha:       d.In(loc).Format(time.DateOnly),
-		DiaSemana:   nombresDiaSemana[diaID],
-		Programado:  programado,
-		TieneSesion: tieneSesion,
+		Fecha:        d.In(loc).Format(time.DateOnly),
+		DiaSemana:    nombresDiaSemana[diaID],
+		Programado:   programado,
+		TieneSesion:  tieneSesion,
+		SinFormacion: sinFormacion,
+		Observacion:  observacion,
 	}
+}
+
+func (s *asistenciaAnalisisService) diaHubieraSidoFormacion(f *models.FichaCaracterizacion, d time.Time) bool {
+	if f == nil || s.calendario.EsDiaFestivoColombia(d) {
+		return false
+	}
+	if f.SedeID != nil && *f.SedeID > 0 && s.calendario.EsDiaSinFormacionSede(*f.SedeID, d) {
+		return false
+	}
+	diaID := WeekdayToDiaFormacionID(d.Weekday())
+	return len(s.horarioSvc.bloquesDiaFicha(f, diaID)) > 0
 }
 
 func (s *asistenciaAnalisisService) acumularDiaCumplimiento(
@@ -200,11 +217,21 @@ func (s *asistenciaAnalisisService) acumularDiaCumplimiento(
 	out *cumplimientoDiasResult,
 ) {
 	key := d.In(loc).Format(time.DateOnly)
-	programado := s.fichaTieneFormacionEnDia(f, d)
 	_, tieneSesion := sesiones[key]
+
+	if ok, motivo := s.calendario.MotivoDiaSinFormacionFicha(f.ID, d); ok {
+		hubieraFormacion := s.diaHubieraSidoFormacion(f, d)
+		if hubieraFormacion || tieneSesion {
+			out.detalle = append(out.detalle, entradaCumplimientoDia(d, loc, false, tieneSesion, true, motivo))
+			actualizarResumenCumplimientoDia(&out.resumen, false, tieneSesion, true)
+		}
+		return
+	}
+
+	programado := s.fichaTieneFormacionEnDia(f, d)
 	if programado || tieneSesion {
-		out.detalle = append(out.detalle, entradaCumplimientoDia(d, loc, programado, tieneSesion))
-		actualizarResumenCumplimientoDia(&out.resumen, programado, tieneSesion)
+		out.detalle = append(out.detalle, entradaCumplimientoDia(d, loc, programado, tieneSesion, false, ""))
+		actualizarResumenCumplimientoDia(&out.resumen, programado, tieneSesion, false)
 	}
 	if !programado {
 		return
@@ -221,6 +248,10 @@ func (s *asistenciaAnalisisService) calcularCumplimientoDias(
 	sesiones map[string]struct{},
 ) cumplimientoDiasResult {
 	loc := utils.AppLocation()
+	_ = s.calendario.PrecargarSinFormacionFicha(f.ID, start, end)
+	if f.SedeID != nil && *f.SedeID > 0 {
+		_ = s.calendario.PrecargarSinFormacionSede(*f.SedeID, start, end)
+	}
 	out := cumplimientoDiasResult{detalle: make([]dto.AnalisisCumplimientoDia, 0)}
 	for d := start; !d.After(end); d = d.AddDate(0, 0, 1) {
 		s.acumularDiaCumplimiento(f, d, loc, sesiones, &out)
@@ -239,11 +270,14 @@ func (s *asistenciaAnalisisService) itemCumplimientoFicha(
 		return nil, nil
 	}
 	dias := s.calcularCumplimientoDias(f, start, end, sesiones)
-	if dias.programados == 0 {
+	if dias.programados == 0 && dias.resumen.DiasSinFormacion == 0 {
 		return nil, nil
 	}
 	prog, jornada, sede := nombresFichaCumplimiento(f)
-	pct := math.Round(float64(dias.conSesion)/float64(dias.programados)*1000) / 10
+	pct := 0.0
+	if dias.programados > 0 {
+		pct = math.Round(float64(dias.conSesion)/float64(dias.programados)*1000) / 10
+	}
 	return &dto.AnalisisCumplimientoFicha{
 		FichaID:         f.ID,
 		FichaNumero:     f.Ficha,

@@ -113,14 +113,17 @@ type AnalisisCumplimientoResumen struct {
 	DiasCumplidos             int `json:"dias_cumplidos"`
 	DiasSinToma               int `json:"dias_sin_toma"`
 	SesionesFueraProgramacion int `json:"sesiones_fuera_programacion"`
+	DiasSinFormacion          int `json:"dias_sin_formacion"`
 }
 
 // AnalisisCumplimientoDia detalle día a día para una ficha (bloque B).
 type AnalisisCumplimientoDia struct {
-	Fecha        string `json:"fecha"`
-	DiaSemana    string `json:"dia_semana"`
-	Programado   bool   `json:"programado"`
-	TieneSesion  bool   `json:"tiene_sesion"`
+	Fecha         string `json:"fecha"`
+	DiaSemana     string `json:"dia_semana"`
+	Programado    bool   `json:"programado"`
+	TieneSesion   bool   `json:"tiene_sesion"`
+	SinFormacion  bool   `json:"sin_formacion"`
+	Observacion   string `json:"observacion,omitempty"`
 }
 
 // AnalisisDiaSemanaSection bloque C: asistencia de la semana anterior completa (lun–dom).

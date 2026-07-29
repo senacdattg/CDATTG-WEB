@@ -54,6 +54,7 @@ import type {
   JornadaItem,
   JornadaAdminItem,
   DiaSinFormacionSedeItem,
+  DiaSinFormacionFichaItem,
   ConfiguracionAsistenciaItem,
   JornadaPropagateResult,
   JornadaUpdateResponse,
@@ -478,6 +479,32 @@ class ApiService {
 
   async deleteDiaSinFormacion(id: number): Promise<void> {
     await this.api.delete(`/administracion/dias-sin-formacion/${id}`);
+  }
+
+  async getDiasSinFormacionFicha(fichaId?: number): Promise<DiaSinFormacionFichaItem[]> {
+    const params = fichaId ? { ficha_id: fichaId } : undefined;
+    const response = await this.api.get<{ data: DiaSinFormacionFichaItem[] }>(
+      '/administracion/dias-sin-formacion-ficha',
+      { params },
+    );
+    return response.data.data;
+  }
+
+  async createDiaSinFormacionFicha(data: {
+    ficha_ids: number[];
+    fecha_inicio: string;
+    fecha_fin: string;
+    motivo: string;
+  }): Promise<{ creados: DiaSinFormacionFichaItem[] }> {
+    const response = await this.api.post<{ data: { creados: DiaSinFormacionFichaItem[] } }>(
+      '/administracion/dias-sin-formacion-ficha',
+      data,
+    );
+    return response.data.data;
+  }
+
+  async deleteDiaSinFormacionFicha(id: number): Promise<void> {
+    await this.api.delete(`/administracion/dias-sin-formacion-ficha/${id}`);
   }
 
   async getCatalogosDiasFormacion(): Promise<DiaFormacionItem[]> {

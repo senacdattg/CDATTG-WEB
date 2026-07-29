@@ -246,6 +246,17 @@ export interface DiaSinFormacionSedeItem {
   created_at?: string;
 }
 
+export interface DiaSinFormacionFichaItem {
+  id: number;
+  ficha_id: number;
+  ficha_numero?: string;
+  programa_nombre?: string;
+  fecha_inicio: string;
+  fecha_fin: string;
+  motivo: string;
+  created_at?: string;
+}
+
 export interface ConfiguracionAsistenciaItem {
   plazo_edicion_observaciones_dias: number;
   intervalo_auto_cierre_minutos: number;
@@ -745,12 +756,15 @@ export interface AsistenciaAnalisisResponse {
         dias_cumplidos: number;
         dias_sin_toma: number;
         sesiones_fuera_programacion: number;
+        dias_sin_formacion: number;
       };
       detalle_dias: Array<{
         fecha: string;
         dia_semana: string;
         programado: boolean;
         tiene_sesion: boolean;
+        sin_formacion: boolean;
+        observacion?: string;
       }>;
     }>;
   };

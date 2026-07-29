@@ -12,8 +12,8 @@ import { hoyISOColombia, formatNumero } from '../../utils/formatFecha';
 import type { AsistenciaAnalisisResponse, RegionalItem, SedeItem } from '../../types';
 import { KpiCard } from '../../components/dashboard/KpiCard';
 import { CumplimientoDetalleFicha } from './CumplimientoDetalleFicha';
-
-const JORNADAS = ['', 'DIURNA', 'TARDE', 'NOCHE', 'JORNADA CONTINUA', 'FINES DE SEMANA'] as const;
+import { RegistrosAprendizPanel } from './RegistrosAprendizPanel';
+import { PanelAnaliticoFiltros, type FiltrosAplicados } from './PanelAnaliticoFiltros';
 
 const DIAS_SEMANA = [
   { id: 0, label: 'Todos' },
@@ -32,6 +32,18 @@ function defaultDesde(): string {
   return d.toISOString().slice(0, 10);
 }
 
+function filtrosIniciales(): FiltrosAplicados {
+  return {
+    fechaDesde: defaultDesde(),
+    fechaHasta: hoyISOColombia(),
+    jornada: '',
+    fichaBusqueda: '',
+    estadoFicha: 'activas',
+    regionalId: '',
+    sedeId: '',
+  };
+}
+
 function pctBarClass(pct: number): string {
   if (pct >= 80) return 'bg-green-500';
   if (pct >= 50) return 'bg-amber-500';
@@ -45,13 +57,9 @@ export function PanelAnaliticoAsistenciaPage() {
     roles.includes('SUPER ADMINISTRADOR') || roles.includes('ADMINISTRADOR');
   const puedeFiltrarInstitucional = esAdmin && !esCoordinador;
 
-  const [fechaDesde, setFechaDesde] = useState(defaultDesde);
-  const [fechaHasta, setFechaHasta] = useState(hoyISOColombia);
-  const [jornada, setJornada] = useState('');
+  const [draft, setDraft] = useState<FiltrosAplicados>(filtrosIniciales);
+  const [aplicados, setAplicados] = useState<FiltrosAplicados>(filtrosIniciales);
   const [diaSemanaId, setDiaSemanaId] = useState(0);
-  const [fichaNumero, setFichaNumero] = useState('');
-  const [regionalId, setRegionalId] = useState('');
-  const [sedeId, setSedeId] = useState('');
   const [regionales, setRegionales] = useState<RegionalItem[]>([]);
   const [sedes, setSedes] = useState<SedeItem[]>([]);
   const [data, setData] = useState<AsistenciaAnalisisResponse | null>(null);
@@ -59,11 +67,12 @@ export function PanelAnaliticoAsistenciaPage() {
   const [error, setError] = useState('');
   const [fichaDetalleAbierta, setFichaDetalleAbierta] = useState<number | null>(null);
   const bloqueARef = useRef<HTMLElement>(null);
+  const requestIdRef = useRef(0);
 
   const sedesFiltradas = useMemo(() => {
-    if (!regionalId) return sedes;
-    return sedes.filter((s) => String(s.regional_id ?? '') === regionalId);
-  }, [sedes, regionalId]);
+    if (!draft.regionalId) return sedes;
+    return sedes.filter((s) => String(s.regional_id ?? '') === draft.regionalId);
+  }, [sedes, draft.regionalId]);
 
   useEffect(() => {
     if (!puedeFiltrarInstitucional) return;
@@ -77,31 +86,55 @@ export function PanelAnaliticoAsistenciaPage() {
       });
   }, [puedeFiltrarInstitucional]);
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (f: FiltrosAplicados) => {
+    const reqId = ++requestIdRef.current;
     setLoading(true);
     setError('');
     try {
       const res = await apiService.getAsistenciaAnalisis({
-        fecha_desde: fechaDesde,
-        fecha_hasta: fechaHasta,
-        jornada: jornada || undefined,
-        ficha: fichaNumero.trim() || undefined,
-        dia_semana_id: diaSemanaId > 0 ? diaSemanaId : undefined,
-        regional_id: regionalId ? Number(regionalId) : undefined,
-        sede_id: sedeId ? Number(sedeId) : undefined,
+        fecha_desde: f.fechaDesde,
+        fecha_hasta: f.fechaHasta,
+        jornada: f.jornada || undefined,
+        ficha: f.fichaBusqueda.trim() || undefined,
+        estado_ficha: f.estadoFicha,
+        regional_id: f.regionalId ? Number(f.regionalId) : undefined,
+        sede_id: f.sedeId ? Number(f.sedeId) : undefined,
       });
+      if (reqId !== requestIdRef.current) return;
       setData(res);
     } catch (e: unknown) {
+      if (reqId !== requestIdRef.current) return;
       setError(axiosErrorMessage(e, 'No se pudo cargar el panel analítico.'));
       setData(null);
     } finally {
-      setLoading(false);
+      if (reqId === requestIdRef.current) {
+        setLoading(false);
+      }
     }
-  }, [fechaDesde, fechaHasta, jornada, diaSemanaId, fichaNumero, regionalId, sedeId]);
+  }, []);
 
   useEffect(() => {
-    load();
-  }, [load]);
+    void load(aplicados);
+  }, [aplicados, load]);
+
+  const aplicarFiltros = () => {
+    setFichaDetalleAbierta(null);
+    setAplicados({ ...draft });
+  };
+
+  const limpiarFiltros = () => {
+    const iniciales = filtrosIniciales();
+    setDraft(iniciales);
+    setAplicados(iniciales);
+    setDiaSemanaId(0);
+    setFichaDetalleAbierta(null);
+  };
+
+  const limpiarBusquedaFicha = () => {
+    setDraft((prev) => ({ ...prev, fichaBusqueda: '' }));
+    setAplicados((prev) => ({ ...prev, fichaBusqueda: '' }));
+    setFichaDetalleAbierta(null);
+  };
 
   const topDias = useMemo(() => {
     const items = data?.dia_semana.dias_mas_asistencia ?? [];
@@ -119,119 +152,22 @@ export function PanelAnaliticoAsistenciaPage() {
       <header>
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Panel analítico de asistencia</h1>
         <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
-          Análisis de hora de toma, cumplimiento por ficha y asistencia por día de la semana (aprendices en formación activa).
+          Hora de ingreso y salida, cumplimiento por ficha, semana anterior e historial por aprendiz.
+          El filtro de ficha/programa se mantiene hasta que usted lo quite.
         </p>
       </header>
 
-      <section className="card space-y-4">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Filtros</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div>
-            <label htmlFor="analisis-desde" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Desde
-            </label>
-            <input
-              id="analisis-desde"
-              type="date"
-              value={fechaDesde}
-              onChange={(e) => setFechaDesde(e.target.value)}
-              className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-900 text-sm"
-            />
-          </div>
-          <div>
-            <label htmlFor="analisis-hasta" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Hasta
-            </label>
-            <input
-              id="analisis-hasta"
-              type="date"
-              value={fechaHasta}
-              onChange={(e) => setFechaHasta(e.target.value)}
-              className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-900 text-sm"
-            />
-          </div>
-          <div>
-            <label htmlFor="analisis-jornada" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Jornada
-            </label>
-            <select
-              id="analisis-jornada"
-              value={jornada}
-              onChange={(e) => setJornada(e.target.value)}
-              className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-900 text-sm"
-            >
-              <option value="">Todas</option>
-              {JORNADAS.filter(Boolean).map((j) => (
-                <option key={j} value={j}>
-                  {j}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label htmlFor="analisis-ficha" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Número de ficha (opcional)
-            </label>
-            <input
-              id="analisis-ficha"
-              type="text"
-              value={fichaNumero}
-              onChange={(e) => setFichaNumero(e.target.value)}
-              placeholder="Ej. 3173334"
-              className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-900 text-sm"
-            />
-          </div>
-        </div>
-        {puedeFiltrarInstitucional ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div>
-              <label
-                htmlFor="analisis-regional"
-                className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-              >
-                Regional
-              </label>
-              <select
-                id="analisis-regional"
-                value={regionalId}
-                onChange={(e) => {
-                  setRegionalId(e.target.value);
-                  setSedeId('');
-                }}
-                className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-900 text-sm"
-              >
-                <option value="">Todas las regionales</option>
-                {regionales.map((r) => (
-                  <option key={r.id} value={r.id}>
-                    {r.nombre}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label
-                htmlFor="analisis-sede"
-                className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-              >
-                Sede
-              </label>
-              <select
-                id="analisis-sede"
-                value={sedeId}
-                onChange={(e) => setSedeId(e.target.value)}
-                className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-900 text-sm"
-              >
-                <option value="">Todas las sedes</option>
-                {sedesFiltradas.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.nombre}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-        ) : null}
-      </section>
+      <PanelAnaliticoFiltros
+        draft={draft}
+        aplicados={aplicados}
+        setDraft={setDraft}
+        puedeFiltrarInstitucional={puedeFiltrarInstitucional}
+        regionales={regionales}
+        sedesFiltradas={sedesFiltradas}
+        onAplicar={aplicarFiltros}
+        onLimpiar={limpiarFiltros}
+        onLimpiarFicha={limpiarBusquedaFicha}
+      />
 
       {error ? (
         <p role="alert" className="text-sm text-red-600 dark:text-red-400">
@@ -239,25 +175,30 @@ export function PanelAnaliticoAsistenciaPage() {
         </p>
       ) : null}
 
-      {/* Bloque A */}
       <section ref={bloqueARef} className="space-y-4">
         <div className="flex items-center gap-2">
           <ClockIcon className="w-5 h-5 text-primary-600" aria-hidden />
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-            A — Hora promedio de toma de asistencia
+            A — Hora promedio de ingreso y salida
           </h2>
         </div>
         <p className="text-sm text-gray-500 dark:text-gray-400">
-          Promedio según el primer registro de cada sesión.{' '}
+          Ingreso: primer registro de cada sesión. Salida: última toma de asistencia de la sesión.{' '}
           <strong>Sesiones</strong> cuenta cada toma;{' '}
           <strong>días con sesión</strong> cuenta fechas distintas programadas con toma (coincide con bloque B).
         </p>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <KpiCard
-            label="Hora promedio global"
+            label="Hora promedio ingreso"
             value={loading ? '…' : (data?.hora_toma.promedio_hora ?? '—')}
-            tooltip="Promedio de la primera hora de registro en todas las sesiones del período."
+            tooltip="Promedio de la primera hora de ingreso en todas las sesiones del período."
             icon={<ClockIcon className="w-6 h-6 text-sena-green" aria-hidden />}
+          />
+          <KpiCard
+            label="Hora promedio salida"
+            value={loading ? '…' : (data?.hora_toma.promedio_hora_salida ?? '—')}
+            tooltip="Promedio de la última hora de salida registrada en cada sesión."
+            icon={<ClockIcon className="w-6 h-6 text-primary-600" aria-hidden />}
           />
           <KpiCard
             label="Sesiones analizadas"
@@ -280,7 +221,9 @@ export function PanelAnaliticoAsistenciaPage() {
                 <th className="px-3 py-2 text-left font-medium text-gray-500">Ficha</th>
                 <th className="px-3 py-2 text-left font-medium text-gray-500">Programa</th>
                 <th className="px-3 py-2 text-left font-medium text-gray-500">Jornada</th>
-                <th className="px-3 py-2 text-right font-medium text-gray-500">Hora prom.</th>
+                <th className="px-3 py-2 text-left font-medium text-gray-500">Estado</th>
+                <th className="px-3 py-2 text-right font-medium text-gray-500">Ing. prom.</th>
+                <th className="px-3 py-2 text-right font-medium text-gray-500">Sal. prom.</th>
                 <th className="px-3 py-2 text-right font-medium text-gray-500">Sesiones</th>
                 <th className="px-3 py-2 text-right font-medium text-gray-500">Días c/ sesión</th>
               </tr>
@@ -291,14 +234,26 @@ export function PanelAnaliticoAsistenciaPage() {
                   <td className="px-3 py-2 font-medium">{row.ficha_numero}</td>
                   <td className="px-3 py-2">{row.programa_nombre || '—'}</td>
                   <td className="px-3 py-2">{row.jornada_nombre || '—'}</td>
+                  <td className="px-3 py-2">
+                    <span
+                      className={`inline-flex px-2 py-0.5 rounded text-xs font-medium ${
+                        row.ficha_activa
+                          ? 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-200'
+                          : 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300'
+                      }`}
+                    >
+                      {row.ficha_activa ? 'Activa' : 'Inactiva'}
+                    </span>
+                  </td>
                   <td className="px-3 py-2 text-right tabular-nums">{row.promedio_hora}</td>
+                  <td className="px-3 py-2 text-right tabular-nums">{row.promedio_hora_salida || '—'}</td>
                   <td className="px-3 py-2 text-right tabular-nums">{row.total_sesiones}</td>
                   <td className="px-3 py-2 text-right tabular-nums">{row.dias_con_sesion}</td>
                 </tr>
               ))}
               {!loading && (data?.hora_toma.detalle_por_ficha.length ?? 0) === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-3 py-6 text-center text-gray-500">
+                  <td colSpan={8} className="px-3 py-6 text-center text-gray-500">
                     Sin sesiones en el período seleccionado.
                   </td>
                 </tr>
@@ -308,7 +263,6 @@ export function PanelAnaliticoAsistenciaPage() {
         </div>
       </section>
 
-      {/* Bloque B */}
       <section className="space-y-4">
         <div className="flex items-center gap-2">
           <ClipboardDocumentListIcon className="w-5 h-5 text-primary-600" aria-hidden />
@@ -397,7 +351,6 @@ export function PanelAnaliticoAsistenciaPage() {
         </div>
       </section>
 
-      {/* Bloque C */}
       <section className="space-y-4">
         <div className="flex items-center gap-2">
           <CalendarDaysIcon className="w-5 h-5 text-primary-600" aria-hidden />
@@ -476,6 +429,13 @@ export function PanelAnaliticoAsistenciaPage() {
           </table>
         </div>
       </section>
+
+      <RegistrosAprendizPanel
+        fechaDesde={aplicados.fechaDesde}
+        fechaHasta={aplicados.fechaHasta}
+        regionalId={aplicados.regionalId ? Number(aplicados.regionalId) : undefined}
+        sedeId={aplicados.sedeId ? Number(aplicados.sedeId) : undefined}
+      />
     </div>
   );
 }

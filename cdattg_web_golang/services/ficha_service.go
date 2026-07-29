@@ -1007,6 +1007,7 @@ func (s *fichaService) instructorFichaToResponse(m models.InstructorFichaCaracte
 	if m.Instructor != nil {
 		if m.Instructor.Persona != nil {
 			r.InstructorNombre = m.Instructor.Persona.GetFullName()
+			r.InstructorEmail = m.Instructor.Persona.Email
 		} else {
 			r.InstructorNombre = m.Instructor.NombreCompletoCache
 		}

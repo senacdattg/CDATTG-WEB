@@ -30,6 +30,8 @@ import type {
   CreateInstructorRequest,
   UpdateInstructorRequest,
   AsistenciaRequest,
+  AsistenciaRetroactivaRequest,
+  AsistenciaRetroactivaResponse,
   AsistenciaReglasResponse,
   AsistenciaResponse,
   AsistenciaAprendizRequest,
@@ -39,6 +41,9 @@ import type {
   AsistenciaDashboardResponse,
   DashboardResumenResponse,
   AsistenciaAnalisisResponse,
+  AnalisisRegistrosAprendizResponse,
+  AnalisisExplorarFichasResponse,
+  AnalisisAprendicesFichaResponse,
   CasosBienestarResponse,
   SesionesSinAsistenciaTomadaResponse,
   CasoBienestarAprendizDetalleResponse,
@@ -49,6 +54,7 @@ import type {
   JornadaItem,
   JornadaAdminItem,
   DiaSinFormacionSedeItem,
+  DiaSinFormacionFichaItem,
   ConfiguracionAsistenciaItem,
   JornadaPropagateResult,
   JornadaUpdateResponse,
@@ -475,6 +481,32 @@ class ApiService {
     await this.api.delete(`/administracion/dias-sin-formacion/${id}`);
   }
 
+  async getDiasSinFormacionFicha(fichaId?: number): Promise<DiaSinFormacionFichaItem[]> {
+    const params = fichaId ? { ficha_id: fichaId } : undefined;
+    const response = await this.api.get<{ data: DiaSinFormacionFichaItem[] }>(
+      '/administracion/dias-sin-formacion-ficha',
+      { params },
+    );
+    return response.data.data;
+  }
+
+  async createDiaSinFormacionFicha(data: {
+    ficha_ids: number[];
+    fecha_inicio: string;
+    fecha_fin: string;
+    motivo: string;
+  }): Promise<{ creados: DiaSinFormacionFichaItem[] }> {
+    const response = await this.api.post<{ data: { creados: DiaSinFormacionFichaItem[] } }>(
+      '/administracion/dias-sin-formacion-ficha',
+      data,
+    );
+    return response.data.data;
+  }
+
+  async deleteDiaSinFormacionFicha(id: number): Promise<void> {
+    await this.api.delete(`/administracion/dias-sin-formacion-ficha/${id}`);
+  }
+
   async getCatalogosDiasFormacion(): Promise<DiaFormacionItem[]> {
     const response = await this.api.get<{ data: DiaFormacionItem[] }>('/catalogos/dias-formacion');
     return response.data.data;
@@ -644,7 +676,8 @@ class ApiService {
   // Instructores de una ficha
   async getFichaInstructores(fichaId: number): Promise<InstructorFichaResponse[]> {
     const response = await this.api.get<{ data: InstructorFichaResponse[] }>(`/fichas-caracterizacion/${fichaId}/instructores`);
-    return response.data.data;
+    const list = response.data?.data;
+    return Array.isArray(list) ? list : [];
   }
 
   async asignarInstructores(fichaId: number, data: AsignarInstructoresRequest): Promise<void> {
@@ -792,6 +825,12 @@ class ApiService {
     return response.data;
   }
 
+  /** Carga tardía de asistencia (solo superadministrador). */
+  async registrarAsistenciaRetroactiva(data: AsistenciaRetroactivaRequest): Promise<AsistenciaRetroactivaResponse> {
+    const response = await this.api.post<AsistenciaRetroactivaResponse>('/asistencias/carga-retroactiva', data);
+    return response.data;
+  }
+
   async getAsistenciaById(id: number): Promise<AsistenciaResponse> {
     const response = await this.api.get<AsistenciaResponse>(`/asistencias/${id}`);
     return response.data;
@@ -802,6 +841,12 @@ class ApiService {
       `/asistencias/${asistenciaId}/observaciones-sesion`,
       { observaciones }
     );
+    return response.data;
+  }
+
+  /** Finaliza la sesión de asistencia del instructor (cierre manual). */
+  async finalizarSesionAsistencia(asistenciaId: number): Promise<AsistenciaResponse> {
+    const response = await this.api.put<AsistenciaResponse>(`/asistencias/${asistenciaId}/finalizar-sesion`);
     return response.data;
   }
 
@@ -825,10 +870,57 @@ class ApiService {
     sede_id?: number;
     jornada?: string;
     ficha?: string;
+    estado_ficha?: 'activas' | 'inactivas' | 'todas';
     aprendiz_id?: number;
     dia_semana_id?: number;
   }): Promise<AsistenciaAnalisisResponse> {
     const response = await this.api.get<AsistenciaAnalisisResponse>('/stats/asistencia-analisis', { params });
+    return response.data;
+  }
+
+  /** Historial de ingresos/salidas por aprendiz en una ficha (panel analítico). */
+  async getAsistenciaAnalisisRegistrosAprendiz(params: {
+    ficha: string;
+    q?: string;
+    aprendiz_id?: number;
+    fecha_desde?: string;
+    fecha_hasta?: string;
+    regional_id?: number;
+    sede_id?: number;
+  }): Promise<AnalisisRegistrosAprendizResponse> {
+    const response = await this.api.get<AnalisisRegistrosAprendizResponse>(
+      '/stats/asistencia-analisis/registros-aprendiz',
+      { params },
+    );
+    return response.data;
+  }
+
+  /** Explorar fichas por número, programa, nombre o documento de aprendiz. */
+  async getAsistenciaAnalisisExplorarFichas(params: {
+    q: string;
+    regional_id?: number;
+    sede_id?: number;
+  }): Promise<AnalisisExplorarFichasResponse> {
+    const response = await this.api.get<AnalisisExplorarFichasResponse>(
+      '/stats/asistencia-analisis/explorar-fichas',
+      { params },
+    );
+    return response.data;
+  }
+
+  /** Listado de aprendices de una ficha para el panel analítico. */
+  async getAsistenciaAnalisisAprendicesFicha(params: {
+    ficha: string;
+    q?: string;
+    fecha_desde?: string;
+    fecha_hasta?: string;
+    regional_id?: number;
+    sede_id?: number;
+  }): Promise<AnalisisAprendicesFichaResponse> {
+    const response = await this.api.get<AnalisisAprendicesFichaResponse>(
+      '/stats/asistencia-analisis/aprendices-ficha',
+      { params },
+    );
     return response.data;
   }
 

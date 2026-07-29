@@ -60,6 +60,12 @@ func (s *stubFichaRepoHorario) FindActivasParaHoyConJornada(time.Time) ([]models
 func (s *stubFichaRepoHorario) FindActivasSolapandoRango(time.Time, time.Time, []uint, string, bool) ([]models.FichaCaracterizacion, error) {
 	return nil, nil
 }
+func (s *stubFichaRepoHorario) FindSolapandoRango(time.Time, time.Time, []uint, string, bool, string) ([]models.FichaCaracterizacion, error) {
+	return nil, nil
+}
+func (s *stubFichaRepoHorario) FindIDsByFichaOPrograma(string, []uint) ([]uint, error) {
+	return nil, nil
+}
 func (s *stubFichaRepoHorario) Search(string) ([]models.FichaCaracterizacion, error) { return nil, nil }
 func (s *stubFichaRepoHorario) Create(*models.FichaCaracterizacion) error           { return nil }
 func (s *stubFichaRepoHorario) Update(*models.FichaCaracterizacion) error           { return nil }

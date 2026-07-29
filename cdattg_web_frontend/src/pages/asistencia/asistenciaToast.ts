@@ -132,6 +132,35 @@ export async function confirmEliminarRegistroAsistencia(
   return result.isConfirmed;
 }
 
+/** Doble confirmación antes de finalizar la sesión (evita cierres accidentales). */
+export async function confirmFinalizarSesionAsistencia(ingresosCount: number): Promise<boolean> {
+  const paso1 = await Swal.fire({
+    title: '¿Finalizar la sesión de asistencia?',
+    html: `<p class="text-sm text-left">Se cerrará la sesión de hoy con <strong>${ingresosCount}</strong> ingreso(s) registrado(s).</p>
+      <p class="text-sm text-left mt-2">Los aprendices con entrada y sin salida recibirán salida automática al momento de cerrar.</p>
+      <p class="text-xs text-left mt-3 text-gray-600">Después no podrá registrar más ingresos ni salidas en esta sesión.</p>`,
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonText: 'Continuar',
+    cancelButtonText: 'Cancelar',
+    focusCancel: true,
+  });
+  if (!paso1.isConfirmed) return false;
+
+  const paso2 = await Swal.fire({
+    title: 'Confirmar cierre de sesión',
+    html: `<p class="text-sm text-left">Esta acción <strong>no se puede deshacer</strong>.</p>
+      <p class="text-sm text-left mt-2">¿Está seguro de que desea finalizar la sesión ahora?</p>`,
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonText: 'Sí, finalizar sesión',
+    cancelButtonText: 'No, volver',
+    confirmButtonColor: '#dc2626',
+    focusCancel: true,
+  });
+  return paso2.isConfirmed;
+}
+
 export function mostrarToastResultadoDocumento(data: AsistenciaAprendizResponse): string {
   const interpretado = interpretarRespuestaRegistroAsistencia(data);
   if (interpretado.clase === 'aviso') {

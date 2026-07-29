@@ -107,6 +107,7 @@ func Migrate() error {
 		&models.InstructorFichaTrasladoFecha{},
 		&models.DiaFestivo{},
 		&models.DiaSinFormacionSede{},
+		&models.DiaSinFormacionFicha{},
 		
 		// Asignaciones
 		&models.AsignacionInstructor{},

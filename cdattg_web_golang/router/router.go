@@ -18,6 +18,7 @@ const (
 	routePisos      = "/pisos"
 	routeJornadas   = "/jornadas"
 	routeDiasSinFormacion = "/dias-sin-formacion"
+	routeDiasSinFormacionFicha = "/dias-sin-formacion-ficha"
 	routeConfiguracionAsistencia = "/configuracion-asistencia"
 
 	permVerPersonas     = "VER PERSONAS"
@@ -72,6 +73,7 @@ func SetupRouter() *gin.Engine {
 	_ = handlers.NewContratoConvenioHandler()
 	jornadaHandler := handlers.NewJornadaHandler()
 	diaSinFormacionHandler := handlers.NewDiaSinFormacionSedeHandler()
+	diaSinFormacionFichaHandler := handlers.NewDiaSinFormacionFichaHandler()
 	configAsistenciaHandler := handlers.NewConfiguracionAsistenciaHandler()
 	eleccionHandler := handlers.NewEleccionHandler()
 
@@ -187,6 +189,7 @@ func SetupRouter() *gin.Engine {
 			asistencias.POST("/entrar-tomar-asistencia", asistenciaHandler.EntrarTomarAsistencia)
 			asistencias.GET("/reglas", asistenciaHandler.GetReglas)
 			asistencias.POST("", middleware.RequirePermission("asistencia", permTomarAsistencia), asistenciaHandler.CreateSesion)
+			asistencias.POST("/carga-retroactiva", middleware.RequireSuperAdmin(), asistenciaHandler.RegistrarAsistenciaRetroactiva)
 			asistencias.GET("/instructor-ficha/:instructorFichaId", middleware.RequirePermission("asistencia", permVerAsistencia), asistenciaHandler.ListByInstructorFicha)
 			asistencias.GET("/ficha/:fichaId", middleware.RequirePermissionListAsistenciasPorFicha(), asistenciaHandler.ListByFichaAndFechas)
 			// Pendientes de revisión:
@@ -195,6 +198,7 @@ func SetupRouter() *gin.Engine {
 			asistencias.GET("/pendientes-revision", asistenciaHandler.ListPendientesRevision)
 			asistencias.POST("/ingreso", middleware.RequirePermission("asistencia", permTomarAsistencia), asistenciaHandler.RegistrarIngreso)
 			asistencias.POST("/ingreso-por-documento", middleware.RequirePermission("asistencia", permTomarAsistencia), asistenciaHandler.RegistrarIngresoPorDocumento)
+			asistencias.PUT("/:id/finalizar-sesion", middleware.RequirePermission("asistencia", permTomarAsistencia), asistenciaHandler.FinalizarSesion)
 			asistencias.PUT("/:id/observaciones-sesion", middleware.RequirePermission("asistencia", permTomarAsistencia), asistenciaHandler.ActualizarObservacionesSesion)
 			asistencias.PUT("/aprendiz/:asistenciaAprendizId/salida", middleware.RequirePermission("asistencia", permTomarAsistencia), asistenciaHandler.RegistrarSalida)
 			asistencias.DELETE("/aprendiz/:asistenciaAprendizId", middleware.RequireSuperAdminOrAdmin(), asistenciaHandler.EliminarRegistroAprendiz)
@@ -229,6 +233,10 @@ func SetupRouter() *gin.Engine {
 				administracion.POST(routeDiasSinFormacion, diaSinFormacionHandler.Create)
 				administracion.PUT(routeDiasSinFormacion+"/:id", diaSinFormacionHandler.Update)
 				administracion.DELETE(routeDiasSinFormacion+"/:id", diaSinFormacionHandler.Delete)
+
+				administracion.GET(routeDiasSinFormacionFicha, diaSinFormacionFichaHandler.List)
+				administracion.POST(routeDiasSinFormacionFicha, diaSinFormacionFichaHandler.Create)
+				administracion.DELETE(routeDiasSinFormacionFicha+"/:id", diaSinFormacionFichaHandler.Delete)
 
 				administracion.GET(routeConfiguracionAsistencia, configAsistenciaHandler.Get)
 				administracion.PUT(routeConfiguracionAsistencia, configAsistenciaHandler.Update)
@@ -266,6 +274,9 @@ func SetupRouter() *gin.Engine {
 			{
 				stats.GET("/dashboard-resumen", statsHandler.GetDashboardResumen)
 				stats.GET("/asistencia-analisis", statsHandler.GetAsistenciaAnalisis)
+				stats.GET("/asistencia-analisis/explorar-fichas", statsHandler.GetAsistenciaAnalisisExplorarFichas)
+				stats.GET("/asistencia-analisis/aprendices-ficha", statsHandler.GetAsistenciaAnalisisAprendicesFicha)
+				stats.GET("/asistencia-analisis/registros-aprendiz", statsHandler.GetAsistenciaAnalisisRegistrosAprendiz)
 			}
 
 			elecciones := protected.Group("/elecciones")

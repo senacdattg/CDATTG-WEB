@@ -24,6 +24,7 @@ const (
 	errMsgFueraDelHorarioJornada         = "FUERA DEL HORARIO DE LA JORNADA DE LA FICHA; SOLO SE PUEDE TOMAR ASISTENCIA EN EL HORARIO CONFIGURADO"
 	errMsgSesionOtroInstructor           = "NO PUEDE TOMAR ASISTENCIA EN LA SESIÓN DE OTRO INSTRUCTOR"
 	errMsgAprendizOcultoEnAsistencia     = "EL APRENDIZ ESTÁ OCULTO DE LA TOMA DE ASISTENCIA EN ESTA FICHA"
+	errMsgSinIngresoParaFinalizar        = "Debe registrar al menos un ingreso antes de finalizar."
 )
 
 
@@ -51,6 +52,7 @@ type AsistenciaService interface {
 	ListByInstructorFichaID(instructorFichaID uint) ([]dto.AsistenciaResponse, error)
 	ListByFichaIDAndFechas(fichaID uint, fechaInicio, fechaFin string) ([]dto.AsistenciaResponse, error)
 	Finalizar(id uint) (*dto.AsistenciaResponse, error)
+	FinalizarSesionManual(asistenciaID uint, instructorFichaID *uint) (*dto.AsistenciaResponse, error)
 	RegistrarIngreso(req dto.AsistenciaAprendizRequest, instructorFichaIDRegistroIngreso *uint) (*dto.AsistenciaAprendizResponse, error)
 	RegistrarIngresoPorDocumento(req dto.AsistenciaIngresoPorDocumentoRequest, instructorFichaIDRegistroIngreso *uint) (*dto.AsistenciaAprendizResponse, error)
 	RegistrarSalida(asistenciaAprendizID uint, instructorFichaIDRegistroSalida *uint) (*dto.AsistenciaAprendizResponse, error)
@@ -69,6 +71,7 @@ type AsistenciaService interface {
 	GetSesionesSinAsistenciaTomada(userID uint, roles []string, dias int, regionalID, sedeID *uint) (*dto.SesionesSinAsistenciaTomadaResponse, error)
 	AjustarEstadoAprendiz(asistenciaAprendizID uint, estado, motivo string, instructorFichaIDRegistroSalida *uint) (*dto.AsistenciaAprendizResponse, error)
 	ListPendientesRevision(instructorID uint, fecha string) ([]dto.AsistenciaAprendizResponse, error)
+	RegistrarAsistenciaRetroactiva(req dto.AsistenciaRetroactivaRequest) (*dto.AsistenciaRetroactivaResponse, error)
 	FinalizarSesionesVencidas()
 }
 
@@ -363,8 +366,37 @@ func (s *asistenciaService) Finalizar(id uint) (*dto.AsistenciaResponse, error) 
 	return s.GetByID(id)
 }
 
+func contarIngresosEnSesion(a *models.Asistencia) int {
+	n := 0
+	for i := range a.AsistenciaAprendices {
+		if a.AsistenciaAprendices[i].HoraIngreso != nil {
+			n++
+		}
+	}
+	return n
+}
+
+// FinalizarSesionManual permite al instructor cerrar la sesión antes del cierre automático.
+// Requiere al menos un ingreso registrado en la sesión.
+func (s *asistenciaService) FinalizarSesionManual(asistenciaID uint, instructorFichaID *uint) (*dto.AsistenciaResponse, error) {
+	a, err := s.repo.FindByID(asistenciaID)
+	if err != nil {
+		return nil, errors.New("sesión no encontrada")
+	}
+	if a.IsFinished {
+		return nil, errors.New(errMsgSesionYaFinalizada)
+	}
+	if err := s.assertSesionPropia(a, instructorFichaID); err != nil {
+		return nil, err
+	}
+	if contarIngresosEnSesion(a) == 0 {
+		return nil, errors.New(errMsgSinIngresoParaFinalizar)
+	}
+	return s.Finalizar(asistenciaID)
+}
+
 // FinalizarSesionesVencidas finaliza sesiones no cerradas cuyo horario de jornada (hora_fin + extensión) ya pasó.
-// Se ejecuta de forma periódica (p. ej. cada 5 min). La finalización es automática; los instructores no pueden finalizar manualmente.
+// Se ejecuta de forma periódica (p. ej. cada 5 min). Los instructores también pueden finalizar manualmente antes.
 func (s *asistenciaService) FinalizarSesionesVencidas() {
 	now := time.Now()
 	fechaDesde := now.AddDate(0, 0, -1).Format(time.DateOnly)

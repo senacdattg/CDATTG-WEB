@@ -246,6 +246,17 @@ export interface DiaSinFormacionSedeItem {
   created_at?: string;
 }
 
+export interface DiaSinFormacionFichaItem {
+  id: number;
+  ficha_id: number;
+  ficha_numero?: string;
+  programa_nombre?: string;
+  fecha_inicio: string;
+  fecha_fin: string;
+  motivo: string;
+  created_at?: string;
+}
+
 export interface ConfiguracionAsistenciaItem {
   plazo_edicion_observaciones_dias: number;
   intervalo_auto_cierre_minutos: number;
@@ -488,6 +499,7 @@ export interface InstructorFichaResponse {
   id: number;
   instructor_id: number;
   instructor_nombre: string;
+  instructor_email?: string;
   ficha_id: number;
   competencia_id?: number;
   competencia_nombre?: string;
@@ -543,6 +555,19 @@ export interface AsistenciaRequest {
   instructor_ficha_id: number;
   fecha: string; // YYYY-MM-DD
   hora_inicio?: string;
+}
+
+export interface AsistenciaRetroactivaRequest {
+  instructor_ficha_id: number;
+  fecha: string;
+  aprendiz_ids: number[];
+  motivo: string;
+}
+
+export interface AsistenciaRetroactivaResponse {
+  asistencia: AsistenciaResponse;
+  registrados: number;
+  omitidos: number;
 }
 
 export interface AsistenciaResponse {
@@ -700,6 +725,8 @@ export interface AsistenciaAnalisisResponse {
   hora_toma: {
     promedio_hora: string;
     promedio_minutos_dia: number;
+    promedio_hora_salida: string;
+    promedio_minutos_salida: number;
     total_sesiones: number;
     total_dias_con_sesion: number;
     detalle_por_ficha: Array<{
@@ -707,7 +734,9 @@ export interface AsistenciaAnalisisResponse {
       ficha_numero: string;
       programa_nombre: string;
       jornada_nombre: string;
+      ficha_activa: boolean;
       promedio_hora: string;
+      promedio_hora_salida: string;
       total_sesiones: number;
       dias_con_sesion: number;
     }>;
@@ -727,12 +756,15 @@ export interface AsistenciaAnalisisResponse {
         dias_cumplidos: number;
         dias_sin_toma: number;
         sesiones_fuera_programacion: number;
+        dias_sin_formacion: number;
       };
       detalle_dias: Array<{
         fecha: string;
         dia_semana: string;
         programado: boolean;
         tiene_sesion: boolean;
+        sin_formacion: boolean;
+        observacion?: string;
       }>;
     }>;
   };
@@ -756,6 +788,53 @@ export interface AsistenciaAnalisisResponse {
       pct: number;
     }>;
   };
+}
+
+/** Historial de ingresos/salidas de aprendices en una ficha (panel analítico). */
+export interface AnalisisRegistrosAprendizResponse {
+  ficha_id: number;
+  ficha_numero: string;
+  programa_nombre: string;
+  aprendices: Array<{
+    aprendiz_id: number;
+    numero_documento: string;
+    nombre_completo: string;
+    registros: Array<{
+      asistencia_id: number;
+      fecha: string;
+      hora_ingreso: string | null;
+      hora_salida: string | null;
+    }>;
+  }>;
+}
+
+export interface AnalisisExplorarFichasResponse {
+  query: string;
+  fichas: Array<{
+    ficha_id: number;
+    ficha_numero: string;
+    programa_nombre: string;
+    sede_nombre: string;
+    jornada_nombre: string;
+    modalidad_nombre: string;
+    instructor_nombre: string;
+    ambiente_nombre: string;
+    cantidad_aprendices: number;
+    status: boolean;
+    coincidencias_aprendiz: number;
+  }>;
+}
+
+export interface AnalisisAprendicesFichaResponse {
+  ficha_id: number;
+  ficha_numero: string;
+  programa_nombre: string;
+  aprendices: Array<{
+    aprendiz_id: number;
+    numero_documento: string;
+    nombre_completo: string;
+    total_registros: number;
+  }>;
 }
 
 export interface UsuarioRegionalesResponse {

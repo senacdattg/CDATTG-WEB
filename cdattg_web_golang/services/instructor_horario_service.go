@@ -590,6 +590,26 @@ func (s *InstructorHorarioService) validarTomarAsistenciaTraslados(
 	)
 }
 
+func mensajeDiaSinFormacion(defaultMsg, motivo string) error {
+	msg := defaultMsg
+	if strings.TrimSpace(motivo) != "" {
+		msg = motivo
+	}
+	return errors.New(msg)
+}
+
+func (s *InstructorHorarioService) errorSiDiaSinFormacion(fichaID uint, ficha *models.FichaCaracterizacion, momento time.Time) error {
+	if ficha != nil && ficha.SedeID != nil && *ficha.SedeID > 0 {
+		if ok, motivo := s.calendarioSvc.MotivoDiaSinFormacionSede(*ficha.SedeID, momento); ok {
+			return mensajeDiaSinFormacion("día sin formación en la sede", strings.ToLower(motivo))
+		}
+	}
+	if ok, motivo := s.calendarioSvc.MotivoDiaSinFormacionFicha(fichaID, momento); ok {
+		return mensajeDiaSinFormacion("día sin formación en la ficha (novedad)", motivo)
+	}
+	return nil
+}
+
 func (s *InstructorHorarioService) ValidarPuedeTomarAsistencia(instructorID, fichaID uint, momento time.Time) error {
 	if s.calendarioSvc.EsDiaFestivoColombia(momento) {
 		return errors.New("hoy es festivo nacional; no hay formación programada")
@@ -598,14 +618,8 @@ func (s *InstructorHorarioService) ValidarPuedeTomarAsistencia(instructorID, fic
 	if err != nil {
 		return err
 	}
-	if ctx.ficha.SedeID != nil && *ctx.ficha.SedeID > 0 {
-		if ok, motivo := s.calendarioSvc.MotivoDiaSinFormacionSede(*ctx.ficha.SedeID, momento); ok {
-			msg := strings.ToLower("día sin formación en la sede")
-			if strings.TrimSpace(motivo) != "" {
-				msg = strings.ToLower(motivo)
-			}
-			return errors.New(msg)
-		}
+	if err := s.errorSiDiaSinFormacion(fichaID, ctx.ficha, momento); err != nil {
+		return err
 	}
 	if config.RelaxarRestriccionAsistencia() {
 		return nil

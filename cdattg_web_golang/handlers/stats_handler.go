@@ -76,9 +76,11 @@ func (h *StatsHandler) GetAsistenciaAnalisis(c *gin.Context) {
 	roles := rolesFromContext(c)
 
 	p := services.AsistenciaAnalisisParams{
-		FechaDesde: c.Query("fecha_desde"),
-		FechaHasta: c.Query("fecha_hasta"),
-		Jornada:    c.Query("jornada"),
+		FechaDesde:    c.Query("fecha_desde"),
+		FechaHasta:    c.Query("fecha_hasta"),
+		Jornada:       c.Query("jornada"),
+		EstadoFicha:   c.Query("estado_ficha"),
+		FichaBusqueda: strings.TrimSpace(c.Query("ficha")),
 	}
 	if v := c.Query("regional_id"); v != "" {
 		if id, err := strconv.ParseUint(v, 10, 64); err == nil {
@@ -92,7 +94,6 @@ func (h *StatsHandler) GetAsistenciaAnalisis(c *gin.Context) {
 			p.SedeID = &u
 		}
 	}
-	p.FichaNumero = strings.TrimSpace(c.Query("ficha"))
 	if v := c.Query("aprendiz_id"); v != "" {
 		if id, err := strconv.ParseUint(v, 10, 64); err == nil {
 			u := uint(id)
@@ -106,6 +107,99 @@ func (h *StatsHandler) GetAsistenciaAnalisis(c *gin.Context) {
 	}
 
 	resp, err := h.analisisSvc.GetAnalisis(userID.(uint), roles, p)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, resp)
+}
+
+// GetAsistenciaAnalisisRegistrosAprendiz GET /api/stats/asistencia-analisis/registros-aprendiz
+func (h *StatsHandler) GetAsistenciaAnalisisRegistrosAprendiz(c *gin.Context) {
+	userID, _ := c.Get("userID")
+	roles := rolesFromContext(c)
+
+	p := services.AnalisisRegistrosAprendizParams{
+		FechaDesde:  c.Query("fecha_desde"),
+		FechaHasta:  c.Query("fecha_hasta"),
+		FichaNumero: strings.TrimSpace(c.Query("ficha")),
+		Busqueda:    strings.TrimSpace(c.Query("q")),
+	}
+	if v := c.Query("regional_id"); v != "" {
+		if id, err := strconv.ParseUint(v, 10, 64); err == nil {
+			u := uint(id)
+			p.RegionalID = &u
+		}
+	}
+	if v := c.Query("sede_id"); v != "" {
+		if id, err := strconv.ParseUint(v, 10, 64); err == nil {
+			u := uint(id)
+			p.SedeID = &u
+		}
+	}
+	if v := c.Query("aprendiz_id"); v != "" {
+		if id, err := strconv.ParseUint(v, 10, 64); err == nil {
+			u := uint(id)
+			p.AprendizID = &u
+		}
+	}
+
+	resp, err := h.analisisSvc.GetRegistrosAprendiz(userID.(uint), roles, p)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, resp)
+}
+
+// GetAsistenciaAnalisisExplorarFichas GET /api/stats/asistencia-analisis/explorar-fichas
+func (h *StatsHandler) GetAsistenciaAnalisisExplorarFichas(c *gin.Context) {
+	userID, _ := c.Get("userID")
+	roles := rolesFromContext(c)
+	p := services.AnalisisExplorarParams{Query: strings.TrimSpace(c.Query("q"))}
+	if v := c.Query("regional_id"); v != "" {
+		if id, err := strconv.ParseUint(v, 10, 64); err == nil {
+			u := uint(id)
+			p.RegionalID = &u
+		}
+	}
+	if v := c.Query("sede_id"); v != "" {
+		if id, err := strconv.ParseUint(v, 10, 64); err == nil {
+			u := uint(id)
+			p.SedeID = &u
+		}
+	}
+	resp, err := h.analisisSvc.ExplorarFichas(userID.(uint), roles, p)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, resp)
+}
+
+// GetAsistenciaAnalisisAprendicesFicha GET /api/stats/asistencia-analisis/aprendices-ficha
+func (h *StatsHandler) GetAsistenciaAnalisisAprendicesFicha(c *gin.Context) {
+	userID, _ := c.Get("userID")
+	roles := rolesFromContext(c)
+	p := services.AnalisisAprendicesFichaParams{
+		FechaDesde:  c.Query("fecha_desde"),
+		FechaHasta:  c.Query("fecha_hasta"),
+		FichaNumero: strings.TrimSpace(c.Query("ficha")),
+		Busqueda:    strings.TrimSpace(c.Query("q")),
+	}
+	if v := c.Query("regional_id"); v != "" {
+		if id, err := strconv.ParseUint(v, 10, 64); err == nil {
+			u := uint(id)
+			p.RegionalID = &u
+		}
+	}
+	if v := c.Query("sede_id"); v != "" {
+		if id, err := strconv.ParseUint(v, 10, 64); err == nil {
+			u := uint(id)
+			p.SedeID = &u
+		}
+	}
+	resp, err := h.analisisSvc.ListAprendicesFicha(userID.(uint), roles, p)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return

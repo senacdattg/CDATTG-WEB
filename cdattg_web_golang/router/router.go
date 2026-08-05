@@ -32,6 +32,8 @@ const (
 	permProgramarInstructores  = "PROGRAMAR INSTRUCTORES"
 	permGestionarAprendicesFicha = "GESTIONAR APRENDICES FICHA"
 	permVerMiAgenda            = "VER MI AGENDA"
+	permRegistrarAccesoSede    = "REGISTRAR ACCESO SEDE"
+	permVerAccesoSede          = "VER ACCESO SEDE"
 )
 
 func SetupRouter() *gin.Engine {
@@ -76,6 +78,7 @@ func SetupRouter() *gin.Engine {
 	diaSinFormacionFichaHandler := handlers.NewDiaSinFormacionFichaHandler()
 	configAsistenciaHandler := handlers.NewConfiguracionAsistenciaHandler()
 	eleccionHandler := handlers.NewEleccionHandler()
+	vigilanciaAccesoHandler := handlers.NewVigilanciaAccesoHandler()
 
 	// Rutas públicas
 	api := r.Group("/api")
@@ -281,6 +284,16 @@ func SetupRouter() *gin.Engine {
 
 			elecciones := protected.Group("/elecciones")
 			registerEleccionRoutes(elecciones, eleccionHandler)
+
+			vigilancia := protected.Group("/vigilancia/acceso")
+			{
+				vigilancia.POST("/lookup", middleware.RequirePermission("vigilancia", permRegistrarAccesoSede), vigilanciaAccesoHandler.Lookup)
+				vigilancia.POST("/ingreso", middleware.RequirePermission("vigilancia", permRegistrarAccesoSede), vigilanciaAccesoHandler.Ingreso)
+				vigilancia.POST("/salida", middleware.RequirePermission("vigilancia", permRegistrarAccesoSede), vigilanciaAccesoHandler.Salida)
+				vigilancia.GET("/dentro", middleware.RequirePermission("vigilancia", permVerAccesoSede), vigilanciaAccesoHandler.ListDentro)
+				vigilancia.GET("/historial", middleware.RequirePermission("vigilancia", permVerAccesoSede), vigilanciaAccesoHandler.Historial)
+				vigilancia.GET("/estadisticas", middleware.RequirePermission("vigilancia", permVerAccesoSede), vigilanciaAccesoHandler.Estadisticas)
+			}
 
 			// Inventario desactivado: rutas /inventario, /productos, /ordenes, /aprobaciones, /devoluciones, /proveedores, /categorias, /marcas, /contratos-convenios no registradas
 

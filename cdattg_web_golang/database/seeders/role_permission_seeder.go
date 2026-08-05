@@ -42,6 +42,9 @@ func RunRolePermissionSeeder(db *gorm.DB) error {
 	if err := seedEleccionPermissions(e); err != nil {
 		return err
 	}
+	if err := seedVigilanciaPermissions(e); err != nil {
+		return err
+	}
 
 	if err := e.SavePolicy(); err != nil {
 		return err
@@ -181,6 +184,25 @@ func SyncAprendizPermissionsToRoles(db *gorm.DB) error {
 func seedVerPersonaForRoles(e *casbin.Enforcer, roleNames []string) error {
 	for _, roleName := range roleNames {
 		if _, err := authz.AddPermissionForRole(e, roleName, authz.ObjPersona, authz.ActVerPersona); err != nil {
+			return err
+		}
+		if _, err := authz.AddPermissionForRole(e, roleName, authz.ObjPersona, authz.ActEditarMiPersona); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func seedVigilanciaPermissions(e *casbin.Enforcer) error {
+	roles := []string{"VIGILANTE", "ADMINISTRADOR", "COORDINADOR"}
+	for _, role := range roles {
+		if err := addPermissionsForObject(e, role, authz.ObjVigilancia, authz.PermisosVigilancia); err != nil {
+			return err
+		}
+		if _, err := authz.AddPermissionForRole(e, role, authz.ObjPersona, authz.ActVerPersona); err != nil {
+			return err
+		}
+		if _, err := authz.AddPermissionForRole(e, role, authz.ObjPersona, authz.ActEditarMiPersona); err != nil {
 			return err
 		}
 	}

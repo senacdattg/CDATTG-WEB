@@ -17,11 +17,13 @@ type LoginResponse struct {
 
 // UserResponse representa la información del usuario
 type UserResponse struct {
-	ID        uint   `json:"id"`
-	Email     string `json:"email"`
-	FullName  string `json:"full_name"`
-	Status    bool   `json:"status"`
-	PersonaID *uint  `json:"persona_id"`
+	ID              uint     `json:"id"`
+	Email           string   `json:"email"`
+	FullName        string   `json:"full_name"`
+	Status          bool     `json:"status"`
+	PersonaID       *uint    `json:"persona_id"`
+	PerfilCompleto  bool     `json:"perfil_completo"`
+	CamposFaltantes []string `json:"campos_faltantes,omitempty"`
 }
 
 // ChangePasswordRequest solicitud para cambiar contraseña (usuario autenticado)

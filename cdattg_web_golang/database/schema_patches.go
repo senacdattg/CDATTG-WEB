@@ -188,6 +188,14 @@ func patchAutoMigrateEleccionModels() error {
 	return nil
 }
 
+func patchPersonaIngresoSalidaSalidaSinIngreso() error {
+	return execSchemaPatch(
+		"Esquema: columna persona_ingreso_salida.salida_sin_ingreso verificada",
+		`ALTER TABLE persona_ingreso_salida
+		ADD COLUMN IF NOT EXISTS salida_sin_ingreso BOOLEAN NOT NULL DEFAULT false`,
+	)
+}
+
 // EnsureSchemaPatches aplica cambios incrementales de esquema sin ejecutar Migrate() completo.
 func EnsureSchemaPatches() error {
 	if DB == nil {
@@ -202,6 +210,7 @@ func EnsureSchemaPatches() error {
 		patchFichaDiasFueraDePlantillaJornada,
 		patchAutoMigrateDashboardModels,
 		patchAutoMigrateEleccionModels,
+		patchPersonaIngresoSalidaSalidaSinIngreso,
 	}
 	for _, patch := range patches {
 		if err := patch(); err != nil {

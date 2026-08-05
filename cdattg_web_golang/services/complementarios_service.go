@@ -15,6 +15,8 @@ import (
 //  - credenciales SofiaPlus por operador (cifradas)
 //  - verificación individual de aspirantes en SofiaPlus
 
+const msgDocumentoObligatorio = "El número de documento es obligatorio."
+
 type ComplementariosService struct {
 	repo *repositories.SofiaCredencialRepository
 }
@@ -24,7 +26,12 @@ func NewComplementariosService() *ComplementariosService {
 }
 
 // GuardarCredencial registra o actualiza el usuario SENA del operador (contraseña cifrada).
+// No confundir con el login de CDATTG: aquí va el documento SENA Sofía Plus.
 func (s *ComplementariosService) GuardarCredencial(usuarioID uint, req dto.GuardarCredencialSofiaRequest) error {
+	usuario := strings.TrimSpace(req.Usuario)
+	if !esUsuarioSofiaValido(usuario) {
+		return errors.New("el usuario Sofía debe ser el número de documento (solo dígitos), no el correo de CDATTG")
+	}
 	cifrada, err := cifrarSecreto(req.Password)
 	if err != nil {
 		return err
@@ -32,17 +39,35 @@ func (s *ComplementariosService) GuardarCredencial(usuarioID uint, req dto.Guard
 	cred := &models.SofiaCredencial{
 		UsuarioID:       usuarioID,
 		TipoDocumento:   strings.TrimSpace(req.TipoDocumento),
-		Usuario:         strings.TrimSpace(req.Usuario),
+		Usuario:         usuario,
 		PasswordCifrada: cifrada,
 		Rol:             strings.TrimSpace(req.Rol),
 	}
 	return s.repo.Upsert(cred)
 }
 
-// ObtenerEstado indica si el operador tiene credenciales guardadas (sin exponer la contraseña).
+func esUsuarioSofiaValido(usuario string) bool {
+	u := strings.TrimSpace(usuario)
+	if u == "" || strings.Contains(u, "@") {
+		return false
+	}
+	for _, r := range u {
+		if r < '0' || r > '9' {
+			return false
+		}
+	}
+	return true
+}
+
+// ObtenerEstado indica si el operador tiene credenciales Sofía válidas (documento numérico).
+// Si quedó guardado un correo del sistema por error, se elimina y se reporta sin credencial.
 func (s *ComplementariosService) ObtenerEstado(usuarioID uint) dto.CredencialSofiaEstadoResponse {
 	cred, err := s.repo.FindByUsuarioID(usuarioID)
 	if err != nil || cred == nil {
+		return dto.CredencialSofiaEstadoResponse{Tiene: false}
+	}
+	if !esUsuarioSofiaValido(cred.Usuario) {
+		_ = s.repo.DeleteByUsuarioID(usuarioID)
 		return dto.CredencialSofiaEstadoResponse{Tiene: false}
 	}
 	return dto.CredencialSofiaEstadoResponse{
@@ -87,7 +112,7 @@ func (s *ComplementariosService) VerificarAspirante(usuarioID uint, req dto.Veri
 		return dto.VerificarAspiranteResponse{
 			NumeroDocumento: numero,
 			Estado:          dto.VerificacionNoVerificado,
-			Mensaje:         "El número de documento es obligatorio.",
+			Mensaje:         msgDocumentoObligatorio,
 		}
 	}
 
@@ -104,6 +129,84 @@ func (s *ComplementariosService) VerificarAspirante(usuarioID uint, req dto.Veri
 	return scraper.VerificarDocumento(cred, numero, req.TipoDocumento)
 }
 
+// ConsultarInscripciones consulta programas/estado de una ficha en SofiaPlus (Usuario SENA).
+func (s *ComplementariosService) ConsultarInscripciones(usuarioID uint, req dto.ConsultarInscripcionesRequest) dto.ConsultarInscripcionesResponse {
+	numero := strings.TrimSpace(req.NumeroDocumento)
+	ficha := strings.TrimSpace(req.Ficha)
+	if numero == "" {
+		return dto.ConsultarInscripcionesResponse{
+			NumeroDocumento: numero,
+			FichaConsultada: ficha,
+			Estado:          dto.InscripcionNoVerificado,
+			Registros:       []dto.RegistroInscripcionFicha{},
+			Mensaje:         msgDocumentoObligatorio,
+		}
+	}
+	if ficha == "" {
+		return dto.ConsultarInscripcionesResponse{
+			NumeroDocumento: numero,
+			FichaConsultada: ficha,
+			Estado:          dto.InscripcionNoVerificado,
+			Registros:       []dto.RegistroInscripcionFicha{},
+			Mensaje:         "El identificador de ficha es obligatorio.",
+		}
+	}
+
+	cred, err := s.credencialesDeUsuario(usuarioID)
+	if err != nil {
+		return dto.ConsultarInscripcionesResponse{
+			NumeroDocumento: numero,
+			FichaConsultada: ficha,
+			Estado:          dto.InscripcionNoVerificado,
+			Registros:       []dto.RegistroInscripcionFicha{},
+			Mensaje:         err.Error(),
+		}
+	}
+	// Este flujo siempre usa Usuario SENA (no el rol de Consultar Registro).
+	cred.Rol = "Usuario SENA"
+
+	scraper := NewSofiaScraper()
+	return scraper.ConsultarInscripciones(cred, numero, ficha, req.TipoDocumento)
+}
+
+// PlantillaInscripciones Excel para carga masiva documento+ficha.
+func (s *ComplementariosService) PlantillaInscripciones() ([]byte, error) {
+	return GenerarPlantillaInscripciones()
+}
+
+// ConsultarInscripcionesLote procesa Excel (numero_documento, ficha) con un solo login SENA.
+func (s *ComplementariosService) ConsultarInscripcionesLote(usuarioID uint, contenido []byte) (dto.ConsultarInscripcionesLoteResponse, error) {
+	filas, err := ParsearLoteInscripcionesExcel(contenido)
+	if err != nil {
+		return dto.ConsultarInscripcionesLoteResponse{}, err
+	}
+	if len(filas) == 0 {
+		return dto.ConsultarInscripcionesLoteResponse{}, errors.New("el Excel no tiene filas válidas (numero_documento y ficha numéricos)")
+	}
+
+	cred, err := s.credencialesDeUsuario(usuarioID)
+	if err != nil {
+		return dto.ConsultarInscripcionesLoteResponse{}, err
+	}
+	cred.Rol = "Usuario SENA"
+
+	scraper := NewSofiaScraper()
+	resultados := scraper.ConsultarInscripcionesLote(cred, filas)
+
+	out := dto.ConsultarInscripcionesLoteResponse{Total: len(resultados), Resultados: resultados}
+	for _, r := range resultados {
+		switch r.Estado {
+		case dto.InscripcionEncontrado:
+			out.Encontrados++
+		case dto.InscripcionNoEncontrado:
+			out.NoEncontrados++
+		default:
+			out.NoVerificados++
+		}
+	}
+	return out, nil
+}
+
 // VerificarAspiranteBetowa consulta un documento en Betowa (sin credenciales SENA).
 func (s *ComplementariosService) VerificarAspiranteBetowa(req dto.VerificarAspiranteRequest) dto.VerificarAspiranteResponse {
 	numero := strings.TrimSpace(req.NumeroDocumento)
@@ -111,7 +214,7 @@ func (s *ComplementariosService) VerificarAspiranteBetowa(req dto.VerificarAspir
 		return dto.VerificarAspiranteResponse{
 			NumeroDocumento: numero,
 			Estado:          dto.VerificacionNoVerificado,
-			Mensaje:         "El número de documento es obligatorio.",
+			Mensaje:         msgDocumentoObligatorio,
 		}
 	}
 

@@ -270,13 +270,17 @@ func SetupRouter() *gin.Engine {
 			registerEleccionRoutes(elecciones, eleccionHandler)
 
 			// Complementarios (FPI): credenciales SofiaPlus por operador + verificación de aspirantes
+			const rutaCredencialesSofia = "/credenciales"
 			complementarios := protected.Group("/complementarios")
 			complementarios.Use(middleware.RequireSuperAdminAdminOrCoordinator())
 			{
-				complementarios.GET("/credenciales", complementariosHandler.GetCredencialEstado)
-				complementarios.POST("/credenciales", complementariosHandler.GuardarCredencial)
-				complementarios.DELETE("/credenciales", complementariosHandler.EliminarCredencial)
+				complementarios.GET(rutaCredencialesSofia, complementariosHandler.GetCredencialEstado)
+				complementarios.POST(rutaCredencialesSofia, complementariosHandler.GuardarCredencial)
+				complementarios.DELETE(rutaCredencialesSofia, complementariosHandler.EliminarCredencial)
 				complementarios.POST("/verificar-aspirante", complementariosHandler.VerificarAspirante)
+				complementarios.POST("/consultar-inscripciones", complementariosHandler.ConsultarInscripciones)
+				complementarios.GET("/inscripciones/plantilla", complementariosHandler.DescargarPlantillaInscripciones)
+				complementarios.POST("/inscripciones/consultar-lote", complementariosHandler.ConsultarInscripcionesLote)
 				complementarios.GET("/plantilla", complementariosHandler.DescargarPlantilla)
 				complementarios.POST("/verificar-lote", complementariosHandler.VerificarLote)
 

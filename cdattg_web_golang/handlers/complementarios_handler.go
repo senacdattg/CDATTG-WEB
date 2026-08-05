@@ -9,6 +9,14 @@ import (
 	"github.com/sena/cdattg-web-golang/services"
 )
 
+const (
+	errComplementariosNoAuth      = "no autenticado"
+	errComplementariosFaltaExcel  = "falta el archivo Excel (campo 'file')"
+	errComplementariosAbrirArchivo = "no se pudo abrir el archivo"
+	errComplementariosLeerArchivo  = "no se pudo leer el archivo"
+	excelMIME                      = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+)
+
 // ComplementariosHandler expone credenciales SofiaPlus y verificación de aspirantes (módulo FPI).
 type ComplementariosHandler struct {
 	svc *services.ComplementariosService
@@ -28,11 +36,49 @@ func usuarioIDDeContexto(c *gin.Context) (uint, bool) {
 	return id, ok
 }
 
-// GetCredencialEstado GET /complementarios/credenciales
-func (h *ComplementariosHandler) GetCredencialEstado(c *gin.Context) {
+func requireUsuarioComplementarios(c *gin.Context) (uint, bool) {
 	userID, ok := usuarioIDDeContexto(c)
 	if !ok {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "no autenticado"})
+		c.JSON(http.StatusUnauthorized, gin.H{"error": errComplementariosNoAuth})
+		return 0, false
+	}
+	return userID, true
+}
+
+func leerExcelMultipart(c *gin.Context) ([]byte, bool) {
+	fileHeader, err := c.FormFile("file")
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": errComplementariosFaltaExcel})
+		return nil, false
+	}
+	f, err := fileHeader.Open()
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": errComplementariosAbrirArchivo})
+		return nil, false
+	}
+	defer func() { _ = f.Close() }()
+
+	contenido, err := io.ReadAll(f)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": errComplementariosLeerArchivo})
+		return nil, false
+	}
+	return contenido, true
+}
+
+func responderExcel(c *gin.Context, filename string, data []byte, err error) {
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.Header("Content-Disposition", "attachment; filename="+filename)
+	c.Data(http.StatusOK, excelMIME, data)
+}
+
+// GetCredencialEstado GET /complementarios/credenciales
+func (h *ComplementariosHandler) GetCredencialEstado(c *gin.Context) {
+	userID, ok := requireUsuarioComplementarios(c)
+	if !ok {
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"data": h.svc.ObtenerEstado(userID)})
@@ -40,9 +86,8 @@ func (h *ComplementariosHandler) GetCredencialEstado(c *gin.Context) {
 
 // GuardarCredencial POST /complementarios/credenciales
 func (h *ComplementariosHandler) GuardarCredencial(c *gin.Context) {
-	userID, ok := usuarioIDDeContexto(c)
+	userID, ok := requireUsuarioComplementarios(c)
 	if !ok {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "no autenticado"})
 		return
 	}
 	var req dto.GuardarCredencialSofiaRequest
@@ -59,9 +104,8 @@ func (h *ComplementariosHandler) GuardarCredencial(c *gin.Context) {
 
 // EliminarCredencial DELETE /complementarios/credenciales
 func (h *ComplementariosHandler) EliminarCredencial(c *gin.Context) {
-	userID, ok := usuarioIDDeContexto(c)
+	userID, ok := requireUsuarioComplementarios(c)
 	if !ok {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "no autenticado"})
 		return
 	}
 	if err := h.svc.EliminarCredencial(userID); err != nil {
@@ -72,11 +116,9 @@ func (h *ComplementariosHandler) EliminarCredencial(c *gin.Context) {
 }
 
 // VerificarAspirante POST /complementarios/verificar-aspirante
-// Consulta un documento en SofiaPlus con las credenciales del operador. Puede tardar varios segundos.
 func (h *ComplementariosHandler) VerificarAspirante(c *gin.Context) {
-	userID, ok := usuarioIDDeContexto(c)
+	userID, ok := requireUsuarioComplementarios(c)
 	if !ok {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "no autenticado"})
 		return
 	}
 	var req dto.VerificarAspiranteRequest
@@ -90,40 +132,58 @@ func (h *ComplementariosHandler) VerificarAspirante(c *gin.Context) {
 // DescargarPlantilla GET /complementarios/plantilla
 func (h *ComplementariosHandler) DescargarPlantilla(c *gin.Context) {
 	data, err := h.svc.PlantillaLote()
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-	c.Header("Content-Disposition", "attachment; filename=plantilla_verificacion_aspirantes.xlsx")
-	c.Data(http.StatusOK, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", data)
+	responderExcel(c, "plantilla_verificacion_aspirantes.xlsx", data, err)
 }
 
 // VerificarLote POST /complementarios/verificar-lote (multipart: file)
 func (h *ComplementariosHandler) VerificarLote(c *gin.Context) {
-	userID, ok := usuarioIDDeContexto(c)
+	userID, ok := requireUsuarioComplementarios(c)
 	if !ok {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "no autenticado"})
 		return
 	}
-	fileHeader, err := c.FormFile("file")
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "falta el archivo Excel (campo 'file')"})
+	contenido, ok := leerExcelMultipart(c)
+	if !ok {
 		return
 	}
-	f, err := fileHeader.Open()
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "no se pudo abrir el archivo"})
-		return
-	}
-	defer func() { _ = f.Close() }()
-
-	contenido, err := io.ReadAll(f)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "no se pudo leer el archivo"})
-		return
-	}
-
 	res, err := h.svc.VerificarLote(userID, contenido)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"data": res})
+}
+
+// ConsultarInscripciones POST /complementarios/consultar-inscripciones
+func (h *ComplementariosHandler) ConsultarInscripciones(c *gin.Context) {
+	userID, ok := requireUsuarioComplementarios(c)
+	if !ok {
+		return
+	}
+	var req dto.ConsultarInscripcionesRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"data": h.svc.ConsultarInscripciones(userID, req)})
+}
+
+// DescargarPlantillaInscripciones GET /complementarios/inscripciones/plantilla
+func (h *ComplementariosHandler) DescargarPlantillaInscripciones(c *gin.Context) {
+	data, err := h.svc.PlantillaInscripciones()
+	responderExcel(c, "plantilla_consulta_inscripciones.xlsx", data, err)
+}
+
+// ConsultarInscripcionesLote POST /complementarios/inscripciones/consultar-lote
+func (h *ComplementariosHandler) ConsultarInscripcionesLote(c *gin.Context) {
+	userID, ok := requireUsuarioComplementarios(c)
+	if !ok {
+		return
+	}
+	contenido, ok := leerExcelMultipart(c)
+	if !ok {
+		return
+	}
+	res, err := h.svc.ConsultarInscripcionesLote(userID, contenido)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -133,9 +193,7 @@ func (h *ComplementariosHandler) VerificarLote(c *gin.Context) {
 
 // VerificarAspiranteBetowa POST /complementarios/betowa/verificar-aspirante
 func (h *ComplementariosHandler) VerificarAspiranteBetowa(c *gin.Context) {
-	_, ok := usuarioIDDeContexto(c)
-	if !ok {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "no autenticado"})
+	if _, ok := requireUsuarioComplementarios(c); !ok {
 		return
 	}
 	var req dto.VerificarAspiranteRequest
@@ -146,31 +204,15 @@ func (h *ComplementariosHandler) VerificarAspiranteBetowa(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"data": h.svc.VerificarAspiranteBetowa(req)})
 }
 
-// VerificarLoteBetowa POST /complementarios/betowa/verificar-lote (multipart: file)
+// VerificarLoteBetowa POST /complementarios/betowa/verificar-lote
 func (h *ComplementariosHandler) VerificarLoteBetowa(c *gin.Context) {
-	_, ok := usuarioIDDeContexto(c)
+	if _, ok := requireUsuarioComplementarios(c); !ok {
+		return
+	}
+	contenido, ok := leerExcelMultipart(c)
 	if !ok {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "no autenticado"})
 		return
 	}
-	fileHeader, err := c.FormFile("file")
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "falta el archivo Excel (campo 'file')"})
-		return
-	}
-	f, err := fileHeader.Open()
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "no se pudo abrir el archivo"})
-		return
-	}
-	defer func() { _ = f.Close() }()
-
-	contenido, err := io.ReadAll(f)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "no se pudo leer el archivo"})
-		return
-	}
-
 	res, err := h.svc.VerificarLoteBetowa(contenido)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -178,4 +220,3 @@ func (h *ComplementariosHandler) VerificarLoteBetowa(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, gin.H{"data": res})
 }
-

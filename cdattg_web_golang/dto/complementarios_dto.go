@@ -52,9 +52,56 @@ type CredencialSofiaEstadoResponse struct {
 // VerificarAspiranteResponse resultado de la verificación de un aspirante.
 type VerificarAspiranteResponse struct {
 	NumeroDocumento string `json:"numero_documento"`
-	Estado          string `json:"estado"`                     // REGISTRADO | NO_REGISTRADO | NO_VERIFICADO
-	TipoEncontrado  string `json:"tipo_encontrado,omitempty"`  // tipo de identificación con el que apareció
-	Nombre          string `json:"nombre,omitempty"`           // nombre del aspirante si SofiaPlus lo muestra
-	Detalle         string `json:"detalle,omitempty"`          // texto adicional leído de la pantalla
-	Mensaje         string `json:"mensaje,omitempty"`          // mensaje para el usuario (ej. causa del NO_VERIFICADO)
+	Estado          string `json:"estado"`                    // REGISTRADO | NO_REGISTRADO | NO_VERIFICADO
+	TipoEncontrado  string `json:"tipo_encontrado,omitempty"` // tipo de identificación con el que apareció
+	Nombre          string `json:"nombre,omitempty"`          // nombre del aspirante si SofiaPlus lo muestra
+	Detalle         string `json:"detalle,omitempty"`         // texto adicional leído de la pantalla
+	Mensaje         string `json:"mensaje,omitempty"`         // mensaje para el usuario (ej. causa del NO_VERIFICADO)
+}
+
+// ConsultarInscripcionesRequest consulta programas de formación por documento + ficha (Usuario SENA).
+type ConsultarInscripcionesRequest struct {
+	NumeroDocumento string `json:"numero_documento" binding:"required"`
+	Ficha           string `json:"ficha" binding:"required"`
+	TipoDocumento   string `json:"tipo_documento"` // opcional: CC, TI, CE, ... o texto Sofia
+}
+
+// Estados del submódulo Consultar Inscripciones.
+const (
+	InscripcionEncontrado   = "ENCONTRADO"
+	InscripcionNoEncontrado = "NO_ENCONTRADO"
+	InscripcionNoVerificado = "NO_VERIFICADO"
+)
+
+// RegistroInscripcionFicha fila filtrada (ficha / programa / estado).
+type RegistroInscripcionFicha struct {
+	Ficha    string `json:"ficha"`
+	Programa string `json:"programa"`
+	Estado   string `json:"estado"`
+}
+
+// ConsultarInscripcionesResponse resultado de la consulta por ficha en SofiaPlus.
+type ConsultarInscripcionesResponse struct {
+	NumeroDocumento string                     `json:"numero_documento"`
+	FichaConsultada string                     `json:"ficha_consultada"`
+	Estado          string                     `json:"estado"` // ENCONTRADO | NO_ENCONTRADO | NO_VERIFICADO
+	TipoEncontrado  string                     `json:"tipo_encontrado,omitempty"`
+	Registros       []RegistroInscripcionFicha `json:"registros"`
+	Mensaje         string                     `json:"mensaje,omitempty"`
+}
+
+// LoteInscripcionFila fila del Excel de carga masiva (documento + ficha).
+type LoteInscripcionFila struct {
+	NumeroDocumento string
+	Ficha           string
+	TipoDocumento   string
+}
+
+// ConsultarInscripcionesLoteResponse resumen de carga masiva por ficha.
+type ConsultarInscripcionesLoteResponse struct {
+	Total         int                              `json:"total"`
+	Encontrados   int                              `json:"encontrados"`
+	NoEncontrados int                              `json:"no_encontrados"`
+	NoVerificados int                              `json:"no_verificados"`
+	Resultados    []ConsultarInscripcionesResponse `json:"resultados"`
 }

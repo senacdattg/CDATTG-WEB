@@ -1047,6 +1047,70 @@ def _esperar_resultado_consulta(page: Page, timeout_ms: int = 20000) -> bool:
 
 
 _RE_PAGINA = re.compile(r"Pagina\s+(\d+)\s+de\s+(\d+)", re.IGNORECASE)
+_RE_SIGUIENTE = re.compile(r"Siguiente", re.I)
+_JS_CLICK_SIGUIENTE = """() => {
+    const norm = (s) => (s || '').toLowerCase().replace(/\\s+/g, ' ').trim()
+        .replace(/á/g,'a').replace(/é/g,'e').replace(/í/g,'i')
+        .replace(/ó/g,'o').replace(/ú/g,'u').replace(/ñ/g,'n');
+    const disabled = (el) => {
+        if (!el) return true;
+        const cls = (el.className || '').toString().toLowerCase();
+        if (cls.includes('disabled') || cls.includes('rich-datascr-button-dsbld')) return true;
+        if (el.getAttribute('disabled') != null) return true;
+        if ((el.getAttribute('aria-disabled') || '') === 'true') return true;
+        return false;
+    };
+    const candidatos = Array.from(document.querySelectorAll(
+        'a, button, span, td, div, input'
+    ));
+    // Preferir texto corto tipo pager: "Siguiente >" / "Siguiente"
+    const exactos = [];
+    const parciales = [];
+    for (const n of candidatos) {
+        const t = norm(n.innerText || n.textContent || n.value || '');
+        if (!t.includes('siguiente')) continue;
+        if (t.length > 40) continue;
+        if (disabled(n) || disabled(n.closest('a,td,span,div,button'))) continue;
+        if (t === 'siguiente >' || t === 'siguiente>' || t === 'siguiente') exactos.push(n);
+        else parciales.push(n);
+    }
+    const orden = exactos.concat(parciales);
+    for (const n of orden) {
+        const target = n.closest('a') || n;
+        try { target.scrollIntoView({ block: 'nearest' }); } catch (e) {}
+        target.click();
+        return true;
+    }
+    return false;
+}"""
+
+
+TXT_IDENT_FICHA = "Identificador Ficha"
+TXT_PROGRAMA_FORM = "Programa de Formación"
+TXT_PAGINA = "Página"
+TXT_PAGINA_SIN_TILDE = "Pagina"
+
+
+def _texto_parece_resultados(t: str) -> bool:
+    return TXT_IDENT_FICHA in t or TXT_PROGRAMA_FORM in t or TXT_PAGINA in t or TXT_PAGINA_SIN_TILDE in t
+
+
+def _texto_iframe_consulta(page: Page) -> str:
+    """Texto del iframe de resultados (evita ruido del menú lateral)."""
+    fr = _frame_contenido(page)
+    if fr is not None:
+        try:
+            return fr.inner_text("body") or ""
+        except Exception:
+            pass
+    for frame in _frames_formulario(page):
+        try:
+            t = frame.inner_text("body") or ""
+            if _texto_parece_resultados(t):
+                return t
+        except Exception:
+            continue
+    return s._texto_pagina_completo(page)
 
 
 def _parse_pagina_indicator(texto: str) -> tuple[int, int] | None:
@@ -1054,6 +1118,10 @@ def _parse_pagina_indicator(texto: str) -> tuple[int, int] | None:
     if not m:
         return None
     return int(m.group(1)), int(m.group(2))
+
+
+def _indicador_pagina_actual(page: Page) -> tuple[int, int] | None:
+    return _parse_pagina_indicator(_texto_iframe_consulta(page))
 
 
 def _parse_linea_inscripcion(line: str) -> RegistroInscripcion | None:
@@ -1126,23 +1194,41 @@ def _filas_desde_tabla(frame) -> list[RegistroInscripcion]:
 
 
 def _cuerpo_con_tabla_inscripcion(page: Page) -> str:
+    cuerpo = _texto_iframe_consulta(page)
+    if TXT_IDENT_FICHA in cuerpo or TXT_PROGRAMA_FORM in cuerpo:
+        return cuerpo
     for frame in s._frames(page):
         try:
             cuerpo = frame.inner_text("body")
-            if "Identificador Ficha" in cuerpo or "Programa de Formación" in cuerpo:
+            if TXT_IDENT_FICHA in cuerpo or TXT_PROGRAMA_FORM in cuerpo:
                 return cuerpo
         except Exception:
             continue
     return ""
 
 
-def _extraer_filas_tabla(page: Page) -> list[RegistroInscripcion]:
-    """Lee filas con ficha / programa / estado desde tablas visibles."""
-    for frame in s._frames(page):
-        registros = _filas_desde_tabla(frame)
-        if registros:
-            return registros
+def _frames_prioridad_tabla(page: Page) -> list:
+    preferidos = []
+    vistos: set[int] = set()
 
+    def agregar(frame) -> None:
+        fid = id(frame)
+        if fid in vistos:
+            return
+        vistos.add(fid)
+        preferidos.append(frame)
+
+    fr = _frame_contenido(page)
+    if fr is not None:
+        agregar(fr)
+    for frame in _frames_formulario(page):
+        agregar(frame)
+    for frame in s._frames(page):
+        agregar(frame)
+    return preferidos
+
+
+def _filas_desde_texto_plano(page: Page) -> list[RegistroInscripcion]:
     registros: list[RegistroInscripcion] = []
     for line in _cuerpo_con_tabla_inscripcion(page).splitlines():
         fila = _parse_linea_inscripcion(line)
@@ -1151,58 +1237,189 @@ def _extraer_filas_tabla(page: Page) -> list[RegistroInscripcion]:
     return registros
 
 
-def _ir_siguiente_pagina(page: Page) -> bool:
-    # Preferir botón "Siguiente >"
-    if s._click_texto(page, "Siguiente >"):
-        page.wait_for_timeout(s.WAIT_FORM_MS)
-        return True
-    if s._click_texto(page, "Siguiente"):
-        page.wait_for_timeout(s.WAIT_FORM_MS)
-        return True
-    for frame in s._frames(page):
+def _extraer_filas_tabla(page: Page) -> list[RegistroInscripcion]:
+    """Lee filas con ficha / programa / estado desde tablas visibles."""
+    for frame in _frames_prioridad_tabla(page):
+        registros = _filas_desde_tabla(frame)
+        if registros:
+            return registros
+    return _filas_desde_texto_plano(page)
+
+
+def _item_siguiente_valido(item) -> bool:
+    try:
+        txt = s._normalizar_texto(item.inner_text() or "")
+    except Exception:
+        return False
+    if "siguiente" not in txt or len(txt) > 40:
+        return False
+    try:
+        cls = (item.get_attribute("class") or "").lower()
+        if "dsbld" in cls or "disabled" in cls:
+            return False
+        if item.get_attribute("aria-disabled") == "true":
+            return False
+    except Exception:
+        pass
+    return True
+
+
+def _loc_siguiente_habilitado(frame):
+    selectores = (
+        "a.rich-datascr-button:not(.rich-datascr-button-dsbld)",
+        "td.rich-datascr-button:not(.rich-datascr-button-dsbld)",
+        "[class*='datascr'] a",
+        "[class*='datascroller'] a",
+        "a, button, span, td",
+    )
+    for sel in selectores:
         try:
-            loc = frame.locator("a, button, span, td").filter(has_text=re.compile(r"Siguiente", re.I))
-            if loc.count() > 0:
-                loc.first.click(timeout=4000)
-                page.wait_for_timeout(s.WAIT_FORM_MS)
+            loc = frame.locator(sel).filter(has_text=_RE_SIGUIENTE)
+            for i in range(loc.count()):
+                item = loc.nth(i)
+                if _item_siguiente_valido(item):
+                    return item
+        except Exception:
+            continue
+    return None
+
+
+def _click_locator_siguiente(btn) -> bool:
+    try:
+        btn.scroll_into_view_if_needed(timeout=2000)
+    except Exception:
+        pass
+    try:
+        btn.click(timeout=5000, force=True)
+        return True
+    except Exception:
+        try:
+            btn.evaluate("el => el.click()")
+            return True
+        except Exception:
+            return False
+
+
+def _frames_pager(page: Page) -> list:
+    frames = []
+    vistos: set[int] = set()
+
+    def agregar(frame) -> None:
+        fid = id(frame)
+        if fid in vistos:
+            return
+        vistos.add(fid)
+        frames.append(frame)
+
+    fr = _frame_contenido(page)
+    if fr is not None:
+        agregar(fr)
+    for f in _frames_formulario(page):
+        agregar(f)
+    return frames
+
+
+def _click_siguiente_en_frames(page: Page) -> bool:
+    """Clic en Siguiente solo dentro del iframe de resultados."""
+    for frame in _frames_pager(page):
+        btn = _loc_siguiente_habilitado(frame)
+        if btn is not None and _click_locator_siguiente(btn):
+            return True
+        try:
+            if frame.evaluate(_JS_CLICK_SIGUIENTE):
                 return True
         except Exception:
             continue
     return False
 
 
+def _esperar_avance_pagina(page: Page, pagina_antes: int | None, timeout_ms: int = 20000) -> bool:
+    """Espera A4J/blockUI y que el indicador pase de pagina_antes."""
+    _esperar_sin_blockui(page, min(15000, timeout_ms))
+    if pagina_antes is None:
+        page.wait_for_timeout(800)
+        return True
+    for _ in range(max(1, timeout_ms // 250)):
+        ind = _indicador_pagina_actual(page)
+        if ind and ind[0] != pagina_antes:
+            page.wait_for_timeout(300)
+            return True
+        page.wait_for_timeout(250)
+    return False
+
+
+def _ir_siguiente_pagina(page: Page, pagina_antes: int | None) -> bool:
+    """Avanza una página y confirma que el indicador cambió."""
+    if not _click_siguiente_en_frames(page):
+        return False
+    return _esperar_avance_pagina(page, pagina_antes)
+
+
 def _agregar_filas_unicas(
     todos: list[RegistroInscripcion],
     vistos: set[tuple[str, str, str]],
     filas: list[RegistroInscripcion],
-) -> None:
+) -> int:
+    nuevos = 0
     for r in filas:
         key = (r.ficha, r.programa, r.estado)
         if key in vistos:
             continue
         vistos.add(key)
         todos.append(r)
+        nuevos += 1
+    return nuevos
 
 
-def _fin_de_paginas(texto: str) -> bool:
-    ind = _parse_pagina_indicator(texto)
-    if ind:
-        actual, total = ind
-        return actual >= total
-    return "siguiente" not in texto
+def _avanzar_con_indicador(page: Page, actual: int, total: int) -> bool:
+    """True si hay que seguir; False si terminó o no pudo avanzar."""
+    s._dump(page, f"inscripcion_pagina_{actual}_de_{total}", solo_error=False)
+    if actual >= total:
+        return False
+    if _ir_siguiente_pagina(page, actual):
+        return True
+    page.wait_for_timeout(500)
+    return _ir_siguiente_pagina(page, actual)
 
 
-def _recolectar_todas_paginas(page: Page) -> list[RegistroInscripcion]:
+def _avanzar_sin_indicador(
+    page: Page,
+    todos: list[RegistroInscripcion],
+    vistos: set[tuple[str, str, str]],
+) -> bool:
+    """True si avanzó con filas nuevas; False si hay que parar."""
+    antes = len(vistos)
+    if not _ir_siguiente_pagina(page, None):
+        return False
+    _esperar_sin_blockui(page, 10000)
+    nuevos = _agregar_filas_unicas(todos, vistos, _extraer_filas_tabla(page))
+    return not (nuevos == 0 and len(vistos) == antes)
+
+
+def _recolectar_todas_paginas(page: Page) -> tuple[list[RegistroInscripcion], int]:
+    """Recorre Página 1..N (cualquier total: 2, 5, 10…) con el scroller RichFaces.
+
+    Retorna (registros, páginas_leídas).
+    """
     todos: list[RegistroInscripcion] = []
     vistos: set[tuple[str, str, str]] = set()
+    paginas_leidas = 0
 
+    _esperar_sin_blockui(page, 15000)
     for _ in range(MAX_PAGINAS):
         _agregar_filas_unicas(todos, vistos, _extraer_filas_tabla(page))
-        texto = s._texto_pagina_completo(page)
-        if _fin_de_paginas(texto) or not _ir_siguiente_pagina(page):
+        paginas_leidas += 1
+
+        ind = _indicador_pagina_actual(page)
+        if ind:
+            if not _avanzar_con_indicador(page, ind[0], ind[1]):
+                break
+            continue
+
+        if not _avanzar_sin_indicador(page, todos, vistos):
             break
 
-    return todos
+    return todos, paginas_leidas
 
 
 def _filtrar_por_ficha(registros: list[RegistroInscripcion], ficha: str) -> list[RegistroInscripcion]:
@@ -1226,8 +1443,13 @@ def _consultar_un_tipo(
 
     s._dump(page, f"inscripcion_resultado_{s._sanitize(tipo)}", solo_error=False)
     _dump_iframe_contenido(page, f"inscripcion_resultado_{s._sanitize(tipo)}")
-    todos = _recolectar_todas_paginas(page)
+    ind0 = _indicador_pagina_actual(page)
+    todos, paginas_leidas = _recolectar_todas_paginas(page)
     filtrados = _filtrar_por_ficha(todos, ficha)
+    if ind0:
+        detalle_pag = f" (Sofía: {ind0[1]} pág.; leídas: {paginas_leidas})"
+    else:
+        detalle_pag = f" (páginas leídas: {paginas_leidas})"
 
     if filtrados:
         return ResultadoInscripciones(
@@ -1236,7 +1458,10 @@ def _consultar_un_tipo(
             estado=ESTADO_ENCONTRADO,
             tipo_encontrado=tipo,
             registros=filtrados,
-            mensaje=f"Se encontraron {len(filtrados)} registro(s) para la ficha {ficha}.",
+            mensaje=(
+                f"Se encontraron {len(filtrados)} registro(s) para la ficha {ficha}"
+                f"{detalle_pag}."
+            ),
         )
 
     if todos:
@@ -1247,7 +1472,7 @@ def _consultar_un_tipo(
             tipo_encontrado=tipo,
             registros=[],
             mensaje=(
-                f"El aprendiz tiene {len(todos)} inscripción(es), "
+                f"El aprendiz tiene {len(todos)} inscripción(es){detalle_pag}, "
                 f"pero ninguna con ficha {ficha}."
             ),
         )

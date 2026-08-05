@@ -14,10 +14,10 @@ import (
 )
 
 const (
-	betowaTimeoutIndividualSegundos = 30   // ~150ms real, margen amplio
-	betowaTimeoutBaseLoteSegundos   = 10
-	betowaSegundosPorDoc            = 1   // 1s por doc en lote
-	betowaTimeoutMaxSegundos        = 60  // 1 minuto máximo
+	betowaTimeoutIndividualSegundos = 45 // ~150ms real; margen por red/rediscovery
+	betowaTimeoutBaseLoteSegundos   = 30
+	betowaSegundosPorDoc            = 2 // lote paralelo en scraper; margen por latencia
+	betowaTimeoutMaxSegundos        = 180
 )
 
 // BetowaScraper delega la verificación al microservicio Python (Server Action directa, ~150ms/doc).

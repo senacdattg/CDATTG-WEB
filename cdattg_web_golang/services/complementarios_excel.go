@@ -114,7 +114,7 @@ func ParsearLoteExcel(contenido []byte) ([]dto.LoteDocumento, error) {
 	return docs, nil
 }
 
-// GenerarPlantillaInscripciones Excel: numero_documento, ficha, tipo_documento (opcional).
+// GenerarPlantillaInscripciones Excel: numero_documento, programa, tipo_documento (opcional).
 func GenerarPlantillaInscripciones() ([]byte, error) {
 	f := excelize.NewFile()
 	defer func() { _ = f.Close() }()
@@ -127,17 +127,19 @@ func GenerarPlantillaInscripciones() ([]byte, error) {
 	_ = f.DeleteSheet("Sheet1")
 
 	_ = f.SetCellValue(loteInscripcionesSheet, "A1", "numero_documento")
-	_ = f.SetCellValue(loteInscripcionesSheet, "B1", "ficha")
+	_ = f.SetCellValue(loteInscripcionesSheet, "B1", "programa")
 	_ = f.SetCellValue(loteInscripcionesSheet, "C1", "tipo_documento")
 	_ = f.SetCellValue(loteInscripcionesSheet, "A2", "1120955821")
-	_ = f.SetCellValue(loteInscripcionesSheet, "B2", "1436114")
+	_ = f.SetCellValue(loteInscripcionesSheet, "B2", "TECNOLOGO EN ANALISIS Y DESARROLLO DE SOFTWARE")
 	_ = f.SetCellValue(loteInscripcionesSheet, "C2", "CC")
 
 	style, err := f.NewStyle(&excelize.Style{Font: &excelize.Font{Bold: true}})
 	if err == nil {
 		_ = f.SetCellStyle(loteInscripcionesSheet, "A1", "C1", style)
 	}
-	_ = f.SetColWidth(loteInscripcionesSheet, "A", "C", 22)
+	_ = f.SetColWidth(loteInscripcionesSheet, "A", "A", 22)
+	_ = f.SetColWidth(loteInscripcionesSheet, "B", "B", 55)
+	_ = f.SetColWidth(loteInscripcionesSheet, "C", "C", 18)
 
 	buf, err := f.WriteToBuffer()
 	if err != nil {
@@ -146,7 +148,7 @@ func GenerarPlantillaInscripciones() ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-// ParsearLoteInscripcionesExcel lee numero_documento + ficha (+ tipo opcional).
+// ParsearLoteInscripcionesExcel lee numero_documento + programa (+ tipo opcional).
 func ParsearLoteInscripcionesExcel(contenido []byte) ([]dto.LoteInscripcionFila, error) {
 	f, rows, err := abrirPrimeraHoja(contenido)
 	if err != nil {
@@ -164,11 +166,11 @@ func ParsearLoteInscripcionesExcel(contenido []byte) ([]dto.LoteInscripcionFila,
 			continue
 		}
 		numero := strings.TrimSpace(row[0])
-		ficha := strings.TrimSpace(row[1])
-		if numero == "" || ficha == "" || !esNumerico(numero) || !esNumerico(ficha) {
+		programa := strings.TrimSpace(row[1])
+		if numero == "" || programa == "" || !esNumerico(numero) {
 			continue
 		}
-		clave := numero + "|" + ficha
+		clave := numero + "|" + strings.ToLower(programa)
 		if vistos[clave] {
 			continue
 		}
@@ -179,7 +181,7 @@ func ParsearLoteInscripcionesExcel(contenido []byte) ([]dto.LoteInscripcionFila,
 		}
 		filas = append(filas, dto.LoteInscripcionFila{
 			NumeroDocumento: numero,
-			Ficha:           ficha,
+			Programa:        programa,
 			TipoDocumento:   tipo,
 		})
 	}

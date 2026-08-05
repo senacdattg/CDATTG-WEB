@@ -129,59 +129,59 @@ func (s *ComplementariosService) VerificarAspirante(usuarioID uint, req dto.Veri
 	return scraper.VerificarDocumento(cred, numero, req.TipoDocumento)
 }
 
-// ConsultarInscripciones consulta programas/estado de una ficha en SofiaPlus (Usuario SENA).
+// ConsultarInscripciones consulta inscripciones en SofiaPlus filtrando por programa (Usuario SENA).
 func (s *ComplementariosService) ConsultarInscripciones(usuarioID uint, req dto.ConsultarInscripcionesRequest) dto.ConsultarInscripcionesResponse {
 	numero := strings.TrimSpace(req.NumeroDocumento)
-	ficha := strings.TrimSpace(req.Ficha)
+	programa := strings.TrimSpace(req.Programa)
 	if numero == "" {
 		return dto.ConsultarInscripcionesResponse{
-			NumeroDocumento: numero,
-			FichaConsultada: ficha,
-			Estado:          dto.InscripcionNoVerificado,
-			Registros:       []dto.RegistroInscripcionFicha{},
-			Mensaje:         msgDocumentoObligatorio,
+			NumeroDocumento:    numero,
+			ProgramaConsultado: programa,
+			Estado:             dto.InscripcionNoVerificado,
+			Registros:          []dto.RegistroInscripcionFicha{},
+			Mensaje:            msgDocumentoObligatorio,
 		}
 	}
-	if ficha == "" {
+	if programa == "" {
 		return dto.ConsultarInscripcionesResponse{
-			NumeroDocumento: numero,
-			FichaConsultada: ficha,
-			Estado:          dto.InscripcionNoVerificado,
-			Registros:       []dto.RegistroInscripcionFicha{},
-			Mensaje:         "El identificador de ficha es obligatorio.",
+			NumeroDocumento:    numero,
+			ProgramaConsultado: programa,
+			Estado:             dto.InscripcionNoVerificado,
+			Registros:          []dto.RegistroInscripcionFicha{},
+			Mensaje:            "El nombre del programa de formación es obligatorio.",
 		}
 	}
 
 	cred, err := s.credencialesDeUsuario(usuarioID)
 	if err != nil {
 		return dto.ConsultarInscripcionesResponse{
-			NumeroDocumento: numero,
-			FichaConsultada: ficha,
-			Estado:          dto.InscripcionNoVerificado,
-			Registros:       []dto.RegistroInscripcionFicha{},
-			Mensaje:         err.Error(),
+			NumeroDocumento:    numero,
+			ProgramaConsultado: programa,
+			Estado:             dto.InscripcionNoVerificado,
+			Registros:          []dto.RegistroInscripcionFicha{},
+			Mensaje:            err.Error(),
 		}
 	}
 	// Este flujo siempre usa Usuario SENA (no el rol de Consultar Registro).
 	cred.Rol = "Usuario SENA"
 
 	scraper := NewSofiaScraper()
-	return scraper.ConsultarInscripciones(cred, numero, ficha, req.TipoDocumento)
+	return scraper.ConsultarInscripciones(cred, numero, programa, req.TipoDocumento)
 }
 
-// PlantillaInscripciones Excel para carga masiva documento+ficha.
+// PlantillaInscripciones Excel para carga masiva documento+programa.
 func (s *ComplementariosService) PlantillaInscripciones() ([]byte, error) {
 	return GenerarPlantillaInscripciones()
 }
 
-// ConsultarInscripcionesLote procesa Excel (numero_documento, ficha) con un solo login SENA.
+// ConsultarInscripcionesLote procesa Excel (numero_documento, programa) con un solo login SENA.
 func (s *ComplementariosService) ConsultarInscripcionesLote(usuarioID uint, contenido []byte) (dto.ConsultarInscripcionesLoteResponse, error) {
 	filas, err := ParsearLoteInscripcionesExcel(contenido)
 	if err != nil {
 		return dto.ConsultarInscripcionesLoteResponse{}, err
 	}
 	if len(filas) == 0 {
-		return dto.ConsultarInscripcionesLoteResponse{}, errors.New("el Excel no tiene filas válidas (numero_documento y ficha numéricos)")
+		return dto.ConsultarInscripcionesLoteResponse{}, errors.New("el Excel no tiene filas válidas (numero_documento y programa de formación)")
 	}
 
 	cred, err := s.credencialesDeUsuario(usuarioID)

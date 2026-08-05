@@ -184,7 +184,7 @@ func (s *SofiaScraper) VerificarLote(cred SofiaCredenciales, docs []dto.LoteDocu
 type scraperConsultarInscripcionesPayload struct {
 	Credenciales    scraperCredencialesPayload `json:"credenciales"`
 	NumeroDocumento string                     `json:"numero_documento"`
-	Ficha           string                     `json:"ficha"`
+	Programa        string                     `json:"programa"`
 	TipoDocumento   string                     `json:"tipo_documento"`
 }
 
@@ -195,21 +195,21 @@ type scraperRegistroInscripcion struct {
 }
 
 type scraperConsultarInscripcionesResponse struct {
-	NumeroDocumento string                       `json:"numero_documento"`
-	FichaConsultada string                       `json:"ficha_consultada"`
-	Estado          string                       `json:"estado"`
-	TipoEncontrado  string                       `json:"tipo_encontrado"`
-	Registros       []scraperRegistroInscripcion `json:"registros"`
-	Mensaje         string                       `json:"mensaje"`
+	NumeroDocumento    string                       `json:"numero_documento"`
+	ProgramaConsultado string                       `json:"programa_consultado"`
+	Estado             string                       `json:"estado"`
+	TipoEncontrado     string                       `json:"tipo_encontrado"`
+	Registros          []scraperRegistroInscripcion `json:"registros"`
+	Mensaje            string                       `json:"mensaje"`
 }
 
-func noVerificadoInscripcion(numero, ficha, mensaje string) dto.ConsultarInscripcionesResponse {
+func noVerificadoInscripcion(numero, programa, mensaje string) dto.ConsultarInscripcionesResponse {
 	return dto.ConsultarInscripcionesResponse{
-		NumeroDocumento: numero,
-		FichaConsultada: ficha,
-		Estado:          dto.InscripcionNoVerificado,
-		Registros:       []dto.RegistroInscripcionFicha{},
-		Mensaje:         mensaje,
+		NumeroDocumento:    numero,
+		ProgramaConsultado: programa,
+		Estado:             dto.InscripcionNoVerificado,
+		Registros:          []dto.RegistroInscripcionFicha{},
+		Mensaje:            mensaje,
 	}
 }
 
@@ -223,38 +223,38 @@ func mapInscripcionResultado(res scraperConsultarInscripcionesResponse) dto.Cons
 		}
 	}
 	return dto.ConsultarInscripcionesResponse{
-		NumeroDocumento: res.NumeroDocumento,
-		FichaConsultada: res.FichaConsultada,
-		Estado:          res.Estado,
-		TipoEncontrado:  res.TipoEncontrado,
-		Registros:       regs,
-		Mensaje:         res.Mensaje,
+		NumeroDocumento:    res.NumeroDocumento,
+		ProgramaConsultado: res.ProgramaConsultado,
+		Estado:             res.Estado,
+		TipoEncontrado:     res.TipoEncontrado,
+		Registros:          regs,
+		Mensaje:            res.Mensaje,
 	}
 }
 
-// ConsultarInscripciones login SENA + Usuario SENA + Consultar Inscripciones (filtra por ficha).
-func (s *SofiaScraper) ConsultarInscripciones(cred SofiaCredenciales, numero, ficha, tipoCodigo string) dto.ConsultarInscripcionesResponse {
+// ConsultarInscripciones login SENA + Usuario SENA + Consultar Inscripciones (filtra por programa).
+func (s *SofiaScraper) ConsultarInscripciones(cred SofiaCredenciales, numero, programa, tipoCodigo string) dto.ConsultarInscripcionesResponse {
 	var res scraperConsultarInscripcionesResponse
 	err := s.postJSON("/consultar-inscripciones", scraperConsultarInscripcionesPayload{
 		Credenciales:    mapCredenciales(cred),
 		NumeroDocumento: numero,
-		Ficha:           ficha,
+		Programa:        programa,
 		TipoDocumento:   tipoCodigo,
 	}, &res)
 	if err != nil {
-		return noVerificadoInscripcion(numero, ficha, err.Error())
+		return noVerificadoInscripcion(numero, programa, err.Error())
 	}
 	return mapInscripcionResultado(res)
 }
 
 type scraperConsultaInscripcionItem struct {
 	NumeroDocumento string `json:"numero_documento"`
-	Ficha           string `json:"ficha"`
+	Programa        string `json:"programa"`
 	TipoDocumento   string `json:"tipo_documento"`
 }
 
 type scraperConsultarInscripcionesLotePayload struct {
-	Credenciales scraperCredencialesPayload     `json:"credenciales"`
+	Credenciales scraperCredencialesPayload       `json:"credenciales"`
 	Consultas    []scraperConsultaInscripcionItem `json:"consultas"`
 }
 
@@ -262,13 +262,13 @@ type scraperConsultarInscripcionesLoteResponse struct {
 	Resultados []scraperConsultarInscripcionesResponse `json:"resultados"`
 }
 
-// ConsultarInscripcionesLote un login + varias consultas documento/ficha.
+// ConsultarInscripcionesLote un login + varias consultas documento/programa.
 func (s *SofiaScraper) ConsultarInscripcionesLote(cred SofiaCredenciales, filas []dto.LoteInscripcionFila) []dto.ConsultarInscripcionesResponse {
 	consultas := make([]scraperConsultaInscripcionItem, len(filas))
 	for i, f := range filas {
 		consultas[i] = scraperConsultaInscripcionItem{
 			NumeroDocumento: f.NumeroDocumento,
-			Ficha:           f.Ficha,
+			Programa:        f.Programa,
 			TipoDocumento:   f.TipoDocumento,
 		}
 	}
@@ -287,7 +287,7 @@ func (s *SofiaScraper) ConsultarInscripcionesLote(cred SofiaCredenciales, filas 
 	if err != nil {
 		out := make([]dto.ConsultarInscripcionesResponse, len(filas))
 		for i, f := range filas {
-			out[i] = noVerificadoInscripcion(f.NumeroDocumento, f.Ficha, err.Error())
+			out[i] = noVerificadoInscripcion(f.NumeroDocumento, f.Programa, err.Error())
 		}
 		return out
 	}

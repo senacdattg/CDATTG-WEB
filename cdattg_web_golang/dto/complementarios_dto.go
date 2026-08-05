@@ -59,10 +59,10 @@ type VerificarAspiranteResponse struct {
 	Mensaje         string `json:"mensaje,omitempty"`         // mensaje para el usuario (ej. causa del NO_VERIFICADO)
 }
 
-// ConsultarInscripcionesRequest consulta programas de formación por documento + ficha (Usuario SENA).
+// ConsultarInscripcionesRequest consulta por documento + nombre de programa (Usuario SENA).
 type ConsultarInscripcionesRequest struct {
 	NumeroDocumento string `json:"numero_documento" binding:"required"`
-	Ficha           string `json:"ficha" binding:"required"`
+	Programa        string `json:"programa" binding:"required"`
 	TipoDocumento   string `json:"tipo_documento"` // opcional: CC, TI, CE, ... o texto Sofia
 }
 
@@ -73,31 +73,31 @@ const (
 	InscripcionNoVerificado = "NO_VERIFICADO"
 )
 
-// RegistroInscripcionFicha fila filtrada (ficha / programa / estado).
+// RegistroInscripcionFicha fila filtrada (ficha / programa / estado) desde Sofía.
 type RegistroInscripcionFicha struct {
 	Ficha    string `json:"ficha"`
 	Programa string `json:"programa"`
 	Estado   string `json:"estado"`
 }
 
-// ConsultarInscripcionesResponse resultado de la consulta por ficha en SofiaPlus.
+// ConsultarInscripcionesResponse resultado filtrado por programa en SofiaPlus.
 type ConsultarInscripcionesResponse struct {
-	NumeroDocumento string                     `json:"numero_documento"`
-	FichaConsultada string                     `json:"ficha_consultada"`
-	Estado          string                     `json:"estado"` // ENCONTRADO | NO_ENCONTRADO | NO_VERIFICADO
-	TipoEncontrado  string                     `json:"tipo_encontrado,omitempty"`
-	Registros       []RegistroInscripcionFicha `json:"registros"`
-	Mensaje         string                     `json:"mensaje,omitempty"`
+	NumeroDocumento    string                     `json:"numero_documento"`
+	ProgramaConsultado string                     `json:"programa_consultado"`
+	Estado             string                     `json:"estado"` // ENCONTRADO | NO_ENCONTRADO | NO_VERIFICADO
+	TipoEncontrado     string                     `json:"tipo_encontrado,omitempty"`
+	Registros          []RegistroInscripcionFicha `json:"registros"`
+	Mensaje            string                     `json:"mensaje,omitempty"`
 }
 
-// LoteInscripcionFila fila del Excel de carga masiva (documento + ficha).
+// LoteInscripcionFila fila del Excel de carga masiva (documento + programa).
 type LoteInscripcionFila struct {
 	NumeroDocumento string
-	Ficha           string
+	Programa        string
 	TipoDocumento   string
 }
 
-// ConsultarInscripcionesLoteResponse resumen de carga masiva por ficha.
+// ConsultarInscripcionesLoteResponse resumen de carga masiva por programa.
 type ConsultarInscripcionesLoteResponse struct {
 	Total         int                              `json:"total"`
 	Encontrados   int                              `json:"encontrados"`

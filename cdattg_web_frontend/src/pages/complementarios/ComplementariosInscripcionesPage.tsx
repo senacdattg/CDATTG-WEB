@@ -427,8 +427,12 @@ const ConsultaPanel = () => {
         </div>
         <div className="flex items-end pb-2">
           <label className="inline-flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
-            <input type="checkbox" checked={autoTipo} onChange={(e) => setAutoTipo(e.target.checked)} />
-            Probar tipos automáticamente
+            <input
+              type="checkbox"
+              checked={autoTipo}
+              onChange={(e) => setAutoTipo(e.target.checked)}
+            />
+            <span>Probar tipos automáticamente</span>
           </label>
         </div>
       </div>

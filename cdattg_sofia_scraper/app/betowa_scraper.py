@@ -1,5 +1,8 @@
 """Verificación de aspirantes en Betowa vía Server Actions de Next.js (rápido ~150ms/doc).
 
+Submódulo independiente de SofíaPlus: no usa login SENA, Playwright ni
+``app.scraper``. Solo HTTP (Fetcher) contra ``betowa.sena.edu.co``.
+
 Llama directamente a la Server Action ``validateUserDocument`` de Next.js, que es
 el mismo endpoint que usa el frontend de Betowa cuando escribes un documento
 y pulsas "Continuar". No requiere navegador, es HTTP directo.
@@ -13,14 +16,24 @@ Respuesta de la Server Action (formato RSC línea a línea):
 from __future__ import annotations
 
 import json
+import logging
 import re
+import threading
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import date
 from typing import Any
 
 from scrapling.fetchers import Fetcher
 
-from app.config import BETOWA_ACCION_VALIDAR, BETOWA_REGISTRO_URL
-from app.scraper import DocumentoLote, ResultadoVerificacion
+from app.config import (
+    BETOWA_ACCION_VALIDAR,
+    BETOWA_PARALLEL_WORKERS,
+    BETOWA_REGISTRO_URL,
+)
+# Solo tipos neutros: Betowa NO importa scraper Sofía (Playwright / login SENA).
+from app.types import DocumentoLote, ResultadoVerificacion
+
+logger = logging.getLogger(__name__)
 
 VERIFICACION_REGISTRADO = "REGISTRADO"
 VERIFICACION_NO_REGISTRADO = "NO_REGISTRADO"
@@ -39,8 +52,16 @@ REGEX_OTRO_TIPO = re.compile(
     r"(?:registro con|registraste con)\s+(.+?)(?:\s+para\s+actualizar|\.|$)",
     re.IGNORECASE | re.DOTALL,
 )
+REGEX_ACTION_VALIDATE = re.compile(
+    r'createServerReference\)?\(\s*"([0-9a-f]{20,})"\s*,[^)]*"validateUserDocument"',
+    re.IGNORECASE,
+)
 
 MAX_TIPOS_A_PROBAR = 4  # CC, TI, CE, PPT
+HTTP_TIMEOUT_SEGUNDOS = 25
+
+_action_id_lock = threading.Lock()
+_action_id_actual = BETOWA_ACCION_VALIDAR.strip()
 
 
 def _fecha_placeholder() -> str:
@@ -57,26 +78,47 @@ def _no_verificado(numero: str, mensaje: str) -> ResultadoVerificacion:
     )
 
 
+def _descubrir_accion_validar() -> str | None:
+    """Lee el JS de /registrarse y obtiene el ID actual de validateUserDocument."""
+    try:
+        html_resp = Fetcher.get(BETOWA_REGISTRO_URL, impersonate="chrome", timeout=HTTP_TIMEOUT_SEGUNDOS)
+        html = (html_resp.body or b"").decode("utf-8", "replace")
+        chunks = re.findall(r'src="(/_next/static/chunks/[^"]+)"', html)
+        base = BETOWA_REGISTRO_URL.split("/registrarse")[0].rstrip("/") or "https://betowa.sena.edu.co"
+        candidatos = [c for c in chunks if "registrarse" in c] or chunks
+        for chunk in candidatos:
+            js_resp = Fetcher.get(base + chunk, impersonate="chrome", timeout=HTTP_TIMEOUT_SEGUNDOS)
+            js = (js_resp.body or b"").decode("utf-8", "replace")
+            match = REGEX_ACTION_VALIDATE.search(js)
+            if match:
+                return match.group(1)
+    except Exception as exc:
+        logger.warning("No se pudo descubrir BETOWA_ACCION_VALIDAR: %s", exc)
+    return None
+
+
+def _obtener_accion_validar() -> str:
+    with _action_id_lock:
+        return _action_id_actual or BETOWA_ACCION_VALIDAR
+
+
+def _refrescar_accion_validar() -> str | None:
+    nueva = _descubrir_accion_validar()
+    if not nueva:
+        return None
+    with _action_id_lock:
+        global _action_id_actual
+        if nueva != _action_id_actual:
+            logger.info("BETOWA_ACCION_VALIDAR actualizado: %s -> %s", _action_id_actual, nueva)
+            _action_id_actual = nueva
+        return _action_id_actual
+
+
 # ---------------------------------------------------------------------------
 # Llamada HTTP directa a la Server Action
 # ---------------------------------------------------------------------------
 
-def _llamar_server_action(numero: str, tipo: str) -> dict[str, Any] | None:
-    """Ejecuta ``validateUserDocument`` y devuelve el JSON de la línea ``1:`` si existe."""
-    payload = json.dumps([tipo, numero, _fecha_placeholder()])
-
-    resp = Fetcher.post(
-        BETOWA_REGISTRO_URL,
-        data=payload,
-        headers={
-            "Next-Action": BETOWA_ACCION_VALIDAR,
-            "Content-Type": "text/plain;charset=UTF-8",
-        },
-        impersonate="chrome",
-    )
-    body = resp.body.decode("utf-8") if resp.body else ""
-
-    # Buscar la línea del RSC payload que contiene 'success' (datos reales)
+def _parse_server_action_body(body: str) -> dict[str, Any] | None:
     for line in body.split("\n"):
         line = line.strip()
         sin_prefijo = re.sub(r"^\d+:", "", line, count=1)
@@ -86,6 +128,49 @@ def _llamar_server_action(numero: str, tipo: str) -> dict[str, Any] | None:
             except json.JSONDecodeError:
                 continue
     return None
+
+
+def _post_server_action(numero: str, tipo: str, action_id: str) -> tuple[int | None, str, dict[str, Any] | None]:
+    payload = json.dumps([tipo, numero, _fecha_placeholder()])
+    resp = Fetcher.post(
+        BETOWA_REGISTRO_URL,
+        data=payload,
+        headers={
+            "Next-Action": action_id,
+            "Content-Type": "text/plain;charset=UTF-8",
+        },
+        impersonate="chrome",
+        timeout=HTTP_TIMEOUT_SEGUNDOS,
+    )
+    status = getattr(resp, "status", None)
+    body = resp.body.decode("utf-8") if resp.body else ""
+    return status, body, _parse_server_action_body(body)
+
+
+def _llamar_server_action(numero: str, tipo: str) -> dict[str, Any] | None:
+    """Ejecuta ``validateUserDocument`` y devuelve el JSON de la línea ``1:`` si existe."""
+    action_id = _obtener_accion_validar()
+    try:
+        status, body, data = _post_server_action(numero, tipo, action_id)
+    except Exception as exc:
+        logger.warning("Error contactando Betowa (%s/%s): %s", numero, tipo, exc)
+        raise RuntimeError(f"No se pudo conectar a Betowa: {exc}") from exc
+
+    if status == 404 or "server action not found" in body.lower():
+        nueva = _refrescar_accion_validar()
+        if nueva and nueva != action_id:
+            try:
+                _, _, data = _post_server_action(numero, tipo, nueva)
+            except Exception as exc:
+                logger.warning("Reintento Betowa falló (%s/%s): %s", numero, tipo, exc)
+                raise RuntimeError(f"No se pudo conectar a Betowa: {exc}") from exc
+            return data
+        raise RuntimeError(
+            "Server Action de Betowa no encontrada (ID desactualizado). "
+            "Actualice BETOWA_ACCION_VALIDAR."
+        )
+
+    return data
 
 
 def _interpretar(data: dict[str, Any] | None, numero: str, tipo: str) -> ResultadoVerificacion:
@@ -175,7 +260,10 @@ def verificar_documento(numero: str, tipo_codigo: str = "") -> ResultadoVerifica
     ultimo = _no_verificado(numero, "No se pudo verificar en Betowa.")
 
     for tipo in tipos:
-        data = _llamar_server_action(numero, tipo)
+        try:
+            data = _llamar_server_action(numero, tipo)
+        except RuntimeError as exc:
+            return _no_verificado(numero, str(exc))
         res = _interpretar(data, numero, tipo)
         if res.estado in (VERIFICACION_REGISTRADO, VERIFICACION_NO_REGISTRADO):
             return res
@@ -185,10 +273,7 @@ def verificar_documento(numero: str, tipo_codigo: str = "") -> ResultadoVerifica
 
 
 def verificar_lote(docs: list[DocumentoLote]) -> list[ResultadoVerificacion]:
-    """Verifica múltiples documentos en Betowa secuencialmente (~150ms c/u).
-
-    20 documentos se completan en ~3 segundos. No requiere paralelismo
-    porque cada consulta es HTTP directa (sin navegador).
+    """Verifica múltiples documentos en Betowa (paralelo controlado).
 
     Args:
         docs: Lista de documentos a verificar.
@@ -196,7 +281,30 @@ def verificar_lote(docs: list[DocumentoLote]) -> list[ResultadoVerificacion]:
     Returns:
         Lista de resultados en el mismo orden de entrada.
     """
-    resultados: list[ResultadoVerificacion] = []
-    for doc in docs:
-        resultados.append(verificar_documento(doc.numero_documento, doc.tipo_documento))
-    return resultados
+    if not docs:
+        return []
+
+    workers = min(BETOWA_PARALLEL_WORKERS, len(docs))
+    if workers <= 1:
+        return [verificar_documento(doc.numero_documento, doc.tipo_documento) for doc in docs]
+
+    resultados: list[ResultadoVerificacion | None] = [None] * len(docs)
+    with ThreadPoolExecutor(max_workers=workers) as pool:
+        futuros = {
+            pool.submit(verificar_documento, doc.numero_documento, doc.tipo_documento): idx
+            for idx, doc in enumerate(docs)
+        }
+        for fut in as_completed(futuros):
+            idx = futuros[fut]
+            try:
+                resultados[idx] = fut.result()
+            except Exception as exc:
+                doc = docs[idx]
+                resultados[idx] = _no_verificado(doc.numero_documento, f"Error en verificación Betowa: {exc}")
+
+    return [
+        r
+        if r is not None
+        else _no_verificado(docs[i].numero_documento, "Sin resultado de verificación Betowa.")
+        for i, r in enumerate(resultados)
+    ]

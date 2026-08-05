@@ -3,12 +3,13 @@
 Flujo (Scrapling StealthyFetcher):
   login → Usuario SENA → Inscripción → Consultar Programas de Formación
   → Consultar Inscripciones a Programas de Formación
-  → tipo + número → Consultar → paginar → filtrar por ficha.
+  → tipo + número → Consultar → paginar → filtrar por programa de formación.
 """
 
 from __future__ import annotations
 
 import re
+import unicodedata
 from dataclasses import dataclass, field
 from urllib.parse import urljoin
 
@@ -60,7 +61,7 @@ class RegistroInscripcion:
 @dataclass
 class ResultadoInscripciones:
     numero_documento: str
-    ficha_consultada: str
+    programa_consultado: str
     estado: str
     tipo_encontrado: str = ""
     registros: list[RegistroInscripcion] = field(default_factory=list)
@@ -70,7 +71,7 @@ class ResultadoInscripciones:
 @dataclass
 class ConsultaLoteItem:
     numero_documento: str
-    ficha: str
+    programa: str
     tipo_documento: str = ""
 
 
@@ -1422,21 +1423,39 @@ def _recolectar_todas_paginas(page: Page) -> tuple[list[RegistroInscripcion], in
     return todos, paginas_leidas
 
 
-def _filtrar_por_ficha(registros: list[RegistroInscripcion], ficha: str) -> list[RegistroInscripcion]:
-    objetivo = re.sub(r"\D", "", ficha.strip())
+def _normalizar_programa(texto: str) -> str:
+    """Minúsculas, sin acentos y espacios colapsados para comparar nombres."""
+    t = unicodedata.normalize("NFD", (texto or "").strip().lower())
+    t = "".join(c for c in t if unicodedata.category(c) != "Mn")
+    return re.sub(r"\s+", " ", t).strip()
+
+
+def _filtrar_por_programa(
+    registros: list[RegistroInscripcion], programa: str
+) -> list[RegistroInscripcion]:
+    """Filtra por nombre de programa (coincidencia exacta normalizada o contención)."""
+    objetivo = _normalizar_programa(programa)
     if not objetivo:
         return registros
-    return [r for r in registros if re.sub(r"\D", "", r.ficha) == objetivo]
+    exactos = [r for r in registros if _normalizar_programa(r.programa) == objetivo]
+    if exactos:
+        return exactos
+    return [
+        r
+        for r in registros
+        if objetivo in _normalizar_programa(r.programa)
+        or _normalizar_programa(r.programa) in objetivo
+    ]
 
 
 def _consultar_un_tipo(
-    page: Page, tipo: str, numero: str, ficha: str
+    page: Page, tipo: str, numero: str, programa: str
 ) -> ResultadoInscripciones:
     err = _llenar_consulta(page, tipo, numero)
     if err:
         return ResultadoInscripciones(
             numero_documento=numero,
-            ficha_consultada=ficha,
+            programa_consultado=programa,
             estado=ESTADO_NO_VERIFICADO,
             mensaje=err,
         )
@@ -1445,7 +1464,7 @@ def _consultar_un_tipo(
     _dump_iframe_contenido(page, f"inscripcion_resultado_{s._sanitize(tipo)}")
     ind0 = _indicador_pagina_actual(page)
     todos, paginas_leidas = _recolectar_todas_paginas(page)
-    filtrados = _filtrar_por_ficha(todos, ficha)
+    filtrados = _filtrar_por_programa(todos, programa)
     if ind0:
         detalle_pag = f" (Sofía: {ind0[1]} pág.; leídas: {paginas_leidas})"
     else:
@@ -1454,26 +1473,26 @@ def _consultar_un_tipo(
     if filtrados:
         return ResultadoInscripciones(
             numero_documento=numero,
-            ficha_consultada=ficha,
+            programa_consultado=programa,
             estado=ESTADO_ENCONTRADO,
             tipo_encontrado=tipo,
             registros=filtrados,
             mensaje=(
-                f"Se encontraron {len(filtrados)} registro(s) para la ficha {ficha}"
-                f"{detalle_pag}."
+                f"Se encontraron {len(filtrados)} registro(s) para el programa "
+                f"«{programa}»{detalle_pag}."
             ),
         )
 
     if todos:
         return ResultadoInscripciones(
             numero_documento=numero,
-            ficha_consultada=ficha,
+            programa_consultado=programa,
             estado=ESTADO_NO_ENCONTRADO,
             tipo_encontrado=tipo,
             registros=[],
             mensaje=(
                 f"El aprendiz tiene {len(todos)} inscripción(es){detalle_pag}, "
-                f"pero ninguna con ficha {ficha}."
+                f"pero ninguna del programa «{programa}»."
             ),
         )
 
@@ -1482,7 +1501,7 @@ def _consultar_un_tipo(
     if "no se encontr" in cuerpo or "sin resultados" in cuerpo or "no hay registros" in cuerpo:
         return ResultadoInscripciones(
             numero_documento=numero,
-            ficha_consultada=ficha,
+            programa_consultado=programa,
             estado=ESTADO_NO_ENCONTRADO,
             mensaje="SofiaPlus no devolvió inscripciones para ese documento.",
         )
@@ -1490,7 +1509,7 @@ def _consultar_un_tipo(
     # Tabla vacía sin mensaje claro → probar otro tipo
     return ResultadoInscripciones(
         numero_documento=numero,
-        ficha_consultada=ficha,
+        programa_consultado=programa,
         estado=ESTADO_NO_ENCONTRADO,
         tipo_encontrado=tipo,
         mensaje="Sin filas en la tabla de inscripciones para este tipo de documento.",
@@ -1516,12 +1535,12 @@ def _cred_usuario_sena(cred: s.Credenciales) -> s.Credenciales:
 
 
 def _resultado_consulta_en_pagina(
-    page: Page, numero: str, ficha_n: str, tipo_documento: str
+    page: Page, numero: str, programa_n: str, tipo_documento: str
 ) -> ResultadoInscripciones:
     tipos = _tipos_a_probar(tipo_documento)
     ultimo = ResultadoInscripciones(
         numero_documento=numero,
-        ficha_consultada=ficha_n,
+        programa_consultado=programa_n,
         estado=ESTADO_NO_ENCONTRADO,
         mensaje="Sin resultados.",
     )
@@ -1533,15 +1552,15 @@ def _resultado_consulta_en_pagina(
                 if err_nav:
                     return ResultadoInscripciones(
                         numero_documento=numero,
-                        ficha_consultada=ficha_n,
+                        programa_consultado=programa_n,
                         estado=ESTADO_NO_VERIFICADO,
                         mensaje=err_nav,
                     )
-        res = _consultar_un_tipo(page, tipo, numero, ficha_n)
+        res = _consultar_un_tipo(page, tipo, numero, programa_n)
         ultimo = res
         if res.estado in (ESTADO_ENCONTRADO, ESTADO_NO_VERIFICADO):
             return res
-        if "ninguna con ficha" in (res.mensaje or "").lower():
+        if "ninguna del programa" in (res.mensaje or "").lower():
             return res
     return ultimo
 
@@ -1549,24 +1568,24 @@ def _resultado_consulta_en_pagina(
 def consultar_inscripciones(
     cred: s.Credenciales,
     numero_documento: str,
-    ficha: str,
+    programa: str,
     tipo_documento: str = "",
 ) -> ResultadoInscripciones:
     numero = numero_documento.strip()
-    ficha_n = ficha.strip()
+    programa_n = programa.strip()
     if not numero:
         return ResultadoInscripciones(
             numero_documento=numero,
-            ficha_consultada=ficha_n,
+            programa_consultado=programa_n,
             estado=ESTADO_NO_VERIFICADO,
             mensaje="El número de documento es obligatorio.",
         )
-    if not ficha_n:
+    if not programa_n:
         return ResultadoInscripciones(
             numero_documento=numero,
-            ficha_consultada=ficha_n,
+            programa_consultado=programa_n,
             estado=ESTADO_NO_VERIFICADO,
-            mensaje="El identificador de ficha es obligatorio.",
+            mensaje="El nombre del programa de formación es obligatorio.",
         )
 
     cred_uso = _cred_usuario_sena(cred)
@@ -1580,7 +1599,7 @@ def consultar_inscripciones(
             err_msg[0] = err
             return
         resultado_holder.append(
-            _resultado_consulta_en_pagina(page, numero, ficha_n, tipo_documento)
+            _resultado_consulta_en_pagina(page, numero, programa_n, tipo_documento)
         )
 
     try:
@@ -1593,7 +1612,7 @@ def consultar_inscripciones(
     except Exception as exc:
         return ResultadoInscripciones(
             numero_documento=numero,
-            ficha_consultada=ficha_n,
+            programa_consultado=programa_n,
             estado=ESTADO_NO_VERIFICADO,
             mensaje=f"Error del scraper: {exc}",
         )
@@ -1601,7 +1620,7 @@ def consultar_inscripciones(
     if err_msg[0] and not resultado_holder:
         return ResultadoInscripciones(
             numero_documento=numero,
-            ficha_consultada=ficha_n,
+            programa_consultado=programa_n,
             estado=ESTADO_NO_VERIFICADO,
             mensaje=err_msg[0],
         )
@@ -1609,7 +1628,7 @@ def consultar_inscripciones(
         return resultado_holder[0]
     return ResultadoInscripciones(
         numero_documento=numero,
-        ficha_consultada=ficha_n,
+        programa_consultado=programa_n,
         estado=ESTADO_NO_VERIFICADO,
         mensaje="No se obtuvo respuesta del scraper",
     )
@@ -1619,13 +1638,13 @@ def _consulta_item_lote(
     page: Page, item: ConsultaLoteItem, idx: int
 ) -> ResultadoInscripciones:
     numero = item.numero_documento.strip()
-    ficha_n = item.ficha.strip()
-    if not numero or not ficha_n:
+    programa_n = item.programa.strip()
+    if not numero or not programa_n:
         return ResultadoInscripciones(
             numero_documento=numero,
-            ficha_consultada=ficha_n,
+            programa_consultado=programa_n,
             estado=ESTADO_NO_VERIFICADO,
-            mensaje="Fila incompleta: faltan documento o ficha.",
+            mensaje="Fila incompleta: faltan documento o programa de formación.",
         )
     if idx > 0:
         _volver_formulario(page)
@@ -1634,11 +1653,11 @@ def _consulta_item_lote(
             if err_nav:
                 return ResultadoInscripciones(
                     numero_documento=numero,
-                    ficha_consultada=ficha_n,
+                    programa_consultado=programa_n,
                     estado=ESTADO_NO_VERIFICADO,
                     mensaje=err_nav,
                 )
-    return _resultado_consulta_en_pagina(page, numero, ficha_n, item.tipo_documento)
+    return _resultado_consulta_en_pagina(page, numero, programa_n, item.tipo_documento)
 
 
 def _resultados_error_lote(
@@ -1647,7 +1666,7 @@ def _resultados_error_lote(
     return [
         ResultadoInscripciones(
             numero_documento=i.numero_documento.strip(),
-            ficha_consultada=i.ficha.strip(),
+            programa_consultado=i.programa.strip(),
             estado=ESTADO_NO_VERIFICADO,
             mensaje=mensaje,
         )
@@ -1659,7 +1678,7 @@ def consultar_inscripciones_lote(
     cred: s.Credenciales,
     items: list[ConsultaLoteItem],
 ) -> list[ResultadoInscripciones]:
-    """Un solo login Scrapling; consulta cada fila (documento + ficha) en secuencia."""
+    """Un solo login Scrapling; consulta cada fila (documento + programa) en secuencia."""
     if not items:
         return []
 

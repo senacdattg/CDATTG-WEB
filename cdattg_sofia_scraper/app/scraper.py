@@ -1,4 +1,8 @@
-"""Verificación de aspirantes en SofiaPlus vía login SENA + Consultar Registro."""
+"""Verificación de aspirantes en SofiaPlus vía login SENA + Consultar Registro.
+
+Solo SofíaPlus (Playwright/StealthyFetcher). Betowa vive en ``betowa_scraper``
+y no debe importar ni reutilizar la sesión/navegador de este módulo.
+"""
 
 from __future__ import annotations
 
@@ -20,6 +24,7 @@ from app.config import (
     TIMEOUT_SEGUNDOS,
     require_login_url,
 )
+from app.types import Credenciales, DocumentoLote, ResultadoVerificacion
 
 WAIT_SHORT_MS = 150
 WAIT_MENU_MS = 350
@@ -177,28 +182,15 @@ _PREF_APELLIDO1 = ("primer apellido:",)
 _PREF_APELLIDO2 = ("segundo apellido:",)
 
 
-@dataclass
-class Credenciales:
-    usuario: str
-    password: str
-    tipo_documento: str = TIPO_CC
-    rol: str = ""
-
-
-@dataclass
-class DocumentoLote:
-    numero_documento: str
-    tipo_documento: str = ""
-
-
-@dataclass
-class ResultadoVerificacion:
-    numero_documento: str
-    estado: str
-    tipo_encontrado: str = ""
-    nombre: str = ""
-    detalle: str = ""
-    mensaje: str = ""
+# Reexport para compatibilidad interna (inscripciones_scraper, etc.).
+__all__ = (
+    "Credenciales",
+    "DocumentoLote",
+    "ResultadoVerificacion",
+    "ContextoScrape",
+    "verificar_documento",
+    "verificar_lote",
+)
 
 
 @dataclass

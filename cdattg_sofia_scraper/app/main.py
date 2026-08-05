@@ -1,4 +1,15 @@
-"""API interna del scraper SofiaPlus (login SENA + Consultar Registro)."""
+"""API interna del microservicio scraper CDATTG.
+
+Dos submódulos independientes que comparten solo el proceso/contenedor:
+
+- SofíaPlus (``scraper``, ``inscripciones_scraper``): login SENA + Playwright.
+  Rutas: ``/verificar*``, ``/consultar-inscripciones*``.
+- Betowa (``betowa_scraper``): HTTP a Server Action Next.js, sin credenciales Sofía.
+  Rutas: ``/betowa/*``.
+
+No comparten sesión de navegador, cookies ni lógica. Un fallo o cambio de ID
+en Betowa no debe alterar Sofía, y viceversa.
+"""
 
 from __future__ import annotations
 
@@ -9,7 +20,7 @@ from pydantic import BaseModel, Field
 
 from app import betowa_scraper, inscripciones_scraper, scraper
 from app.config import BETOWA_REGISTRO_URL, HEADLESS, TIMEOUT_SEGUNDOS, require_login_url
-from app.scraper import DocumentoLote
+from app.types import DocumentoLote
 
 
 @asynccontextmanager
@@ -18,7 +29,15 @@ async def lifespan(_app: FastAPI):
     yield
 
 
-app = FastAPI(title="CDATTG Sofia Scraper", version="2.0.0", lifespan=lifespan)
+app = FastAPI(
+    title="CDATTG Scraper (SofíaPlus + Betowa)",
+    version="2.1.0",
+    lifespan=lifespan,
+    description=(
+        "SofíaPlus y Betowa son submódulos independientes. "
+        "Comparten contenedor Scrapling; no comparten sesión ni destino."
+    ),
+)
 
 
 class CredencialesIn(BaseModel):
@@ -81,16 +100,32 @@ def _to_out(r: scraper.ResultadoVerificacion) -> ResultadoOut:
 def health():
     try:
         login_url = require_login_url()
+        sofia_ok = True
+        sofia_error = ""
     except RuntimeError as err:
-        return {"status": "degraded", "engine": "scrapling", "error": str(err)}
+        login_url = ""
+        sofia_ok = False
+        sofia_error = str(err)
     return {
-        "status": "ok",
+        "status": "ok" if sofia_ok else "degraded",
         "engine": "scrapling",
-        "mode": "authenticated",
-        "login_url_configured": bool(login_url),
-        "betowa_registro_url": BETOWA_REGISTRO_URL,
-        "headless": HEADLESS,
-        "timeout_segundos": TIMEOUT_SEGUNDOS,
+        "modulos": {
+            "sofia": {
+                "activo": sofia_ok,
+                "motor": "StealthyFetcher/Playwright",
+                "destino": "senasofiaplus.edu.co",
+                "login_url_configured": bool(login_url),
+                "headless": HEADLESS,
+                "timeout_segundos": TIMEOUT_SEGUNDOS,
+                "error": sofia_error or None,
+            },
+            "betowa": {
+                "activo": True,
+                "motor": "Fetcher/HTTP Server Action",
+                "destino": BETOWA_REGISTRO_URL,
+                "requiere_credenciales_sofia": False,
+            },
+        },
     }
 
 
@@ -150,14 +185,14 @@ def betowa_verificar_lote(body: BetowaVerificarLoteIn):
 
 
 # ============================================================================
-# Consultar Inscripción (SofiaPlus) — programas por ficha (Usuario SENA)
+# Consultar Inscripción (SofiaPlus) — filtro por programa de formación (Usuario SENA)
 # ============================================================================
 
 
 class ConsultarInscripcionesIn(BaseModel):
     credenciales: CredencialesIn
     numero_documento: str
-    ficha: str
+    programa: str
     tipo_documento: str = ""
 
 
@@ -169,7 +204,7 @@ class RegistroInscripcionOut(BaseModel):
 
 class ConsultarInscripcionesOut(BaseModel):
     numero_documento: str
-    ficha_consultada: str
+    programa_consultado: str
     estado: str
     tipo_encontrado: str = ""
     registros: list[RegistroInscripcionOut] = Field(default_factory=list)
@@ -179,7 +214,7 @@ class ConsultarInscripcionesOut(BaseModel):
 def _inscripciones_out(r: inscripciones_scraper.ResultadoInscripciones) -> ConsultarInscripcionesOut:
     return ConsultarInscripcionesOut(
         numero_documento=r.numero_documento,
-        ficha_consultada=r.ficha_consultada,
+        programa_consultado=r.programa_consultado,
         estado=r.estado,
         tipo_encontrado=r.tipo_encontrado,
         registros=[
@@ -195,7 +230,7 @@ def consultar_inscripciones(body: ConsultarInscripcionesIn):
     r = inscripciones_scraper.consultar_inscripciones(
         _to_cred(body.credenciales),
         body.numero_documento.strip(),
-        body.ficha.strip(),
+        body.programa.strip(),
         body.tipo_documento.strip(),
     )
     return _inscripciones_out(r)
@@ -203,7 +238,7 @@ def consultar_inscripciones(body: ConsultarInscripcionesIn):
 
 class ConsultaInscripcionItemIn(BaseModel):
     numero_documento: str
-    ficha: str
+    programa: str
     tipo_documento: str = ""
 
 
@@ -221,7 +256,7 @@ def consultar_inscripciones_lote(body: ConsultarInscripcionesLoteIn):
     items = [
         inscripciones_scraper.ConsultaLoteItem(
             numero_documento=c.numero_documento.strip(),
-            ficha=c.ficha.strip(),
+            programa=c.programa.strip(),
             tipo_documento=c.tipo_documento.strip(),
         )
         for c in body.consultas

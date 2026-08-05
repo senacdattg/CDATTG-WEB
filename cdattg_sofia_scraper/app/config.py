@@ -1,5 +1,9 @@
 import os
 
+# ---------------------------------------------------------------------------
+# SofíaPlus (login SENA + Playwright / StealthyFetcher)
+# No mezclar con variables BETOWA_*: son flujos y destinos distintos.
+# ---------------------------------------------------------------------------
 LOGIN_URL = os.getenv(
     "SOFIA_LOGIN_URL",
     "http://senasofiaplus.edu.co/sofia/josso_login/",
@@ -10,6 +14,10 @@ HEADLESS = os.getenv("SOFIA_HEADLESS", "false").lower() in ("1", "true", "yes")
 TIMEOUT_SEGUNDOS = int(os.getenv("SOFIA_TIMEOUT_SEGUNDOS", "120"))
 DIAGNOSTICO = os.getenv("SOFIA_DIAGNOSTICO", "true").lower() in ("1", "true", "yes")
 DIAG_DIR = os.getenv("SOFIA_DIAG_DIR", "storage/sofia_diagnostico")
+
+# ---------------------------------------------------------------------------
+# Betowa (HTTP directo a Server Action Next.js; sin login Sofía ni navegador)
+# ---------------------------------------------------------------------------
 BETOWA_REGISTRO_URL = os.getenv(
     "BETOWA_REGISTRO_URL",
     "https://betowa.sena.edu.co/registrarse",
@@ -20,7 +28,8 @@ BETOWA_DIAGNOSTICO = os.getenv("BETOWA_DIAGNOSTICO", "false").lower() in ("1", "
 BETOWA_WAIT_SUBMIT_MS = max(1500, int(os.getenv("BETOWA_WAIT_SUBMIT_MS", "3500")))
 BETOWA_ACCION_VALIDAR = os.getenv(
     "BETOWA_ACCION_VALIDAR",
-    "78fff68709d8ce196a2dcede61ed43866dc9e21a39",
+    # ID de validateUserDocument en Betowa (cambia con deploys de Next.js).
+    "78f636cac8d52bb290837e43399bb4f42564474c04",
 ).strip()
 
 

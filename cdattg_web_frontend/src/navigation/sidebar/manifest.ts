@@ -156,7 +156,7 @@ export const SIDEBAR_MANIFEST: SidebarManifestItem[] = [
   {
     section: 'FPI',
     path: complementariosPaths.inscripciones,
-    label: 'Sofía · Programas por ficha',
+    label: 'Sofía · Programas de formación',
     permission: null,
     rolesRequired: ['SUPER ADMINISTRADOR', 'ADMINISTRADOR', 'COORDINADOR'],
     iconKey: 'complementarios',

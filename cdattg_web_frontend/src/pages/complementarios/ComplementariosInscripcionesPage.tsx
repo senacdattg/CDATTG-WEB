@@ -63,11 +63,11 @@ export const ComplementariosInscripcionesPage = () => {
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
-          <AcademicCapIcon className="w-7 h-7" aria-hidden /> Complementarios · Programas por ficha
+          <AcademicCapIcon className="w-7 h-7" aria-hidden /> Complementarios · Programas de formación
         </h1>
         <p className="text-gray-600 dark:text-gray-400 mt-1">
-          Consulta en SENA Sofía Plus las inscripciones de un aprendiz y filtra por ficha (programa y estado).
-          Las credenciales de Sofía son independientes del login de este sistema.
+          Consulta en SENA Sofía Plus las inscripciones de un aprendiz y filtra por nombre del programa de formación
+          (ficha y estado). Las credenciales de Sofía son independientes del login de este sistema.
         </p>
       </div>
 
@@ -87,7 +87,7 @@ export const ComplementariosInscripcionesPage = () => {
               <li>
                 El bot inicia sesión, elige <strong>Usuario SENA</strong> y abre Consultar Inscripciones.
               </li>
-              <li>Recorre páginas con <strong>Siguiente</strong> y filtra por ficha.</li>
+              <li>Recorre páginas con <strong>Siguiente</strong> y filtra por programa de formación.</li>
             </ol>
             <p className="text-amber-600 dark:text-amber-400 flex items-start gap-1">
               <ExclamationTriangleIcon className="w-4 h-4 mt-0.5 shrink-0" aria-hidden />
@@ -341,7 +341,7 @@ const CredencialesPanel = () => {
 };
 
 const ConsultaPanel = () => {
-  const [ficha, setFicha] = useState('');
+  const [programa, setPrograma] = useState('');
   const [numero, setNumero] = useState('');
   const [tipo, setTipo] = useState('CC');
   const [autoTipo, setAutoTipo] = useState(false);
@@ -351,10 +351,10 @@ const ConsultaPanel = () => {
 
   const consultar = async (e: FormSubmitEvent) => {
     e.preventDefault();
-    const f = ficha.trim();
+    const p = programa.trim();
     const n = numero.trim();
-    if (!f || !n) {
-      setError('Ficha y número de documento son obligatorios.');
+    if (!p || !n) {
+      setError('Programa de formación y número de documento son obligatorios.');
       return;
     }
     setLoading(true);
@@ -362,7 +362,7 @@ const ConsultaPanel = () => {
     setResultado(null);
     try {
       const res = await apiService.consultarInscripcionesSofia({
-        ficha: f,
+        programa: p,
         numero_documento: n,
         tipo_documento: autoTipo ? '' : tipo,
       });
@@ -382,16 +382,16 @@ const ConsultaPanel = () => {
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
-          <label htmlFor="ficha-insc" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-            Identificador ficha de caracterización *
+          <label htmlFor="programa-insc" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            Programa de formación *
           </label>
           <input
-            id="ficha-insc"
+            id="programa-insc"
             type="text"
-            inputMode="numeric"
             className="input-field"
-            value={ficha}
-            onChange={(e) => setFicha(e.target.value)}
+            placeholder="Ej. TECNOLOGO EN ANALISIS Y DESARROLLO DE SOFTWARE"
+            value={programa}
+            onChange={(e) => setPrograma(e.target.value)}
           />
         </div>
         <div>
@@ -485,7 +485,7 @@ const CargaMasivaPanel = () => {
 
   const handleProcesar = async () => {
     if (!file) {
-      setError('Seleccione el Excel con documento y ficha.');
+      setError('Seleccione el Excel con documento y programa de formación.');
       return;
     }
     setProcesando(true);
@@ -504,13 +504,14 @@ const CargaMasivaPanel = () => {
   const handleExportarCSV = () => {
     if (!res) return;
     const filas = [
-      ['numero_documento', 'ficha', 'estado', 'programa', 'estado_inscripcion', 'mensaje'],
+      ['numero_documento', 'programa_consultado', 'estado', 'ficha', 'programa', 'estado_inscripcion', 'mensaje'],
       ...res.resultados.flatMap((r) => {
         if (!r.registros?.length) {
           return [[
             r.numero_documento,
-            r.ficha_consultada,
+            r.programa_consultado,
             ESTADO_LABEL[r.estado] ?? r.estado,
+            '',
             '',
             '',
             r.mensaje ?? '',
@@ -518,8 +519,9 @@ const CargaMasivaPanel = () => {
         }
         return r.registros.map((reg) => [
           r.numero_documento,
-          reg.ficha,
+          r.programa_consultado,
           ESTADO_LABEL[r.estado] ?? r.estado,
+          reg.ficha,
           reg.programa,
           reg.estado,
           r.mensaje ?? '',
@@ -539,7 +541,7 @@ const CargaMasivaPanel = () => {
         <ArrowUpTrayIcon className="w-5 h-5" aria-hidden /> Carga masiva por Excel
       </h2>
       <p className="text-sm text-gray-600 dark:text-gray-400">
-        Columnas: <strong>numero_documento</strong>, <strong>ficha</strong>, <strong>tipo_documento</strong>{' '}
+        Columnas: <strong>numero_documento</strong>, <strong>programa</strong>, <strong>tipo_documento</strong>{' '}
         (opcional). Un solo login Sofía; las filas se consultan en secuencia.
       </p>
 
@@ -609,7 +611,7 @@ const CargaMasivaPanel = () => {
               <thead>
                 <tr className="text-left text-gray-500 dark:text-gray-400 border-b border-gray-200 dark:border-gray-700">
                   <th className="py-2 pr-4">Documento</th>
-                  <th className="py-2 pr-4">Ficha</th>
+                  <th className="py-2 pr-4">Programa consultado</th>
                   <th className="py-2 pr-4">Resultado</th>
                   <th className="py-2">Detalle</th>
                 </tr>
@@ -617,15 +619,15 @@ const CargaMasivaPanel = () => {
               <tbody>
                 {res.resultados.map((r) => (
                   <tr
-                    key={`${r.numero_documento}-${r.ficha_consultada}`}
+                    key={`${r.numero_documento}-${r.programa_consultado}`}
                     className="border-b border-gray-100 dark:border-gray-800"
                   >
                     <td className="py-2 pr-4 font-medium text-gray-900 dark:text-white">{r.numero_documento}</td>
-                    <td className="py-2 pr-4 text-gray-900 dark:text-white">{r.ficha_consultada}</td>
+                    <td className="py-2 pr-4 text-gray-900 dark:text-white">{r.programa_consultado}</td>
                     <td className="py-2 pr-4">{ESTADO_LABEL[r.estado] ?? r.estado}</td>
                     <td className="py-2 text-gray-500 dark:text-gray-400">
                       {r.registros?.length
-                        ? r.registros.map((x) => `${x.programa} (${x.estado})`).join(' · ')
+                        ? r.registros.map((x) => `${x.ficha} · ${x.programa} (${x.estado})`).join(' · ')
                         : r.mensaje ?? '—'}
                     </td>
                   </tr>
@@ -657,7 +659,7 @@ const ResultadoInscripciones = ({ res }: { res: ConsultarInscripcionesResponse }
             {res.tipo_encontrado ? ` · ${res.tipo_encontrado}` : ''}
           </p>
           <p className="text-sm text-gray-600 dark:text-gray-400">
-            Documento {res.numero_documento} · Ficha {res.ficha_consultada}
+            Documento {res.numero_documento} · Programa {res.programa_consultado}
           </p>
           {res.mensaje && <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{res.mensaje}</p>}
         </div>

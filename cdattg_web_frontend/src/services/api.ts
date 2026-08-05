@@ -1250,7 +1250,7 @@ class ApiService {
     await this.api.delete('/complementarios/credenciales');
   }
 
-  // Complementarios: Consultar Inscripciones (Usuario SENA) filtrado por ficha.
+  // Complementarios: Consultar Inscripciones (Usuario SENA) filtrado por programa.
   async consultarInscripcionesSofia(
     data: ConsultarInscripcionesRequest,
   ): Promise<ConsultarInscripcionesResponse> {

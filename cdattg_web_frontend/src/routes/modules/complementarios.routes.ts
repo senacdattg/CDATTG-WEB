@@ -24,7 +24,7 @@ export const complementariosRoutes: RouteObject = {
     },
     {
       path: 'inscripciones',
-      handle: { breadcrumb: { label: 'Programas por ficha' } },
+      handle: { breadcrumb: { label: 'Programas de formación' } },
       lazy: async () => {
         const { ComplementariosInscripcionesPage } = await import(
           '../../pages/complementarios/ComplementariosInscripcionesPage'

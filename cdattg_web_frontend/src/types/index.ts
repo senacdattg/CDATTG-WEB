@@ -1070,7 +1070,7 @@ export interface CredencialSofiaEstado {
 
 export interface ConsultarInscripcionesRequest {
   numero_documento: string;
-  ficha: string;
+  programa: string;
   tipo_documento?: string;
 }
 
@@ -1082,7 +1082,7 @@ export interface RegistroInscripcionFicha {
 
 export interface ConsultarInscripcionesResponse {
   numero_documento: string;
-  ficha_consultada: string;
+  programa_consultado: string;
   estado: string;
   tipo_encontrado?: string;
   registros: RegistroInscripcionFicha[];

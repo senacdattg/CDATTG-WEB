@@ -198,10 +198,26 @@ export const SIDEBAR_MANIFEST: SidebarManifestItem[] = [
   // —— Vigilancia ——
   {
     section: 'Vigilancia',
+    path: vigilanciaPaths.porteria,
+    label: 'Portería / Acceso',
+    permission: 'REGISTRAR ACCESO SEDE',
+    rolesRequired: ['VIGILANTE', 'SUPER ADMINISTRADOR', 'ADMINISTRADOR', 'COORDINADOR'],
+    iconKey: 'vigilancia/porteria',
+  },
+  {
+    section: 'Vigilancia',
+    path: vigilanciaPaths.reporte,
+    label: 'Reporte de accesos',
+    permission: 'VER ACCESO SEDE',
+    rolesRequired: ['VIGILANTE', 'SUPER ADMINISTRADOR', 'ADMINISTRADOR', 'COORDINADOR'],
+    iconKey: 'vigilancia/reporte',
+  },
+  {
+    section: 'Vigilancia',
     path: vigilanciaPaths.ambientes,
     label: 'Ambientes en uso',
     permission: null,
-    rolesRequired: ['VIGILANTE', 'SUPER ADMINISTRADOR'],
+    rolesRequired: ['SUPER ADMINISTRADOR'],
     iconKey: 'vigilancia/ambientes',
   },
 

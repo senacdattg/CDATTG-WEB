@@ -10,6 +10,7 @@ import {
   ChevronDownIcon,
   PencilSquareIcon,
 } from '@heroicons/react/24/outline';
+import { useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { apiService } from '../services/api';
 import { axiosErrorMessage } from '../utils/httpError';
@@ -19,6 +20,14 @@ import type { PersonaRequest, PersonaResponse, PersonaSelfUpdateRequest, UserRes
 
 const PERM_EDITAR_MI_PERSONA = 'EDITAR MI PERSONA';
 
+const CAMPOS_FALTANTES_LABEL: Record<string, string> = {
+  primer_nombre: 'primer nombre',
+  primer_apellido: 'primer apellido',
+  numero_documento: 'número de documento',
+  tipo_documento: 'tipo de documento',
+  email_o_celular: 'correo o celular',
+  persona: 'datos de persona',
+};
 function personaRequestToSelfUpdate(data: PersonaRequest): PersonaSelfUpdateRequest {
   return {
     tipo_documento: data.tipo_documento,
@@ -162,6 +171,38 @@ function PerfilPageHeader({ showEdit, onEdit }: PerfilPageHeaderProps) {
         </button>
       ) : null}
     </header>
+  );
+}
+
+function PerfilIncompletoBanner({
+  camposFaltantes,
+  onEdit,
+  puedeEditar,
+}: Readonly<{
+  camposFaltantes?: string[];
+  onEdit: () => void;
+  puedeEditar: boolean;
+}>) {
+  const labels = (camposFaltantes ?? [])
+    .map((c) => CAMPOS_FALTANTES_LABEL[c] || c)
+    .filter(Boolean);
+  return (
+    <div
+      role="alert"
+      className="rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-100"
+    >
+      <p className="font-semibold">Complete sus datos para continuar.</p>
+      <p className="mt-1">
+        Su cuenta se creó en portería solo con el documento. Indique al menos nombres, tipo de documento y un
+        correo o celular.
+      </p>
+      {labels.length > 0 ? <p className="mt-1">Pendiente: {labels.join(', ')}.</p> : null}
+      {puedeEditar ? (
+        <button type="button" onClick={onEdit} className="mt-2 font-semibold text-amber-950 underline dark:text-amber-50">
+          Completar ahora
+        </button>
+      ) : null}
+    </div>
   );
 }
 
@@ -364,17 +405,26 @@ function PerfilContent({
 }
 
 export const Perfil = () => {
-  const { user, roles, permissions, hasPermission } = useAuth();
+  const { user, roles, permissions, hasPermission, refreshUser } = useAuth();
+  const location = useLocation();
   const { persona, setPersona, loading, error } = usePerfilPersona(user);
   const [editOpen, setEditOpen] = useState(false);
   const [saveError, setSaveError] = useState('');
 
   const puedeEditarPerfil = hasPermission(PERM_EDITAR_MI_PERSONA) && Boolean(user?.persona_id);
+  const perfilIncompleto = user?.perfil_completo === false;
+  const forzado = Boolean((location.state as { perfilForzado?: boolean } | null)?.perfilForzado) || perfilIncompleto;
   const fullName = resolveFullName(persona, user);
   const email = resolveEmail(persona, user);
   const initial = (fullName || email || '?').charAt(0).toUpperCase();
   const showSkeleton = loading && !fullName && !error;
   const showContent = !loading || Boolean(fullName);
+
+  useEffect(() => {
+    if (forzado && puedeEditarPerfil && persona && !editOpen) {
+      setEditOpen(true);
+    }
+  }, [forzado, puedeEditarPerfil, persona, editOpen]);
 
   const handleSavePerfil = useCallback(
     async (data: PersonaRequest) => {
@@ -383,17 +433,14 @@ export const Perfil = () => {
         const updated = await apiService.updateMiPersona(personaRequestToSelfUpdate(data));
         setPersona(updated);
         setEditOpen(false);
-        if (updated.email && user && updated.email !== user.email) {
-          const refreshed = await apiService.getCurrentUser();
-          localStorage.setItem('user', JSON.stringify(refreshed));
-        }
+        await refreshUser();
       } catch (e: unknown) {
         const msg = axiosErrorMessage(e, 'No se pudo guardar los cambios.');
         setSaveError(msg);
         alert(msg);
       }
     },
-    [setPersona, user],
+    [setPersona, refreshUser],
   );
 
   const openEdit = useCallback(() => {
@@ -404,6 +451,14 @@ export const Perfil = () => {
   return (
     <div className="mx-auto max-w-3xl space-y-4 pb-8 sm:space-y-6">
       <PerfilPageHeader showEdit={puedeEditarPerfil && Boolean(persona)} onEdit={openEdit} />
+
+      {perfilIncompleto ? (
+        <PerfilIncompletoBanner
+          camposFaltantes={user?.campos_faltantes}
+          onEdit={openEdit}
+          puedeEditar={puedeEditarPerfil && Boolean(persona)}
+        />
+      ) : null}
 
       {saveError ? <AlertBanner message={saveError} /> : null}
       {error ? <AlertBanner message={error} /> : null}
@@ -426,7 +481,9 @@ export const Perfil = () => {
         <PersonaModal
           persona={persona}
           selfService
-          onClose={() => setEditOpen(false)}
+          onClose={() => {
+            if (!perfilIncompleto) setEditOpen(false);
+          }}
           onSave={(data) => {
             void handleSavePerfil(data);
           }}

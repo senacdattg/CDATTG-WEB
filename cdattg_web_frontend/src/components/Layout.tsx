@@ -75,6 +75,8 @@ const ICONS: Record<string, ReactNode> = {
   'infraestructura/bloques': <BuildingOffice2Icon className="w-5 h-5" />,
   'infraestructura/pisos': <BuildingOffice2Icon className="w-5 h-5" />,
   'infraestructura/ambientes': <BuildingOffice2Icon className="w-5 h-5" />,
+  'vigilancia/porteria': <EyeIcon className="w-5 h-5" />,
+  'vigilancia/reporte': <EyeIcon className="w-5 h-5" />,
   'vigilancia/ambientes': <EyeIcon className="w-5 h-5" />,
 };
 

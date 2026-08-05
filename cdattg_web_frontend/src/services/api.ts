@@ -97,6 +97,12 @@ import type {
   UsuarioPermisosResponse,
   UsuarioRegionalesResponse,
   DefinicionesPermisosResponse,
+  AccesoLookupResponse,
+  AccesoRegistroResponse,
+  AccesoDentroItem,
+  AccesoHistorialParams,
+  AccesoHistorialResponse,
+  AccesoEstadisticasResponse,
 } from '../types';
 import type { InstructorAgendaResponse } from '../types/agenda';
 import type {
@@ -1066,6 +1072,62 @@ class ApiService {
    */
   async registrarEntradaAmbiente(params: { ambiente_id: number; instructor_id: number }): Promise<void> {
     await this.api.post('/vigilancia/entradas-ambiente', params);
+  }
+
+  // --- Vigilancia / portería (acceso sede) ---
+  async accesoLookup(data: {
+    numero_documento: string;
+    sede_id: number;
+    metodo?: string;
+    modo?: string;
+  }): Promise<AccesoLookupResponse> {
+    const response = await this.api.post<{ data: AccesoLookupResponse }>('/vigilancia/acceso/lookup', data);
+    return response.data.data;
+  }
+
+  async accesoIngreso(data: {
+    numero_documento: string;
+    tipo_persona: string;
+    metodo_registro: string;
+    sede_id: number;
+    observaciones?: string;
+  }): Promise<AccesoRegistroResponse> {
+    const response = await this.api.post<{ data: AccesoRegistroResponse }>('/vigilancia/acceso/ingreso', data);
+    return response.data.data;
+  }
+
+  async accesoSalida(data: {
+    numero_documento: string;
+    motivo_salida: string;
+    observacion_salida?: string;
+    metodo_registro: string;
+    sede_id: number;
+    permitir_sin_ingreso?: boolean;
+    tipo_persona?: string;
+  }): Promise<AccesoRegistroResponse> {
+    const response = await this.api.post<{ data: AccesoRegistroResponse }>('/vigilancia/acceso/salida', data);
+    return response.data.data;
+  }
+
+  async accesoListDentro(sedeId: number): Promise<AccesoDentroItem[]> {
+    const response = await this.api.get<{ data: AccesoDentroItem[] }>('/vigilancia/acceso/dentro', {
+      params: { sede_id: sedeId },
+    });
+    return response.data.data;
+  }
+
+  async accesoHistorial(params: AccesoHistorialParams): Promise<AccesoHistorialResponse> {
+    const response = await this.api.get<{ data: AccesoHistorialResponse }>('/vigilancia/acceso/historial', {
+      params,
+    });
+    return response.data.data;
+  }
+
+  async accesoEstadisticas(params: AccesoHistorialParams): Promise<AccesoEstadisticasResponse> {
+    const response = await this.api.get<{ data: AccesoEstadisticasResponse }>('/vigilancia/acceso/estadisticas', {
+      params,
+    });
+    return response.data.data;
   }
 
   // Inventario

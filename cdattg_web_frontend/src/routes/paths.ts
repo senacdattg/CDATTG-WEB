@@ -81,6 +81,8 @@ export const inventarioPaths = {
 } as const;
 
 export const vigilanciaPaths = {
+  porteria: '/vigilancia/porteria',
+  reporte: '/vigilancia/accesos',
   ambientes: '/vigilancia/ambientes',
 } as const;
 

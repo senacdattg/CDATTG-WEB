@@ -26,6 +26,8 @@ export interface UserResponse {
   full_name: string;
   status: boolean;
   persona_id?: number;
+  perfil_completo?: boolean;
+  campos_faltantes?: string[];
 }
 
 export interface PersonaRequest {
@@ -1106,3 +1108,139 @@ export interface DefinicionesPermisosResponse {
   roles: string[];
   permisos: PermisoPair[];
 }
+
+/** Portería / control de acceso sede */
+export type AccesoMetodoRegistro = 'LASER' | 'CAMARA' | 'MANUAL';
+export type AccesoTipoPersona = 'APRENDIZ' | 'INSTRUCTOR' | 'ADMINISTRATIVO' | 'VISITANTE';
+export type AccesoMotivoSalida =
+  | 'DESCANSO'
+  | 'CAFETERIA'
+  | 'FIN_JORNADA'
+  | 'CITA_MEDICA'
+  | 'NOVEDAD_FAMILIAR'
+  | 'COMISION_INSTITUCIONAL'
+  | 'OTRO';
+
+export interface AccesoPersonaFicha {
+  persona_id: number;
+  numero_documento: string;
+  tipo_documento_id?: number;
+  primer_nombre: string;
+  segundo_nombre: string;
+  primer_apellido: string;
+  segundo_apellido: string;
+  nombre_completo: string;
+  email: string;
+  celular: string;
+  telefono: string;
+  es_nueva: boolean;
+  perfil_completo: boolean;
+  tipo_sugerido: string;
+}
+
+export interface AccesoVisitaAbierta {
+  id: number;
+  tipo_persona: string;
+  timestamp_entrada: string;
+  metodo_registro: string;
+}
+
+/** Ficha activa relacionada a la persona (solo se envía si status=true). */
+export interface AccesoFichaResumen {
+  id: number;
+  numero: string;
+  programa_nombre: string;
+  jornada_nombre: string;
+  sede_nombre: string;
+  activa: boolean;
+}
+
+export type AccesoModo = 'ENTRADA' | 'SALIDA';
+
+export interface AccesoLookupResponse {
+  persona: AccesoPersonaFicha;
+  dentro: boolean;
+  accion_sugerida: 'INGRESO' | 'SALIDA';
+  visita_abierta?: AccesoVisitaAbierta;
+  ficha?: AccesoFichaResumen;
+  sede_id: number;
+  tipos_persona: string[];
+  motivos_salida: string[];
+  puede_confirmar: boolean;
+  alerta?: string;
+  permite_salida_sin_ingreso: boolean;
+}
+
+export interface AccesoRegistroResponse {
+  persona: AccesoPersonaFicha;
+  accion: 'INGRESO' | 'SALIDA';
+  visita_id: number;
+  dentro: boolean;
+  mensaje: string;
+  visita_abierta?: AccesoVisitaAbierta;
+  ficha?: AccesoFichaResumen;
+  sede_id: number;
+  salida_sin_ingreso?: boolean;
+}
+
+export interface AccesoDentroItem {
+  visita_id: number;
+  persona: AccesoPersonaFicha;
+  tipo_persona: string;
+  timestamp_entrada: string;
+  metodo_registro: string;
+}
+
+export interface AccesoHistorialItem {
+  visita_id: number;
+  persona: AccesoPersonaFicha;
+  tipo_persona: string;
+  sede_id: number;
+  sede_nombre: string;
+  regional_id?: number;
+  regional_nombre?: string;
+  timestamp_entrada: string;
+  timestamp_salida?: string;
+  metodo_registro: string;
+  motivo_salida?: string;
+  observacion_salida?: string;
+  salida_sin_ingreso: boolean;
+  estado: 'abierto' | 'cerrado';
+}
+
+export interface AccesoHistorialResponse {
+  items: AccesoHistorialItem[];
+  total: number;
+  page: number;
+  page_size: number;
+  fecha_desde?: string;
+  fecha_hasta?: string;
+}
+
+export interface AccesoEstadisticasResponse {
+  fecha_desde: string;
+  fecha_hasta: string;
+  total_ingresos: number;
+  total_salidas: number;
+  dentro_ahora: number;
+  salidas_sin_ingreso: number;
+  visitas_abiertas_periodo: number;
+  visitas_cerradas_periodo: number;
+  por_tipo_persona: Record<string, number>;
+  por_motivo_salida: Record<string, number>;
+  por_metodo: Record<string, number>;
+}
+
+export interface AccesoHistorialParams {
+  regional_id?: number;
+  sede_id?: number;
+  fecha_desde?: string;
+  fecha_hasta?: string;
+  tipo_persona?: string;
+  documento?: string;
+  estado?: string;
+  salida_sin_ingreso?: boolean;
+  page?: number;
+  page_size?: number;
+}
+

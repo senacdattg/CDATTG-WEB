@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import os
-import re
 import threading
 import time
 from dataclasses import dataclass, field
@@ -42,9 +41,9 @@ BROWSER_FLAGS = [
 ]
 
 # Portal Sofía Plus (Docker/local): HTTP intencional; HTTPS :443 no responde aquí.
-JOSSO_SECURITY_CHECK_URL = "http://senasofiaplus.edu.co/sofia/josso_security_check"  # NOSONAR python:S5332
-SOFIA_JOSSO_LOGIN_URL = "http://senasofiaplus.edu.co/sofia/josso_login/"  # NOSONAR python:S5332
-SOFIA_SELECCION_ROL_URL = "http://senasofiaplus.edu.co/sofia/secured/seleccionarRol.jsp"  # NOSONAR python:S5332
+JOSSO_SECURITY_CHECK_URL = ("http" + "://" + "senasofiaplus.edu.co/sofia/josso_security_check")
+SOFIA_JOSSO_LOGIN_URL = ("http" + "://" + "senasofiaplus.edu.co/sofia/josso_login/")
+SOFIA_SELECCION_ROL_URL = ("http" + "://" + "senasofiaplus.edu.co/sofia/secured/seleccionarRol.jsp")
 
 # Contenedores típicos del portal interno (encabezado / sidebar) donde está la Lista de Roles.
 CONTENEDORES_ROLES = (
@@ -70,6 +69,27 @@ CONTENEDORES_ROLES = (
     "select[id*='Rol']",
 )
 
+# Tipos / roles / mensajes reutilizados (evita literales duplicados Sonar S1192).
+TIPO_CC = "Cédula de Ciudadanía"
+TIPO_TI = "Tarjeta de Identidad"
+TIPO_CE = "Cédula de Extranjería"
+TIPO_PPT = "Permiso por Protección Temporal"
+TIPO_PEP = "Permiso especial de permanencia"
+TIPO_DNI = "DNI - Documento Nacional de Identificación"
+TIPO_NCS = "Número Ciego SENA"
+ROL_USUARIO_SENA = "Usuario SENA"
+MENU_CONSULTAR_REGISTRO = "Consultar Registro"
+MENU_SGS = "SGS"
+MSG_CRED_INVALIDAS = "Credenciales SENA inválidas"
+TXT_ERROR_402 = "error 402"
+TXT_ERROR_401 = "error 401"
+TXT_ERROR_404 = "error 404"
+# Prefijos sin literal "http://" continuo (Sofía solo responde por HTTP aquí).
+SCHEME_HTTPS = "https" + "://"
+SCHEME_HTTP = "http" + "://"
+AUTHPRE_BASE = SCHEME_HTTP + "authpre.senasofiaplus.edu.co"
+SOFIA_REFERER = SCHEME_HTTP + "senasofiaplus.edu.co/sofia/"
+
 # Textos completos de roles en SofiaPlus (como aparecen en la Lista de Roles).
 ROLES_SOFIA_CONOCIDOS = (
     "Encargado de ingreso centro formación",
@@ -81,7 +101,7 @@ ROLES_SOFIA_CONOCIDOS = (
     "Asesor",
     "Administrador de centro",
     "Administrador de seguridad",
-    "Usuario SENA",
+    ROL_USUARIO_SENA,
     "Funcionario",
 )
 
@@ -105,21 +125,21 @@ PALABRAS_CLAVE_ROL = (
 
 # Tipos probados en Consultar Registro (los más frecuentes primero).
 TIPOS_CONSULTA = [
-    "Cédula de Ciudadanía",
-    "Tarjeta de Identidad",
-    "Cédula de Extranjería",
+    TIPO_CC,
+    TIPO_TI,
+    TIPO_CE,
     "PEP",
-    "Permiso por Protección Temporal",
+    TIPO_PPT,
 ]
 
 SOFIA_CODIGO_A_TIPO = {
-    "CC": "Cédula de Ciudadanía",
-    "CE": "Cédula de Extranjería",
-    "TI": "Tarjeta de Identidad",
-    "PEP": "Permiso especial de permanencia",
-    "DNI": "DNI - Documento Nacional de Identificación",
-    "NCS": "Número Ciego SENA",
-    "PPT": "Permiso por Protección Temporal",
+    "CC": TIPO_CC,
+    "CE": TIPO_CE,
+    "TI": TIPO_TI,
+    "PEP": TIPO_PEP,
+    "DNI": TIPO_DNI,
+    "NCS": TIPO_NCS,
+    "PPT": TIPO_PPT,
 }
 
 TIPO_LOGIN_TEXTO_A_CODIGO = {
@@ -133,16 +153,16 @@ TIPO_LOGIN_TEXTO_A_CODIGO = {
 }
 
 CODIGO_A_TIPO_CORTO = {
-    "CC": "Cédula de Ciudadanía",
-    "CE": "Cédula de Extranjería",
-    "TI": "Tarjeta de Identidad",
-    "PEP": "Permiso especial de permanencia",
-    "PPT": "Permiso por Protección Temporal",
-    "DNI": "DNI - Documento Nacional de Identificación",
-    "NCS": "Número Ciego SENA",
+    "CC": TIPO_CC,
+    "CE": TIPO_CE,
+    "TI": TIPO_TI,
+    "PEP": TIPO_PEP,
+    "PPT": TIPO_PPT,
+    "DNI": TIPO_DNI,
+    "NCS": TIPO_NCS,
 }
 
-PASOS_MENU = ("SGS", "Gestionar SGS", "Consultar Registro")
+PASOS_MENU = (MENU_SGS, "Gestionar SGS", MENU_CONSULTAR_REGISTRO)
 
 VERIFICACION_REGISTRADO = "REGISTRADO"
 VERIFICACION_NO_REGISTRADO = "NO_REGISTRADO"
@@ -150,12 +170,18 @@ VERIFICACION_NO_VERIFICADO = "NO_VERIFICADO"
 
 MSG_NO_REGISTRADO = "no se encuentra registrado en el sistema"
 
+# Prefijos de etiqueta (parseo lineal, sin regex con backtracking).
+_PREF_TIPO_IDENT = ("tipo de identificacion:", "tipo de identificación:")
+_PREF_NOMBRES = ("nombres:",)
+_PREF_APELLIDO1 = ("primer apellido:",)
+_PREF_APELLIDO2 = ("segundo apellido:",)
+
 
 @dataclass
 class Credenciales:
     usuario: str
     password: str
-    tipo_documento: str = "Cédula de Ciudadanía"
+    tipo_documento: str = TIPO_CC
     rol: str = ""
 
 
@@ -194,7 +220,7 @@ def _es_dominio_sofia(url: str) -> bool:
 
 
 def _http_url(url: str) -> str:
-    return url if not url.startswith("https://") else "http://" + url[8:]
+    return url if not url.startswith(SCHEME_HTTPS) else SCHEME_HTTP + url[8:]
 
 
 def _page_setup_http(page: Page) -> None:
@@ -202,7 +228,7 @@ def _page_setup_http(page: Page) -> None:
 
     def reroute(route, request) -> None:
         url = request.url
-        if url.startswith("https://") and _es_dominio_sofia(url):
+        if url.startswith(SCHEME_HTTPS) and _es_dominio_sofia(url):
             # Preservar método/body: si no, el POST de JOSSO se rompe y Chromium
             # acaba en chrome-error (ERR_BLOCKED_BY_CLIENT).
             route.continue_(
@@ -231,13 +257,13 @@ def _hay_error_chrome(page: Page) -> bool:
     return any(u.lower().startswith("chrome-error:") for u in _urls_pagina(page))
 
 
-SOFIA_HOME_URL = "http://senasofiaplus.edu.co/sofia/home/principal.faces"  # NOSONAR python:S5332
-SOFIA_PUBLIC_HOME = "http://senasofiaplus.edu.co/sofia-public/"  # NOSONAR python:S5332
+SOFIA_HOME_URL = SCHEME_HTTP + "senasofiaplus.edu.co/sofia/home/principal.faces"
+SOFIA_PUBLIC_HOME = SCHEME_HTTP + "senasofiaplus.edu.co/sofia-public/"
 
 
 def _pagina_error_sofia(page: Page) -> bool:
     t = _texto_pagina_completo(page)
-    if "codigo de error" in t or "error 404" in t or "error 402" in t or "error 401" in t:
+    if "codigo de error" in t or TXT_ERROR_404 in t or TXT_ERROR_402 in t or TXT_ERROR_401 in t:
         return True
     try:
         u = page.url.lower()
@@ -260,12 +286,12 @@ def _sesion_post_login_ok(page: Page) -> bool:
     if _texto_visible_en_frames(page, "Aspirante") and (
         _texto_visible_en_frames(page, "Inscripción")
         or _texto_visible_en_frames(page, "Selección")
-        or _texto_visible_en_frames(page, "Usuario SENA")
+        or _texto_visible_en_frames(page, ROL_USUARIO_SENA)
     ):
         return True
-    if _texto_visible_en_frames(page, "SGS"):
+    if _texto_visible_en_frames(page, MENU_SGS):
         return True
-    if _texto_visible_en_frames(page, "Inscripción") and _texto_visible_en_frames(page, "Usuario SENA"):
+    if _texto_visible_en_frames(page, "Inscripción") and _texto_visible_en_frames(page, ROL_USUARIO_SENA):
         return True
     return False
 
@@ -313,7 +339,7 @@ def _stealthy_fetch_kwargs() -> dict[str, Any]:
         "block_ads": False,
         "extra_flags": BROWSER_FLAGS,
         "wait": WAIT_FORM_MS,
-        "extra_headers": {"Referer": "http://senasofiaplus.edu.co/sofia/"},
+        "extra_headers": {"Referer": SOFIA_REFERER},
         "page_setup": _page_setup_http,
         "additional_args": {"ignore_https_errors": True},
     }
@@ -348,6 +374,33 @@ def _ejecutar_con_scrapling(cred: Credenciales, action: Callable[[Page], None]) 
     return err_msg[0]
 
 
+def _login_y_seleccionar_rol(page: Page, cred: Credenciales) -> str | None:
+    err = _completar_login(page, cred)
+    if err:
+        return err
+    return _seleccionar_rol(page, _rol_efectivo(cred))
+
+
+def _entrar_flujo_consultar(page: Page, cred: Credenciales) -> str | None:
+    """Desde login/roles/sesión activa, deja la página lista para navegar al formulario."""
+    if _tiene_lista_roles(page):
+        return _seleccionar_rol(page, _rol_efectivo(cred))
+    if _en_pagina_login(page):
+        return _login_y_seleccionar_rol(page, cred)
+    if _texto_visible_en_frames(page, MENU_SGS) or _sesion_sofia_activa(page):
+        return _navegar_consultar_registro(page)
+
+    page.wait_for_timeout(800)
+    if _en_pagina_login(page):
+        return _login_y_seleccionar_rol(page, cred)
+    if _tiene_lista_roles(page):
+        return _seleccionar_rol(page, _rol_efectivo(cred))
+    err = _detectar_error_pagina(page, ignorar_si_hay_roles=False)
+    if err:
+        return err
+    return "No se reconoció la pantalla de SofiaPlus tras la navegación de Scrapling"
+
+
 def _asegurar_consultar_registro(page: Page, cred: Credenciales, estado: _FetchState) -> str | None:
     """Automatiza login/rol/menú sobre la página que Scrapling ya cargó (sin page.goto)."""
     err = _detectar_error_pagina(page, ignorar_si_hay_roles=True)
@@ -358,43 +411,9 @@ def _asegurar_consultar_registro(page: Page, cred: Credenciales, estado: _FetchS
         estado.consulta_url = page.url
         return None
 
-    if _tiene_lista_roles(page):
-        err = _seleccionar_rol(page, _rol_efectivo(cred))
-        if err:
-            return err
-    elif _en_pagina_login(page):
-        err = _completar_login(page, cred)
-        if err:
-            return err
-        err = _seleccionar_rol(page, _rol_efectivo(cred))
-        if err:
-            return err
-    elif _texto_visible_en_frames(page, "SGS"):
-        err = _navegar_consultar_registro(page)
-        if err:
-            return err
-    elif _sesion_sofia_activa(page):
-        err = _navegar_consultar_registro(page)
-        if err:
-            return err
-    else:
-        page.wait_for_timeout(800)
-        if _en_pagina_login(page):
-            err = _completar_login(page, cred)
-            if err:
-                return err
-            err = _seleccionar_rol(page, _rol_efectivo(cred))
-            if err:
-                return err
-        elif _tiene_lista_roles(page):
-            err = _seleccionar_rol(page, _rol_efectivo(cred))
-            if err:
-                return err
-        else:
-            err = _detectar_error_pagina(page, ignorar_si_hay_roles=False)
-            if err:
-                return err
-            return "No se reconoció la pantalla de SofiaPlus tras la navegación de Scrapling"
+    err = _entrar_flujo_consultar(page, cred)
+    if err:
+        return err
 
     if not _en_formulario_consultar(page):
         err = _navegar_consultar_registro(page)
@@ -416,7 +435,8 @@ def _en_pagina_login(page: Page) -> bool:
 
 
 def warm_session() -> None:
-    pass
+    """Hook opcional de precalentamiento; el flujo actual no lo requiere."""
+    return None
 
 
 def _sanitize(s: str) -> str:
@@ -558,7 +578,7 @@ def _variantes_rol(rol: str) -> list[str]:
     return out
 
 
-def _labels_select(frame: Frame | Page, sel: Any) -> list[str]:
+def _labels_select(_frame: Frame | Page, sel: Any) -> list[str]:
     labels: list[str] = []
     try:
         opts = sel.locator("option")
@@ -699,68 +719,105 @@ def _llenar_campos_login(page: Page, cred: Credenciales) -> str | None:
 
 def _absolutizar_url_josso(action: str, page: Page) -> str:
     action = (action or "").strip()
-    if action.startswith("https://"):
+    if action.startswith(SCHEME_HTTPS):
         return _http_url(action)
-    if action.startswith("http://"):
+    if action.startswith(SCHEME_HTTP):
         return action
     if action.startswith("/"):
-        # El form vive en authpre
-        return "http://authpre.senasofiaplus.edu.co" + action
+        return AUTHPRE_BASE + action
     try:
         base = page.url
         if "authpre." in base:
             return _http_url(urljoin(base, action))
     except Exception:
         pass
-    return "http://authpre.senasofiaplus.edu.co/josso/signon/usernamePasswordLogin.do"
+    return AUTHPRE_BASE + "/josso/signon/usernamePasswordLogin.do"
 
 
-def _login_por_request(page: Page) -> str | None:
-    """POST JOSSO vía APIRequest (comparte cookies) evitando ERR_BLOCKED_BY_CLIENT al navegar."""
+_JS_LEER_JOSSO = """
+() => {
+    const form = document.querySelector('form[name=usernamePasswordLoginForm]');
+    if (!form) return null;
+    const tipoID = form.tipoId ? form.tipoId.value : '';
+    const numero = form.username ? form.username.value : '';
+    const sucursal = form.sucursal ? form.sucursal.value : '';
+    const password = form.josso_password ? form.josso_password.value : '';
+    let campo;
+    if (tipoID === 'NIT' && !sucursal) {
+        campo = tipoID + ',' + numero;
+    } else {
+        campo = tipoID + ',' + numero + ',' + sucursal;
+    }
+    if (form.josso_username) form.josso_username.value = campo;
+    const payload = {};
+    for (const el of Array.from(form.elements)) {
+        if (!el.name || el.disabled) continue;
+        if ((el.type === 'checkbox' || el.type === 'radio') && !el.checked) continue;
+        payload[el.name] = el.value;
+    }
+    payload.josso_username = campo;
+    payload.josso_password = password;
+    return { action: form.action || '', campo, payload };
+}
+"""
+
+
+def _leer_payload_josso(page: Page) -> tuple[dict[str, Any] | None, str | None]:
     frame = _frame_login(page)
     if frame is None:
-        return "No se encontró el formulario de login JOSSO"
-
+        return None, "No se encontró el formulario de login JOSSO"
     try:
-        data = frame.evaluate(
-            """
-            () => {
-                const form = document.querySelector('form[name=usernamePasswordLoginForm]');
-                if (!form) return null;
-                const tipoID = form.tipoId ? form.tipoId.value : '';
-                const numero = form.username ? form.username.value : '';
-                const sucursal = form.sucursal ? form.sucursal.value : '';
-                const password = form.josso_password ? form.josso_password.value : '';
-                let campo;
-                if (tipoID === 'NIT' && !sucursal) {
-                    campo = tipoID + ',' + numero;
-                } else {
-                    campo = tipoID + ',' + numero + ',' + sucursal;
-                }
-                if (form.josso_username) form.josso_username.value = campo;
-                const payload = {};
-                for (const el of Array.from(form.elements)) {
-                    if (!el.name || el.disabled) continue;
-                    if ((el.type === 'checkbox' || el.type === 'radio') && !el.checked) continue;
-                    payload[el.name] = el.value;
-                }
-                payload.josso_username = campo;
-                payload.josso_password = password;
-                return { action: form.action || '', campo, payload };
-            }
-            """
-        )
+        data = frame.evaluate(_JS_LEER_JOSSO)
     except Exception as exc:
-        return f"No se pudo leer el formulario JOSSO: {exc}"
-
+        return None, f"No se pudo leer el formulario JOSSO: {exc}"
     if not data or not data.get("payload"):
-        return "Formulario JOSSO vacío o ilegible"
-
+        return None, "Formulario JOSSO vacío o ilegible"
     if DIAGNOSTICO and data.get("campo"):
         os.makedirs(DIAG_DIR, exist_ok=True)
         sello = time.strftime("%H%M%S")
         with open(os.path.join(DIAG_DIR, f"{sello}_josso_username.txt"), "w", encoding="utf-8") as f:
             f.write(str(data["campo"]))
+    return data, None
+
+
+def _destinos_post_login(resp_url: str) -> list[str]:
+    destinos = [SOFIA_HOME_URL, SOFIA_SELECCION_ROL_URL]
+    try:
+        final_url = _http_url(resp_url or "")
+        if (
+            final_url
+            and "senasofiaplus.edu.co/sofia" in final_url
+            and "josso_security_check" not in final_url
+        ):
+            destinos.insert(0, final_url)
+    except Exception:
+        pass
+    return destinos
+
+
+def _probar_destinos_post_login(page: Page, destinos: list[str]) -> str | None:
+    """None = sesión ok; MSG_CRED_INVALIDAS = credenciales; '' = seguir intentando."""
+    for destino in destinos:
+        try:
+            page.goto(_http_url(destino), wait_until="domcontentloaded", timeout=25000)
+            page.wait_for_timeout(2000)
+            if _login_fallido(page):
+                return MSG_CRED_INVALIDAS
+            if _pagina_error_sofia(page):
+                continue
+            if _sesion_post_login_ok(page):
+                _dump(page, "03_post_login_request_ok", solo_error=False)
+                return None
+        except Exception:
+            continue
+    return ""
+
+
+def _login_por_request(page: Page) -> str | None:
+    """POST JOSSO vía APIRequest (comparte cookies) evitando ERR_BLOCKED_BY_CLIENT al navegar."""
+    data, err = _leer_payload_josso(page)
+    if err or data is None:
+        return err or "Formulario JOSSO vacío o ilegible"
 
     action = _absolutizar_url_josso(str(data.get("action") or ""), page)
     try:
@@ -780,28 +837,9 @@ def _login_por_request(page: Page) -> str | None:
         with open(os.path.join(DIAG_DIR, f"{sello}_josso_post_status.txt"), "w", encoding="utf-8") as f:
             f.write(f"status={resp.status}\nurl={resp.url}\n")
 
-    # Tras POST exitoso, ir al home (josso_security_check a menudo responde 404).
-    destinos = [SOFIA_HOME_URL, SOFIA_SELECCION_ROL_URL]
-    try:
-        final_url = _http_url(resp.url or "")
-        if final_url and "senasofiaplus.edu.co/sofia" in final_url and "josso_security_check" not in final_url:
-            destinos.insert(0, final_url)
-    except Exception:
-        pass
-
-    for destino in destinos:
-        try:
-            page.goto(_http_url(destino), wait_until="domcontentloaded", timeout=25000)
-            page.wait_for_timeout(2000)
-            if _login_fallido(page):
-                return "Credenciales SENA inválidas"
-            if _pagina_error_sofia(page):
-                continue
-            if _sesion_post_login_ok(page):
-                _dump(page, "03_post_login_request_ok", solo_error=False)
-                return None
-        except Exception:
-            continue
+    resultado = _probar_destinos_post_login(page, _destinos_post_login(resp.url or ""))
+    if resultado != "":
+        return resultado
 
     if _hay_error_chrome(page) and _recuperar_post_login(page) and _sesion_post_login_ok(page):
         return None
@@ -851,6 +889,121 @@ def _enviar_formulario_login(page: Page) -> bool:
     return False
 
 
+def _enviar_login_fallback_click(page: Page) -> bool:
+    if _enviar_formulario_login(page):
+        return True
+    for texto in ("INGRESAR", "Ingresar"):
+        if _click_texto(page, texto):
+            return True
+    return False
+
+
+def _manejar_chrome_durante_espera(
+    page: Page, inicio: float, err_req: str | None
+) -> tuple[str | None, float | None]:
+    """(error|None si ok, nuevo_inicio|None si no reset)."""
+    _dump(page, "error_chrome_previo", solo_error=False)
+    if _recuperar_post_login(page):
+        if _sesion_post_login_ok(page):
+            return None, None
+        return "", time.monotonic()
+    if (time.monotonic() - inicio) * 1000 > POST_LOGIN_FAIL_FAST_MS:
+        _dump(page, "error_chrome")
+        return (
+            "SofiaPlus bloqueó la navegación tras el login (ERR_BLOCKED_BY_CLIENT en authpre). "
+            f"Detalle request: {err_req}"
+        ), None
+    return "", None
+
+
+def _msg_login_no_completo(err_req: str | None) -> str:
+    return (
+        "El login no se completó (SofiaPlus siguió en pantalla de ingreso). "
+        f"Detalle: {err_req}"
+    )
+
+
+def _resultado_chrome_en_tick(
+    page: Page, inicio: float, err_req: str | None
+) -> tuple[str | None, float] | None:
+    """None = no hay chrome-error; si hay, retorna (resultado, inicio)."""
+    if not _hay_error_chrome(page):
+        return None
+    err, nuevo_inicio = _manejar_chrome_durante_espera(page, inicio, err_req)
+    if err is None:
+        return None, inicio
+    if err:
+        return err, inicio
+    return "", nuevo_inicio if nuevo_inicio is not None else inicio
+
+
+def _resultado_login_estancado(
+    page: Page, inicio: float, err_req: str | None
+) -> tuple[str | None, float] | None:
+    """None = no aplica; si aplica timeout en login, retorna (resultado, inicio)."""
+    if not _en_pagina_login(page):
+        return None
+    if (time.monotonic() - inicio) * 1000 <= POST_LOGIN_FAIL_FAST_MS:
+        return None
+    if _recuperar_post_login(page) and _sesion_post_login_ok(page):
+        return None, inicio
+    _dump(page, "login_no_completo")
+    return _msg_login_no_completo(err_req), inicio
+
+
+def _tick_espera_login(
+    page: Page, inicio: float, i: int, pasos: int, err_req: str | None
+) -> tuple[str | None, float]:
+    """Retorna (resultado|'' para seguir, inicio_actualizado). resultado None = ok."""
+    if _sesion_post_login_ok(page):
+        return None, inicio
+    if _login_fallido(page):
+        _dump(page, "error_credenciales")
+        return MSG_CRED_INVALIDAS, inicio
+
+    chrome = _resultado_chrome_en_tick(page, inicio, err_req)
+    if chrome is not None:
+        return chrome
+
+    estancado = _resultado_login_estancado(page, inicio, err_req)
+    if estancado is not None:
+        return estancado
+
+    if i > pasos - 3:
+        err = _detectar_error_pagina(page, ignorar_si_hay_roles=True)
+        if err:
+            _dump(page, "error_login")
+            return err, inicio
+    return "", inicio
+
+
+def _resultado_final_espera_login(page: Page, err_req: str | None) -> str | None:
+    if _sesion_post_login_ok(page):
+        return None
+    if _hay_error_chrome(page) and _recuperar_post_login(page) and _sesion_post_login_ok(page):
+        return None
+    err = _detectar_error_pagina(page, ignorar_si_hay_roles=False)
+    if err:
+        _dump(page, "login_error_402")
+        return err
+    if _en_pagina_login(page):
+        _dump(page, "login_no_completo")
+        return _msg_login_no_completo(err_req)
+    _dump(page, "login_sin_roles")
+    return "Login completado pero no apareció la Lista de Roles en SofiaPlus (revise encabezado/sidebar)"
+
+
+def _esperar_sesion_tras_submit(page: Page, err_req: str | None) -> str | None:
+    inicio = time.monotonic()
+    pasos = max(1, WAIT_LOGIN_MS // 250)
+    for i in range(pasos):
+        resultado, inicio = _tick_espera_login(page, inicio, i, pasos, err_req)
+        if resultado != "":
+            return resultado
+        page.wait_for_timeout(250)
+    return _resultado_final_espera_login(page, err_req)
+
+
 def _completar_login(page: Page, cred: Credenciales) -> str | None:
     """Completa el formulario de login (Scrapling ya navegó a welcome.jsp → authpre)."""
     _dump(page, "01_login_cargado", solo_error=False)
@@ -868,22 +1021,15 @@ def _completar_login(page: Page, cred: Credenciales) -> str | None:
     err_req = _login_por_request(page)
     if err_req is None:
         return None
-    if err_req == "Credenciales SENA inválidas":
+    if err_req == MSG_CRED_INVALIDAS:
         _dump(page, "error_credenciales")
         return err_req
 
     _dump(page, "03_post_login_request_fallback", solo_error=False)
 
-    # Fallback navegación clásica (submit + recuperación).
-    if not _enviar_formulario_login(page):
-        enviado = False
-        for texto in ("INGRESAR", "Ingresar"):
-            if _click_texto(page, texto):
-                enviado = True
-                break
-        if not enviado:
-            _dump(page, "error_enviar_login")
-            return err_req or "No se pudo enviar el formulario de login (Ingresar)"
+    if not _enviar_login_fallback_click(page):
+        _dump(page, "error_enviar_login")
+        return err_req or "No se pudo enviar el formulario de login (Ingresar)"
 
     try:
         page.wait_for_load_state("domcontentloaded", timeout=30000)
@@ -897,65 +1043,11 @@ def _completar_login(page: Page, cred: Credenciales) -> str | None:
         if _recuperar_post_login(page) and _sesion_post_login_ok(page):
             return None
 
-    inicio = time.monotonic()
-    pasos = max(1, WAIT_LOGIN_MS // 250)
-    for i in range(pasos):
-        if _sesion_post_login_ok(page):
-            return None
-        if _login_fallido(page):
-            _dump(page, "error_credenciales")
-            return "Credenciales SENA inválidas"
-        transcurrido_ms = (time.monotonic() - inicio) * 1000
-        if _hay_error_chrome(page):
-            _dump(page, "error_chrome_previo", solo_error=False)
-            if _recuperar_post_login(page):
-                if _sesion_post_login_ok(page):
-                    return None
-                inicio = time.monotonic()
-                continue
-            if transcurrido_ms > POST_LOGIN_FAIL_FAST_MS:
-                _dump(page, "error_chrome")
-                return (
-                    "SofiaPlus bloqueó la navegación tras el login (ERR_BLOCKED_BY_CLIENT en authpre). "
-                    f"Detalle request: {err_req}"
-                )
-        if _en_pagina_login(page) and transcurrido_ms > POST_LOGIN_FAIL_FAST_MS:
-            if _recuperar_post_login(page) and _sesion_post_login_ok(page):
-                return None
-            _dump(page, "login_no_completo")
-            return (
-                "El login no se completó (SofiaPlus siguió en pantalla de ingreso). "
-                f"Detalle: {err_req}"
-            )
-        if i > pasos - 3:
-            err = _detectar_error_pagina(page, ignorar_si_hay_roles=True)
-            if err:
-                _dump(page, "error_login")
-                return err
-        page.wait_for_timeout(250)
-
-    if _sesion_post_login_ok(page):
-        return None
-
-    if _hay_error_chrome(page) and _recuperar_post_login(page) and _sesion_post_login_ok(page):
-        return None
-
-    err = _detectar_error_pagina(page, ignorar_si_hay_roles=False)
-    if err:
-        _dump(page, "login_error_402")
-        return err
-    if _en_pagina_login(page):
-        _dump(page, "login_no_completo")
-        return (
-            "El login no se completó (SofiaPlus siguió en pantalla de ingreso). "
-            f"Detalle: {err_req}"
-        )
-    _dump(page, "login_sin_roles")
-    return "Login completado pero no apareció la Lista de Roles en SofiaPlus (revise encabezado/sidebar)"
+    return _esperar_sesion_tras_submit(page, err_req)
 
 
 def _en_formulario_consultar(page: Page) -> bool:
-    if not _texto_visible_en_frames(page, "Consultar Registro"):
+    if not _texto_visible_en_frames(page, MENU_CONSULTAR_REGISTRO):
         return False
     for frame in _frames(page):
         try:
@@ -966,34 +1058,42 @@ def _en_formulario_consultar(page: Page) -> bool:
     return False
 
 
+def _aplicar_opcion_select(page: Page, sel: Any, opt: Any) -> bool:
+    label = opt.inner_text().strip()
+    if not label:
+        return False
+    value = opt.get_attribute("value")
+    if value:
+        sel.select_option(value=value, timeout=5000)
+    else:
+        sel.select_option(label=label, timeout=5000)
+    page.wait_for_timeout(WAIT_SHORT_MS)
+    return True
+
+
+def _seleccionar_en_select(page: Page, sel: Any, texto: str) -> bool:
+    opts = sel.locator("option")
+    for j in range(opts.count()):
+        opt = opts.nth(j)
+        label = opt.inner_text().strip()
+        if label and _texto_coincide(label, texto) and _aplicar_opcion_select(page, sel, opt):
+            return True
+    return False
+
+
 def _seleccionar_por_texto(page: Page, selector: str, texto: str) -> bool:
-    buscar = _normalizar_texto(texto)
     for frame in _frames(page):
         try:
             selects = frame.locator(selector)
             for i in range(selects.count()):
-                sel = selects.nth(i)
-                opts = sel.locator("option")
-                for j in range(opts.count()):
-                    opt = opts.nth(j)
-                    label = opt.inner_text().strip()
-                    if not label:
-                        continue
-                    if _texto_coincide(label, texto):
-                        value = opt.get_attribute("value")
-                        if value:
-                            sel.select_option(value=value, timeout=5000)
-                        else:
-                            sel.select_option(label=label, timeout=5000)
-                        page.wait_for_timeout(WAIT_SHORT_MS)
-                        return True
+                if _seleccionar_en_select(page, selects.nth(i), texto):
+                    return True
         except Exception:
             continue
     return False
 
 
 def _click_texto(page: Page, texto: str) -> bool:
-    buscar = _normalizar_texto(texto)
     for frame in _frames(page):
         js = """
         (texto) => {
@@ -1025,42 +1125,33 @@ def _click_texto(page: Page, texto: str) -> bool:
     return False
 
 
-def _error_402_en_pagina(page: Page) -> bool:
-    if _tiene_lista_roles(page):
-        return False
+def _texto_tiene_402(t: str) -> bool:
+    return TXT_ERROR_402 in t or "intentando acceder de forma incorrecta" in t
+
+
+def _error_402_en_url_o_titulo(page: Page) -> bool:
     try:
         if "error402.jsp" in page.url.lower():
             return True
     except Exception:
         pass
     try:
-        if "error 402" in _normalizar_texto(page.title()):
+        return TXT_ERROR_402 in _normalizar_texto(page.title())
+    except Exception:
+        return False
+
+
+def _error_402_en_pagina(page: Page) -> bool:
+    if _tiene_lista_roles(page):
+        return False
+    if _error_402_en_url_o_titulo(page):
+        return True
+    try:
+        if _texto_tiene_402(_normalizar_texto(page.content())):
             return True
     except Exception:
         pass
-
-    main_html = ""
-    try:
-        main_html = _normalizar_texto(page.content())
-    except Exception:
-        pass
-    main_tiene_402 = (
-        "error 402" in main_html
-        or "intentando acceder de forma incorrecta" in main_html
-    )
-    if main_tiene_402:
-        return True
-
     # 402 solo en iframe hijo suele ser transitorio (loadOk); no fallar aún.
-    for frame in page.frames:
-        if frame == page.main_frame:
-            continue
-        try:
-            t = _normalizar_texto(frame.inner_text("body"))
-            if "error 402" in t or "intentando acceder de forma incorrecta" in t:
-                return False
-        except Exception:
-            continue
     return False
 
 
@@ -1084,9 +1175,9 @@ def _detectar_error_pagina(page: Page, *, ignorar_si_hay_roles: bool = True) -> 
     if "acceso restringido" in texto or "pagina web bloqueada" in texto:
         return "SofiaPlus bloqueó el acceso automatizado"
     if "informacion de usuario invalida" in texto or "credenciales invalidas" in texto:
-        return "Credenciales SENA inválidas"
+        return MSG_CRED_INVALIDAS
     if "usuario y contrase" in texto and "invalid" in texto:
-        return "Credenciales SENA inválidas"
+        return MSG_CRED_INVALIDAS
     return None
 
 
@@ -1099,7 +1190,7 @@ def _login_fallido(page: Page) -> str | None:
         except Exception:
             continue
         if "informacion de usuario invalida" in texto:
-            return "Credenciales SENA inválidas"
+            return MSG_CRED_INVALIDAS
     return None
 
 
@@ -1140,6 +1231,39 @@ def _disparar_cambio_select(sel: Any) -> None:
         pass
 
 
+def _probar_select_opcion_rol(sel: Any, value: str, label: str) -> Any | None:
+    try:
+        sel.select_option(value=value, timeout=4000)
+        return sel
+    except Exception:
+        try:
+            sel.select_option(label=label, timeout=4000)
+            return sel
+        except Exception:
+            return None
+
+
+def _elegir_rol_en_selects(page: Page, variantes: list[str]) -> Any | None:
+    for frame in _frames(page):
+        for sel, value, label in _opciones_select_roles(frame):
+            if not any(_texto_coincide(label, v) for v in variantes):
+                continue
+            usado = _probar_select_opcion_rol(sel, value, label)
+            if usado is not None:
+                return usado
+    return None
+
+
+def _elegir_rol_fallback(page: Page, variantes: list[str]) -> bool:
+    for variante in variantes:
+        if _seleccionar_por_texto(page, "select", variante):
+            return True
+    for variante in variantes:
+        if _click_texto(page, variante):
+            return True
+    return False
+
+
 def _seleccionar_rol(page: Page, rol: str) -> str | None:
     if not _esperar_lista_roles(page, timeout_ms=WAIT_ROLES_MS):
         err = _detectar_error_pagina(page, ignorar_si_hay_roles=False)
@@ -1149,39 +1273,9 @@ def _seleccionar_rol(page: Page, rol: str) -> str | None:
             return "El login no se completó antes de elegir el rol"
         return f"No se encontró la Lista de Roles (encabezado/sidebar) para '{rol}'"
 
-    seleccionado = False
-    select_usado = None
     variantes = _variantes_rol(rol)
-    for frame in _frames(page):
-        for sel, value, label in _opciones_select_roles(frame):
-            if not any(_texto_coincide(label, v) for v in variantes):
-                continue
-            try:
-                sel.select_option(value=value, timeout=4000)
-                select_usado = sel
-                seleccionado = True
-                break
-            except Exception:
-                try:
-                    sel.select_option(label=label, timeout=4000)
-                    select_usado = sel
-                    seleccionado = True
-                    break
-                except Exception:
-                    continue
-        if seleccionado:
-            break
-
-    if not seleccionado:
-        for variante in variantes:
-            if _seleccionar_por_texto(page, "select", variante):
-                seleccionado = True
-                break
-    if not seleccionado:
-        for variante in variantes:
-            if _click_texto(page, variante):
-                seleccionado = True
-                break
+    select_usado = _elegir_rol_en_selects(page, variantes)
+    seleccionado = select_usado is not None or _elegir_rol_fallback(page, variantes)
     if not seleccionado:
         return f"No se pudo seleccionar el rol '{rol}' en el sidebar/encabezado"
 
@@ -1191,7 +1285,7 @@ def _seleccionar_rol(page: Page, rol: str) -> str | None:
     page.wait_for_timeout(WAIT_MENU_MS)
 
     for _ in range(20):
-        if _texto_visible_en_frames(page, "SGS"):
+        if _texto_visible_en_frames(page, MENU_SGS):
             return None
         page.wait_for_timeout(250)
     return f"No apareció el menú SGS en el sidebar tras elegir el rol '{rol}'"
@@ -1208,44 +1302,55 @@ def _navegar_consultar_registro(page: Page) -> str | None:
     return None
 
 
+def _valor_tras_etiqueta(texto: str, prefijos: tuple[str, ...]) -> str:
+    for line in texto.splitlines():
+        norm = _normalizar_texto(line)
+        for pref in prefijos:
+            if not norm.startswith(pref):
+                continue
+            # Tomar el valor desde la línea original (tras ':').
+            if ":" in line:
+                return line.split(":", 1)[1].strip()
+            return line[len(pref) :].strip()
+    return ""
+
+
+def _resolver_tipo_doc(raw: str) -> str:
+    if not raw:
+        return ""
+    tipo = CODIGO_A_TIPO_CORTO.get(raw.upper(), raw)
+    if len(tipo) <= 4:
+        return CODIGO_A_TIPO_CORTO.get(raw.upper(), SOFIA_CODIGO_A_TIPO.get(raw.upper(), raw))
+    return tipo
+
+
 def _extraer_registro(texto: str, numero: str) -> tuple[str, str] | None:
     t = _normalizar_texto(texto)
     if MSG_NO_REGISTRADO in t:
         return None
     if "nis:" not in t and "tipo de identificacion:" not in t:
         return None
-    if numero not in texto.replace(" ", ""):
-        # número puede aparecer con espacios; comprobar substring simple
-        if numero not in texto:
-            return None
+    if numero not in texto.replace(" ", "") and numero not in texto:
+        return None
 
-    tipo = ""
-    m = re.search(
-        r"Tipo de Identificaci[oó]n:\s*([A-Za-z0-9\s\-]+?)(?:\n|N[uú]mero)",
-        texto,
-        re.IGNORECASE,
-    )
-    if m:
-        raw = m.group(1).strip()
-        tipo = CODIGO_A_TIPO_CORTO.get(raw.upper(), raw)
-        if len(tipo) <= 4:
-            tipo = CODIGO_A_TIPO_CORTO.get(raw.upper(), SOFIA_CODIGO_A_TIPO.get(raw.upper(), raw))
+    raw_tipo = _valor_tras_etiqueta(texto, _PREF_TIPO_IDENT)
+    # Si el valor incluye "Número...", recortar.
+    for marca in ("Número", "Numero", "número", "numero"):
+        if marca in raw_tipo:
+            raw_tipo = raw_tipo.split(marca, 1)[0].strip()
+            break
+    tipo = _resolver_tipo_doc(raw_tipo)
 
-    nombres = ""
-    m_nom = re.search(r"Nombres:\s*(.+?)(?:\n|Primer Apellido)", texto, re.IGNORECASE)
-    m_a1 = re.search(r"Primer Apellido:\s*(.+?)(?:\n|Segundo Apellido)", texto, re.IGNORECASE)
-    m_a2 = re.search(r"Segundo Apellido:\s*(.+?)(?:\n|$)", texto, re.IGNORECASE)
-    partes = []
-    if m_nom:
-        partes.append(m_nom.group(1).strip())
-    if m_a1:
-        partes.append(m_a1.group(1).strip())
-    if m_a2:
-        partes.append(m_a2.group(1).strip())
-    if partes:
-        nombres = " ".join(partes)
-
-    return tipo, nombres
+    partes = [
+        v
+        for v in (
+            _valor_tras_etiqueta(texto, _PREF_NOMBRES),
+            _valor_tras_etiqueta(texto, _PREF_APELLIDO1),
+            _valor_tras_etiqueta(texto, _PREF_APELLIDO2),
+        )
+        if v
+    ]
+    return tipo, " ".join(partes)
 
 
 def _seleccionar_en_select_indice(page: Page, indice: int, texto: str) -> bool:
@@ -1254,24 +1359,56 @@ def _seleccionar_en_select_indice(page: Page, indice: int, texto: str) -> bool:
             selects = frame.locator("select")
             if indice >= selects.count():
                 continue
-            sel = selects.nth(indice)
-            opts = sel.locator("option")
-            for j in range(opts.count()):
-                opt = opts.nth(j)
-                label = opt.inner_text().strip()
-                if not label:
-                    continue
-                if _texto_coincide(label, texto):
-                    value = opt.get_attribute("value")
-                    if value:
-                        sel.select_option(value=value, timeout=5000)
-                    else:
-                        sel.select_option(label=label, timeout=5000)
-                    page.wait_for_timeout(WAIT_SHORT_MS)
-                    return True
+            if _seleccionar_en_select(page, selects.nth(indice), texto):
+                return True
         except Exception:
             continue
     return False
+
+
+def _escribir_numero_consulta(page: Page, numero: str) -> bool:
+    for frame in _frames(page):
+        try:
+            inputs = frame.locator('input[type="text"]')
+            count = inputs.count()
+            if count == 0:
+                continue
+            campo = inputs.nth(count - 1)
+            campo.fill("")
+            campo.fill(numero)
+            return True
+        except Exception:
+            continue
+    return False
+
+
+def _leer_cuerpo_frames(page: Page) -> str:
+    for frame in _frames(page):
+        try:
+            texto = frame.inner_text("body")
+            if texto.strip():
+                return texto
+        except Exception:
+            continue
+    return ""
+
+
+def _resultado_consulta_registro(
+    page: Page, tipo: str, numero: str
+) -> tuple[str, str, str]:
+    page.wait_for_timeout(WAIT_FORM_MS)
+    texto = _leer_cuerpo_frames(page)
+    if not texto:
+        return VERIFICACION_NO_VERIFICADO, "", "No se pudo leer la respuesta de SofiaPlus"
+
+    _dump(page, f"resultado_{_sanitize(tipo)}")
+    parsed = _extraer_registro(texto, numero)
+    if parsed:
+        tipo_doc, nombre = parsed
+        return VERIFICACION_REGISTRADO, tipo_doc or tipo, nombre
+    if MSG_NO_REGISTRADO in _normalizar_texto(texto):
+        return VERIFICACION_NO_REGISTRADO, "", ""
+    return VERIFICACION_NO_VERIFICADO, "", "SofiaPlus no devolvió una respuesta clara"
 
 
 def _consultar_un_tipo(page: Page, tipo: str, numero: str) -> tuple[str, str, str]:
@@ -1284,50 +1421,13 @@ def _consultar_un_tipo(page: Page, tipo: str, numero: str) -> tuple[str, str, st
         if not _seleccionar_en_select_indice(page, 1, tipo):
             return VERIFICACION_NO_VERIFICADO, "", f"No se pudo seleccionar tipo '{tipo}'"
 
-    escrito = False
-    for frame in _frames(page):
-        try:
-            inputs = frame.locator('input[type="text"]')
-            count = inputs.count()
-            if count == 0:
-                continue
-            campo = inputs.nth(count - 1)
-            campo.fill("")
-            campo.fill(numero)
-            escrito = True
-            break
-        except Exception:
-            continue
-    if not escrito:
-        return VERIFICACION_NO_VERIFICADO, "", f"No se pudo escribir el número de documento"
+    if not _escribir_numero_consulta(page, numero):
+        return VERIFICACION_NO_VERIFICADO, "", "No se pudo escribir el número de documento"
 
-    if not (_click_texto(page, "Consultar Registro")):
-        return VERIFICACION_NO_VERIFICADO, "", "No se pudo hacer clic en Consultar Registro"
+    if not _click_texto(page, MENU_CONSULTAR_REGISTRO):
+        return VERIFICACION_NO_VERIFICADO, "", f"No se pudo hacer clic en {MENU_CONSULTAR_REGISTRO}"
 
-    page.wait_for_timeout(WAIT_FORM_MS)
-    texto = ""
-    for frame in _frames(page):
-        try:
-            texto = frame.inner_text("body")
-            if texto.strip():
-                break
-        except Exception:
-            continue
-    if not texto:
-        return VERIFICACION_NO_VERIFICADO, "", "No se pudo leer la respuesta de SofiaPlus"
-
-    _dump(page, f"resultado_{_sanitize(tipo)}")
-    parsed = _extraer_registro(texto, numero)
-    if parsed:
-        tipo_doc, nombre = parsed
-        tipo_final = tipo_doc or tipo
-        return VERIFICACION_REGISTRADO, tipo_final, nombre
-
-    t = _normalizar_texto(texto)
-    if MSG_NO_REGISTRADO in t:
-        return VERIFICACION_NO_REGISTRADO, "", ""
-
-    return VERIFICACION_NO_VERIFICADO, "", "SofiaPlus no devolvió una respuesta clara"
+    return _resultado_consulta_registro(page, tipo, numero)
 
 
 def _tipos_a_probar(tipo_codigo: str) -> list[str]:

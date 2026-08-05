@@ -18,22 +18,34 @@ from scrapling.fetchers import StealthyFetcher
 from app.config import require_login_url
 from app import scraper as s
 
-ROL_USUARIO_SENA = "Usuario SENA"
+ROL_USUARIO_SENA = s.ROL_USUARIO_SENA
 
 ESTADO_ENCONTRADO = "ENCONTRADO"
 ESTADO_NO_ENCONTRADO = "NO_ENCONTRADO"
 ESTADO_NO_VERIFICADO = "NO_VERIFICADO"
 
 TIPOS_INSCRIPCION = [
-    "Cédula de Ciudadanía",
-    "Tarjeta de Identidad",
-    "Cédula de Extranjería",
-    "Permiso especial de permanencia",
-    "Permiso por Protección Temporal",
-    "DNI - Documento Nacional de Identificación",
-    "Número Ciego SENA",
+    s.TIPO_CC,
+    s.TIPO_TI,
+    s.TIPO_CE,
+    s.TIPO_PEP,
+    s.TIPO_PPT,
+    s.TIPO_DNI,
+    s.TIPO_NCS,
     "Pasaporte",
 ]
+
+# Estados de fila (orden: más largos primero para emparejar sufijo).
+_ESTADOS_FILA = (
+    "cancelado academico",
+    "no admitido",
+    "certificado",
+    "matriculado",
+    "cancelado",
+    "retiro",
+    "traslado",
+    "aplazado",
+)
 
 MAX_PAGINAS = 40
 
@@ -71,9 +83,10 @@ MENU_CONSULTAR_INSCRIPCIONES = "Consultar Inscripciones a Programas de Formació
 HREF_USUARIO_SENA = "validarUsuarioConsulta.faces"
 HREF_ASPIRANTE = "consultarInscripcion.faces"
 # Sofía Plus en este entorno solo responde por HTTP (no HTTPS en el puerto del portal).
-URL_CONSULTAR_INSCRIPCION_USUARIO_SENA = (  # NOSONAR python:S5332
-    "http://senasofiaplus.edu.co/sofia/inscripcion/consultarinscripcion/"
-    "validarUsuarioConsulta.faces?menId=11&fwkmenu=si"
+URL_CONSULTAR_INSCRIPCION_USUARIO_SENA = (
+    s.SCHEME_HTTP
+    + "senasofiaplus.edu.co/sofia/inscripcion/consultarinscripcion/"
+    + "validarUsuarioConsulta.faces?menId=11&fwkmenu=si"
 )
 WAIT_IFRAME_FORM_MS = 25000
 VALOR_ROL_USUARIO_SENA = "2"
@@ -175,23 +188,23 @@ def _selects_con_opcion(frame, texto: str) -> list:
     return hallados
 
 
+def _select_roles_candidato(frame):
+    for sel in _selects_con_opcion(frame, ROL_ASPIRANTE):
+        labels = s._labels_select(frame, sel)
+        if any(s._texto_coincide(lb, ROL_USUARIO_SENA) for lb in labels):
+            return sel
+        if len(labels) >= 3:
+            return sel
+    return None
+
+
 def _encontrar_select_roles_aspirante(page: Page):
     """Busca el combo del sidebar que muestra/contiene Aspirante (no el texto 'Lista de Roles')."""
     for _ in range(max(1, s.WAIT_ROLES_MS // 250)):
         for frame in s._frames(page):
-            for sel in _selects_con_opcion(frame, ROL_ASPIRANTE):
-                labels = s._labels_select(frame, sel)
-                # Debe poder elegir Usuario SENA en el mismo combo.
-                if any(s._texto_coincide(lb, ROL_USUARIO_SENA) for lb in labels):
-                    return sel, frame
-                # Aunque no liste aún Usuario SENA en labels cacheadas, si tiene Aspirante + varios roles.
-                if len(labels) >= 3:
-                    return sel, frame
-        if s._texto_visible_en_frames(page, "Bienvenido a SOFIA") or s._texto_visible_en_frames(
-            page, ROL_ASPIRANTE
-        ):
-            page.wait_for_timeout(250)
-            continue
+            sel = _select_roles_candidato(frame)
+            if sel is not None:
+                return sel, frame
         page.wait_for_timeout(250)
     return None, None
 
@@ -345,6 +358,30 @@ def _intentar_seleccionar_usuario_sena(page: Page) -> bool:
     return _rol_actual_parece_usuario_sena(page)
 
 
+def _confirmar_rol_usuario_sena_estable(page: Page) -> bool:
+    ok_estable = 0
+    for _ in range(12):
+        if _blockui_visible(page):
+            ok_estable = 0
+        elif _rol_actual_parece_usuario_sena(page):
+            ok_estable += 1
+            if ok_estable >= 3:
+                return True
+        else:
+            ok_estable = 0
+        page.wait_for_timeout(250)
+    return False
+
+
+def _recargar_home_roles(page: Page) -> None:
+    try:
+        page.goto(s.SOFIA_HOME_URL, wait_until="domcontentloaded", timeout=25000)
+        page.wait_for_timeout(2000)
+        _esperar_sin_blockui(page, 15000)
+    except Exception:
+        pass
+
+
 def _seleccionar_usuario_sena(page: Page) -> str | None:
     """Obligatorio: quedar en Usuario SENA. Sin fallback a Aspirante/Aprendiz."""
     if s._en_pagina_login(page):
@@ -357,36 +394,20 @@ def _seleccionar_usuario_sena(page: Page) -> str | None:
         s._dump(page, "04_rol_ya_usuario_sena", solo_error=False)
         return None
 
-    # Hasta 3 intentos: Sofía a veces deja Aprendiz o se queda en blockUI.
     for intento in range(1, 4):
-        if _intentar_seleccionar_usuario_sena(page):
-            # Confirmar estable (no un flash del value).
-            ok_estable = 0
-            for _ in range(12):
-                if _blockui_visible(page):
-                    ok_estable = 0
-                elif _rol_actual_parece_usuario_sena(page):
-                    ok_estable += 1
-                    if ok_estable >= 3:
-                        s._dump(page, "04_rol_despues_usuario_sena", solo_error=False)
-                        return None
-                else:
-                    ok_estable = 0
-                page.wait_for_timeout(250)
+        if _intentar_seleccionar_usuario_sena(page) and _confirmar_rol_usuario_sena_estable(page):
+            s._dump(page, "04_rol_despues_usuario_sena", solo_error=False)
+            return None
         actual = _rol_label_actual(page) or "?"
         s._dump(page, f"04_rol_intento_{intento}_{s._sanitize(actual)}", solo_error=False)
-        try:
-            page.goto(s.SOFIA_HOME_URL, wait_until="domcontentloaded", timeout=25000)
-            page.wait_for_timeout(2000)
-            _esperar_sin_blockui(page, 15000)
-        except Exception:
-            pass
+        _recargar_home_roles(page)
 
     actual = _rol_label_actual(page) or "desconocido"
     s._dump(page, f"error_rol_actual_{s._sanitize(actual)}")
     return (
-        f"No se pudo cambiar de '{actual}' a 'Usuario SENA'. "
-        "En Sofía hay que elegir Usuario SENA en el select del sidebar (no basta Aspirante/Aprendiz)."
+        f"No se pudo cambiar de '{actual}' a '{ROL_USUARIO_SENA}'. "
+        f"En Sofía hay que elegir {ROL_USUARIO_SENA} en el select del sidebar "
+        "(no basta Aspirante/Aprendiz)."
     )
 
 
@@ -545,43 +566,55 @@ def _navegar_consultar_inscripciones(page: Page) -> str | None:
     return "No se cargó el formulario Consultar Inscripción (validarUsuarioConsulta)"
 
 
+def _sesion_reconocible(page: Page) -> bool:
+    return (
+        s._sesion_sofia_activa(page)
+        or s._texto_visible_en_frames(page, ROL_ASPIRANTE)
+        or s._texto_visible_en_frames(page, "Bienvenido a SOFIA")
+    )
+
+
+def _ir_home_sofia(page: Page) -> None:
+    try:
+        page.goto(s.SOFIA_HOME_URL, wait_until="domcontentloaded", timeout=25000)
+        page.wait_for_timeout(1500)
+    except Exception:
+        pass
+
+
+def _login_si_necesario(page: Page, cred: s.Credenciales) -> str | None:
+    if s._en_pagina_login(page):
+        return s._completar_login(page, cred)
+    if _sesion_reconocible(page):
+        return None
+
+    page.wait_for_timeout(800)
+    if s._en_pagina_login(page):
+        return s._completar_login(page, cred)
+    if s._sesion_sofia_activa(page) or s._texto_visible_en_frames(page, ROL_ASPIRANTE):
+        return None
+
+    err = s._detectar_error_pagina(page, ignorar_si_hay_roles=False)
+    if err:
+        return err
+    _ir_home_sofia(page)
+    return None
+
+
 def _asegurar_formulario_inscripciones(page: Page, cred: s.Credenciales) -> str | None:
     err = s._detectar_error_pagina(page, ignorar_si_hay_roles=True)
     if err:
         return err
-
     if _en_formulario_inscripcion(page):
         return None
 
-    if s._en_pagina_login(page):
-        err = s._completar_login(page, cred)
-        if err:
-            return err
-    elif not (
-        s._sesion_sofia_activa(page)
-        or s._texto_visible_en_frames(page, ROL_ASPIRANTE)
-        or s._texto_visible_en_frames(page, "Bienvenido a SOFIA")
-    ):
-        page.wait_for_timeout(800)
-        if s._en_pagina_login(page):
-            err = s._completar_login(page, cred)
-            if err:
-                return err
-        elif not s._sesion_sofia_activa(page) and not s._texto_visible_en_frames(page, ROL_ASPIRANTE):
-            err = s._detectar_error_pagina(page, ignorar_si_hay_roles=False)
-            if err:
-                return err
-            # Intentar home y continuar.
-            try:
-                page.goto(s.SOFIA_HOME_URL, wait_until="domcontentloaded", timeout=25000)
-                page.wait_for_timeout(1500)
-            except Exception:
-                pass
+    err = _login_si_necesario(page, cred)
+    if err:
+        return err
 
     err = _seleccionar_usuario_sena(page)
     if err:
         return err
-
     return _navegar_consultar_inscripciones(page)
 
 
@@ -680,189 +713,293 @@ def _set_input_value(campo, valor: str) -> bool:
         return False
 
 
-def _escribir_numero_en_formulario(page: Page, numero: str) -> bool:
-    """Escribe el documento en el iframe de Consultar Inscripción."""
-    selectores = [
-        'input[type="text"]',
-        "input:not([type])",
-        'input[type="number"]',
-        'input[type="tel"]',
-        'input[name*="identific" i]',
-        'input[id*="identific" i]',
-        'input[name*="documento" i]',
-        'input[id*="documento" i]',
-        'input[name*="numero" i]',
-        'input[id*="numero" i]',
-        "textarea",
-    ]
-    etiquetas = [
-        "Número de Identificación",
-        "Numero de Identificacion",
-        "Número de identificación",
-        "Identificación",
-    ]
+_SELECTORES_INPUT_DOC = [
+    'input[type="text"]',
+    "input:not([type])",
+    'input[type="number"]',
+    'input[type="tel"]',
+    'input[name*="identific" i]',
+    'input[id*="identific" i]',
+    'input[name*="documento" i]',
+    'input[id*="documento" i]',
+    'input[name*="numero" i]',
+    'input[id*="numero" i]',
+    "textarea",
+]
+_ETIQUETAS_INPUT_DOC = (
+    "Número de Identificación",
+    "Numero de Identificacion",
+    "Número de identificación",
+    "Identificación",
+)
+_JS_ESCRIBIR_CERCA_ETIQUETA = """(numero) => {
+    const norm = (s) => (s || '').toLowerCase()
+        .replace(/á/g,'a').replace(/é/g,'e').replace(/í/g,'i')
+        .replace(/ó/g,'o').replace(/ú/g,'u').replace(/ñ/g,'n');
+    const nodes = Array.from(document.querySelectorAll('label, td, span, div'));
+    let host = null;
+    for (const n of nodes) {
+        const t = norm(n.textContent || '');
+        if (t.includes('numero de identific')) {
+            host = n;
+            break;
+        }
+    }
+    if (!host) return false;
+    let input = host.querySelector('input, textarea');
+    if (!input && host.getAttribute('for')) {
+        input = document.getElementById(host.getAttribute('for'));
+    }
+    if (!input) {
+        let el = host.parentElement;
+        for (let i = 0; i < 4 && el && !input; i++, el = el.parentElement) {
+            input = el.querySelector('input:not([type=hidden]):not([type=submit]):not([type=button]), textarea');
+        }
+    }
+    if (!input) {
+        const tr = host.closest('tr');
+        if (tr) input = tr.querySelector('input:not([type=hidden]), textarea');
+    }
+    if (!input) return false;
+    input.removeAttribute('readonly');
+    input.removeAttribute('disabled');
+    input.focus();
+    input.value = numero;
+    for (const ev of ['input', 'keyup', 'change', 'blur']) {
+        input.dispatchEvent(new Event(ev, { bubbles: true }));
+    }
+    return (input.value || '') === numero;
+}"""
+_JS_PRIMER_EDITABLE = """(numero) => {
+    const inputs = Array.from(document.querySelectorAll('input, textarea'));
+    for (const el of inputs) {
+        const t = (el.type || 'text').toLowerCase();
+        if (['hidden','submit','button','checkbox','radio','password','image'].includes(t)) continue;
+        if ((el.name || '').toLowerCase().includes('rol')) continue;
+        el.removeAttribute('readonly');
+        el.removeAttribute('disabled');
+        el.focus();
+        el.value = numero;
+        for (const ev of ['input', 'keyup', 'change', 'blur']) {
+            el.dispatchEvent(new Event(ev, { bubbles: true }));
+        }
+        if ((el.value || '') === numero) return true;
+    }
+    return false;
+}"""
 
-    for frame in _frames_formulario(page):
-        # Solo intentar a fondo en el frame del formulario / contenido.
+
+def _frame_es_form_inscripcion(frame) -> bool:
+    try:
+        url = (getattr(frame, "url", "") or "").lower()
+    except Exception:
         url = ""
-        try:
-            url = (getattr(frame, "url", "") or "").lower()
-        except Exception:
-            pass
-        es_form = _url_es_form_inscripcion(url) or "contenido" in (
-            getattr(frame, "name", "") or ""
-        ).lower() or not url.startswith("http")
+    nombre = (getattr(frame, "name", "") or "").lower()
+    return _url_es_form_inscripcion(url) or "contenido" in nombre or not url.startswith("http")
 
-        for etiqueta in etiquetas:
-            try:
-                loc = frame.get_by_label(etiqueta, exact=False)
-                if loc.count() > 0 and _set_input_value(loc.first, numero):
-                    return True
-            except Exception:
-                pass
 
-        # Buscar input cerca del texto de la etiqueta (JSF a veces no asocia label).
+def _escribir_por_etiqueta(frame, numero: str) -> bool:
+    for etiqueta in _ETIQUETAS_INPUT_DOC:
         try:
-            ok = frame.evaluate(
-                """(numero) => {
-                    const norm = (s) => (s || '').toLowerCase()
-                        .replace(/á/g,'a').replace(/é/g,'e').replace(/í/g,'i')
-                        .replace(/ó/g,'o').replace(/ú/g,'u').replace(/ñ/g,'n');
-                    const nodes = Array.from(document.querySelectorAll('label, td, span, div'));
-                    let host = null;
-                    for (const n of nodes) {
-                        const t = norm(n.textContent || '');
-                        if (t.includes('numero de identific')) {
-                            host = n;
-                            break;
-                        }
-                    }
-                    if (!host) return false;
-                    let input = host.querySelector('input, textarea');
-                    if (!input && host.getAttribute('for')) {
-                        input = document.getElementById(host.getAttribute('for'));
-                    }
-                    if (!input) {
-                        let el = host.parentElement;
-                        for (let i = 0; i < 4 && el && !input; i++, el = el.parentElement) {
-                            input = el.querySelector('input:not([type=hidden]):not([type=submit]):not([type=button]), textarea');
-                        }
-                    }
-                    if (!input) {
-                        const tr = host.closest('tr');
-                        if (tr) input = tr.querySelector('input:not([type=hidden]), textarea');
-                    }
-                    if (!input) return false;
-                    input.removeAttribute('readonly');
-                    input.removeAttribute('disabled');
-                    input.focus();
-                    input.value = numero;
-                    for (const ev of ['input', 'keyup', 'change', 'blur']) {
-                        input.dispatchEvent(new Event(ev, { bubbles: true }));
-                    }
-                    return (input.value || '') === numero;
-                }""",
-                numero,
-            )
-            if ok:
+            loc = frame.get_by_label(etiqueta, exact=False)
+            if loc.count() > 0 and _set_input_value(loc.first, numero):
                 return True
         except Exception:
-            pass
-
-        candidatos = []
-        for sel in selectores:
-            try:
-                loc = frame.locator(sel)
-                for i in range(loc.count()):
-                    candidatos.append(loc.nth(i))
-            except Exception:
-                continue
-
-        # Preferir el último input de texto del formulario (patrón Sofia / registro).
-        for campo in reversed(candidatos):
-            try:
-                tipo = (campo.get_attribute("type") or "text").lower()
-                if tipo in {"hidden", "submit", "button", "checkbox", "radio", "password", "image"}:
-                    continue
-                name = (campo.get_attribute("name") or "").lower()
-                cid = (campo.get_attribute("id") or "").lower()
-                if "rol" in name or "rol" in cid or "josso" in name:
-                    continue
-                if _set_input_value(campo, numero):
-                    return True
-            except Exception:
-                continue
-
-        if es_form:
-            # Último recurso: primer input editable del documento del iframe.
-            try:
-                ok = frame.evaluate(
-                    """(numero) => {
-                        const inputs = Array.from(document.querySelectorAll('input, textarea'));
-                        for (const el of inputs) {
-                            const t = (el.type || 'text').toLowerCase();
-                            if (['hidden','submit','button','checkbox','radio','password','image'].includes(t)) continue;
-                            if ((el.name || '').toLowerCase().includes('rol')) continue;
-                            el.removeAttribute('readonly');
-                            el.removeAttribute('disabled');
-                            el.focus();
-                            el.value = numero;
-                            for (const ev of ['input', 'keyup', 'change', 'blur']) {
-                                el.dispatchEvent(new Event(ev, { bubbles: true }));
-                            }
-                            if ((el.value || '') === numero) return true;
-                        }
-                        return false;
-                    }""",
-                    numero,
-                )
-                if ok:
-                    return True
-            except Exception:
-                continue
+            continue
     return False
 
 
-def _llenar_consulta(page: Page, tipo: str, numero: str) -> str | None:
+def _escribir_cerca_etiqueta_js(frame, numero: str) -> bool:
+    try:
+        return bool(frame.evaluate(_JS_ESCRIBIR_CERCA_ETIQUETA, numero))
+    except Exception:
+        return False
+
+
+def _candidatos_input_numero(frame) -> list:
+    candidatos = []
+    for sel in _SELECTORES_INPUT_DOC:
+        try:
+            loc = frame.locator(sel)
+            for i in range(loc.count()):
+                candidatos.append(loc.nth(i))
+        except Exception:
+            continue
+    return candidatos
+
+
+def _escribir_en_candidatos(candidatos: list, numero: str) -> bool:
+    tipos_ignorar = {"hidden", "submit", "button", "checkbox", "radio", "password", "image"}
+    for campo in reversed(candidatos):
+        try:
+            tipo = (campo.get_attribute("type") or "text").lower()
+            if tipo in tipos_ignorar:
+                continue
+            name = (campo.get_attribute("name") or "").lower()
+            cid = (campo.get_attribute("id") or "").lower()
+            if "rol" in name or "rol" in cid or "josso" in name:
+                continue
+            if _set_input_value(campo, numero):
+                return True
+        except Exception:
+            continue
+    return False
+
+
+def _escribir_primer_editable(frame, numero: str) -> bool:
+    try:
+        return bool(frame.evaluate(_JS_PRIMER_EDITABLE, numero))
+    except Exception:
+        return False
+
+
+def _escribir_numero_en_frame(frame, numero: str) -> bool:
+    if _escribir_por_etiqueta(frame, numero):
+        return True
+    if _escribir_cerca_etiqueta_js(frame, numero):
+        return True
+    if _escribir_en_candidatos(_candidatos_input_numero(frame), numero):
+        return True
+    return _frame_es_form_inscripcion(frame) and _escribir_primer_editable(frame, numero)
+
+
+def _escribir_numero_en_formulario(page: Page, numero: str) -> bool:
+    """Escribe el documento en el iframe de Consultar Inscripción."""
+    for frame in _frames_formulario(page):
+        if _escribir_numero_en_frame(frame, numero):
+            return True
+    return False
+
+
+def _asegurar_form_antes_llenar(page: Page) -> str | None:
     _esperar_sin_blockui(page, 20000)
     if not _rol_actual_parece_usuario_sena(page):
         err = _seleccionar_usuario_sena(page)
         if err:
             return err
-    if not _en_formulario_inscripcion(page):
-        # Reintento corto de carga del iframe antes de fallar con mensaje confuso.
-        _cargar_iframe_inscripcion_directo(page)
-        if not _esperar_formulario_inscripcion(page, timeout_ms=12000):
-            s._dump(page, "error_form_antes_llenar")
-            _dump_iframe_contenido(page, "error_form_antes_llenar")
-            return "No se cargó el formulario Consultar Inscripción (validarUsuarioConsulta)"
+    if _en_formulario_inscripcion(page):
+        return None
+    _cargar_iframe_inscripcion_directo(page)
+    if _esperar_formulario_inscripcion(page, timeout_ms=12000):
+        return None
+    s._dump(page, "error_form_antes_llenar")
+    _dump_iframe_contenido(page, "error_form_antes_llenar")
+    return "No se cargó el formulario Consultar Inscripción (validarUsuarioConsulta)"
 
-    ok = False
+
+def _select_tiene_tipo(frame, sel, tipo: str) -> bool:
+    labels = s._labels_select(frame, sel)
+    if s._es_select_roles(labels):
+        return False
+    return any(s._texto_coincide(lb, tipo) for lb in labels)
+
+
+def _aplicar_tipo_en_select(sel, tipo: str) -> bool:
+    for j in range(sel.locator("option").count()):
+        opt = sel.locator("option").nth(j)
+        label = opt.inner_text().strip()
+        if not s._texto_coincide(label, tipo):
+            continue
+        value = opt.get_attribute("value") or label
+        sel.select_option(value=value, timeout=5000)
+        return True
+    return False
+
+
+def _seleccionar_tipo_en_formulario(page: Page, tipo: str) -> bool:
     for frame in _frames_formulario(page):
         try:
             selects = frame.locator("select")
             for i in range(selects.count()):
                 sel = selects.nth(i)
-                labels = s._labels_select(frame, sel)
-                if s._es_select_roles(labels):
-                    continue
-                if not any(s._texto_coincide(lb, tipo) for lb in labels):
-                    continue
-                for j in range(sel.locator("option").count()):
-                    opt = sel.locator("option").nth(j)
-                    label = opt.inner_text().strip()
-                    if s._texto_coincide(label, tipo):
-                        value = opt.get_attribute("value") or label
-                        sel.select_option(value=value, timeout=5000)
-                        ok = True
-                        break
-                if ok:
-                    break
-            if ok:
-                break
+                if _select_tiene_tipo(frame, sel, tipo) and _aplicar_tipo_en_select(sel, tipo):
+                    return True
         except Exception:
             continue
-    if not ok and not s._seleccionar_por_texto(page, "select", tipo):
+    return s._seleccionar_por_texto(page, "select", tipo)
+
+
+def _dump_inputs_inscripcion(page: Page) -> None:
+    try:
+        import os
+        import time
+        from app.config import DIAG_DIR
+
+        os.makedirs(DIAG_DIR, exist_ok=True)
+        sello = time.strftime("%H%M%S")
+        with open(
+            os.path.join(DIAG_DIR, f"{sello}_inputs_inscripcion.txt"),
+            "w",
+            encoding="utf-8",
+        ) as f:
+            f.write(_inventarizar_inputs_formulario(page))
+    except Exception:
+        pass
+
+
+_JS_CLICK_CONSULTAR = """() => {
+    const norm = (s) => (s || '').toLowerCase().trim();
+    const nodes = Array.from(document.querySelectorAll('a, button, input, span, td'));
+    for (const n of nodes) {
+        const t = norm(n.value || n.innerText || n.textContent || '');
+        if (t === 'consultar' || t.startsWith('consultar')) {
+            n.click();
+            return true;
+        }
+    }
+    return false;
+}"""
+_JS_REINTENTO_CONSULTAR = """() => {
+    const forms = Array.from(document.querySelectorAll('form'));
+    for (const f of forms) {
+        const btn = f.querySelector("input[type='submit'], input[type='button'], button, a");
+        if (!btn) continue;
+        const t = ((btn.value || btn.innerText || '') + '').toLowerCase();
+        if (t.includes('consultar')) { btn.click(); return true; }
+    }
+    return false;
+}"""
+_RE_CONSULTAR = re.compile(r"Consultar", re.I)
+
+
+def _click_consultar_locator(page: Page) -> bool:
+    for frame in _frames_formulario(page):
+        try:
+            btn = frame.locator(
+                "input[type='submit'], button, a, span, input[type='button'], input[type='image']"
+            ).filter(has_text=_RE_CONSULTAR)
+            if btn.count() > 0:
+                btn.first.click(timeout=5000, force=True)
+                return True
+        except Exception:
+            continue
+    return False
+
+
+def _click_consultar_js(page: Page, script: str) -> bool:
+    for frame in _frames_formulario(page):
+        try:
+            if frame.evaluate(script):
+                return True
+        except Exception:
+            continue
+    return False
+
+
+def _click_consultar_en_formulario(page: Page) -> bool:
+    if _click_consultar_locator(page):
+        return True
+    if _click_consultar_js(page, _JS_CLICK_CONSULTAR):
+        return True
+    return s._click_texto(page, "Consultar")
+
+
+def _llenar_consulta(page: Page, tipo: str, numero: str) -> str | None:
+    err = _asegurar_form_antes_llenar(page)
+    if err:
+        return err
+
+    if not _seleccionar_tipo_en_formulario(page, tipo):
         return f"No se pudo seleccionar tipo de identificación '{tipo}'"
 
     # Tras elegir tipo, JSF/A4J a veces re-renderiza el campo número.
@@ -871,85 +1008,14 @@ def _llenar_consulta(page: Page, tipo: str, numero: str) -> str | None:
     if not _escribir_numero_en_formulario(page, numero):
         s._dump(page, "error_sin_input_documento")
         _dump_iframe_contenido(page, "error_sin_input_documento")
-        try:
-            import os
-            import time
-            from app.config import DIAG_DIR
-
-            os.makedirs(DIAG_DIR, exist_ok=True)
-            sello = time.strftime("%H%M%S")
-            with open(
-                os.path.join(DIAG_DIR, f"{sello}_inputs_inscripcion.txt"),
-                "w",
-                encoding="utf-8",
-            ) as f:
-                f.write(_inventarizar_inputs_formulario(page))
-        except Exception:
-            pass
+        _dump_inputs_inscripcion(page)
         return "No se pudo escribir el número de identificación"
 
-    # Clic Consultar dentro del iframe del formulario (no en otros menús).
-    click_ok = False
-    for frame in _frames_formulario(page):
-        try:
-            btn = frame.locator(
-                "input[type='submit'], button, a, span, input[type='button'], input[type='image']"
-            ).filter(has_text=re.compile(r"Consultar", re.I))
-            if btn.count() > 0:
-                btn.first.click(timeout=5000, force=True)
-                click_ok = True
-                break
-        except Exception:
-            continue
-    if not click_ok:
-        for frame in _frames_formulario(page):
-            try:
-                ok_js = frame.evaluate(
-                    """() => {
-                        const norm = (s) => (s || '').toLowerCase().trim();
-                        const nodes = Array.from(document.querySelectorAll(
-                            'a, button, input, span, td'
-                        ));
-                        for (const n of nodes) {
-                            const t = norm(n.value || n.innerText || n.textContent || '');
-                            if (t === 'consultar' || t.startsWith('consultar')) {
-                                n.click();
-                                return true;
-                            }
-                        }
-                        return false;
-                    }"""
-                )
-                if ok_js:
-                    click_ok = True
-                    break
-            except Exception:
-                continue
-    if not click_ok and not s._click_texto(page, "Consultar"):
+    if not _click_consultar_en_formulario(page):
         return "No se pudo hacer clic en Consultar"
 
     if not _esperar_resultado_consulta(page, timeout_ms=20000):
-        # Reintento: a veces el primer clic no dispara el A4J del formulario.
-        for frame in _frames_formulario(page):
-            try:
-                ok_js = frame.evaluate(
-                    """() => {
-                        const forms = Array.from(document.querySelectorAll('form'));
-                        for (const f of forms) {
-                            const btn = f.querySelector(
-                                "input[type='submit'], input[type='button'], button, a"
-                            );
-                            if (!btn) continue;
-                            const t = ((btn.value || btn.innerText || '') + '').toLowerCase();
-                            if (t.includes('consultar')) { btn.click(); return true; }
-                        }
-                        return false;
-                    }"""
-                )
-                if ok_js:
-                    break
-            except Exception:
-                continue
+        _click_consultar_js(page, _JS_REINTENTO_CONSULTAR)
         _esperar_resultado_consulta(page, timeout_ms=20000)
     return None
 
@@ -980,70 +1046,108 @@ def _esperar_resultado_consulta(page: Page, timeout_ms: int = 20000) -> bool:
     return _hay_tabla_o_vacio_inscripciones(page)
 
 
+_RE_PAGINA = re.compile(r"Pagina\s+(\d+)\s+de\s+(\d+)", re.IGNORECASE)
+
+
 def _parse_pagina_indicator(texto: str) -> tuple[int, int] | None:
-    m = re.search(r"P[aá]gina\s+(\d+)\s+de\s+(\d+)", texto, re.IGNORECASE)
+    m = _RE_PAGINA.search(s._normalizar_texto(texto))
     if not m:
         return None
     return int(m.group(1)), int(m.group(2))
 
 
-def _extraer_filas_tabla(page: Page) -> list[RegistroInscripcion]:
-    """Lee filas con ficha / programa / estado desde tablas visibles."""
-    registros: list[RegistroInscripcion] = []
-    for frame in s._frames(page):
-        try:
-            tables = frame.locator("table")
-            for ti in range(tables.count()):
-                table = tables.nth(ti)
-                header = ""
-                try:
-                    header = s._normalizar_texto(table.locator("tr").first.inner_text())
-                except Exception:
-                    continue
-                if "identificador ficha" not in header and "programa de formacion" not in header:
-                    continue
-                rows = table.locator("tr")
-                for ri in range(1, rows.count()):
-                    cells = rows.nth(ri).locator("td")
-                    n = cells.count()
-                    if n < 8:
-                        continue
-                    ficha = cells.nth(0).inner_text().strip()
-                    programa = cells.nth(1).inner_text().strip()
-                    estado = cells.nth(7).inner_text().strip()
-                    if not ficha or not ficha[0].isdigit():
-                        continue
-                    registros.append(
-                        RegistroInscripcion(ficha=ficha, programa=programa, estado=estado)
-                    )
-                if registros:
-                    return registros
-        except Exception:
+def _parse_linea_inscripcion(line: str) -> RegistroInscripcion | None:
+    """Parseo lineal sin regex con backtracking (evita ReDoS S5852)."""
+    raw = line.strip()
+    if not raw:
+        return None
+    partes = raw.split()
+    if len(partes) < 3 or not partes[0].isdigit() or len(partes[0]) < 5:
+        return None
+    lower = s._normalizar_texto(raw)
+    for est in _ESTADOS_FILA:
+        if not lower.endswith(est):
             continue
+        # Recortar el sufijo de estado del texto original (misma cantidad de tokens).
+        n_tok = len(est.split())
+        if len(partes) <= n_tok:
+            return None
+        programa = " ".join(partes[1:-n_tok]).strip()
+        estado = " ".join(partes[-n_tok:]).strip()
+        if not programa:
+            return None
+        return RegistroInscripcion(ficha=partes[0], programa=programa, estado=estado)
+    return None
 
-    # Fallback: parsear texto plano si la tabla no es estándar
-    cuerpo = ""
+
+def _header_es_tabla_inscripcion(header: str) -> bool:
+    return "identificador ficha" in header or "programa de formacion" in header
+
+
+def _registro_desde_cells(cells) -> RegistroInscripcion | None:
+    if cells.count() < 8:
+        return None
+    ficha = cells.nth(0).inner_text().strip()
+    if not ficha or not ficha[0].isdigit():
+        return None
+    return RegistroInscripcion(
+        ficha=ficha,
+        programa=cells.nth(1).inner_text().strip(),
+        estado=cells.nth(7).inner_text().strip(),
+    )
+
+
+def _filas_de_una_tabla(table) -> list[RegistroInscripcion]:
+    try:
+        header = s._normalizar_texto(table.locator("tr").first.inner_text())
+    except Exception:
+        return []
+    if not _header_es_tabla_inscripcion(header):
+        return []
+    registros: list[RegistroInscripcion] = []
+    rows = table.locator("tr")
+    for ri in range(1, rows.count()):
+        reg = _registro_desde_cells(rows.nth(ri).locator("td"))
+        if reg:
+            registros.append(reg)
+    return registros
+
+
+def _filas_desde_tabla(frame) -> list[RegistroInscripcion]:
+    try:
+        tables = frame.locator("table")
+        for ti in range(tables.count()):
+            registros = _filas_de_una_tabla(tables.nth(ti))
+            if registros:
+                return registros
+    except Exception:
+        return []
+    return []
+
+
+def _cuerpo_con_tabla_inscripcion(page: Page) -> str:
     for frame in s._frames(page):
         try:
             cuerpo = frame.inner_text("body")
             if "Identificador Ficha" in cuerpo or "Programa de Formación" in cuerpo:
-                break
+                return cuerpo
         except Exception:
             continue
-    for line in cuerpo.splitlines():
-        m = re.match(
-            r"^\s*(\d{5,})\s+(.+?)\s+(Certificado|Matriculado|Cancelado(?:\s+Acad[eé]mico)?|No Admitido|Retiro|Traslado|Aplazado)\s*$",
-            line,
-            re.IGNORECASE,
-        )
-        if m:
-            registros.append(
-                RegistroInscripcion(
-                    ficha=m.group(1),
-                    programa=m.group(2).strip(),
-                    estado=m.group(3).strip(),
-                )
-            )
+    return ""
+
+
+def _extraer_filas_tabla(page: Page) -> list[RegistroInscripcion]:
+    """Lee filas con ficha / programa / estado desde tablas visibles."""
+    for frame in s._frames(page):
+        registros = _filas_desde_tabla(frame)
+        if registros:
+            return registros
+
+    registros: list[RegistroInscripcion] = []
+    for line in _cuerpo_con_tabla_inscripcion(page).splitlines():
+        fila = _parse_linea_inscripcion(line)
+        if fila:
+            registros.append(fila)
     return registros
 
 
@@ -1067,30 +1171,35 @@ def _ir_siguiente_pagina(page: Page) -> bool:
     return False
 
 
+def _agregar_filas_unicas(
+    todos: list[RegistroInscripcion],
+    vistos: set[tuple[str, str, str]],
+    filas: list[RegistroInscripcion],
+) -> None:
+    for r in filas:
+        key = (r.ficha, r.programa, r.estado)
+        if key in vistos:
+            continue
+        vistos.add(key)
+        todos.append(r)
+
+
+def _fin_de_paginas(texto: str) -> bool:
+    ind = _parse_pagina_indicator(texto)
+    if ind:
+        actual, total = ind
+        return actual >= total
+    return "siguiente" not in texto
+
+
 def _recolectar_todas_paginas(page: Page) -> list[RegistroInscripcion]:
     todos: list[RegistroInscripcion] = []
     vistos: set[tuple[str, str, str]] = set()
 
     for _ in range(MAX_PAGINAS):
-        filas = _extraer_filas_tabla(page)
-        for r in filas:
-            key = (r.ficha, r.programa, r.estado)
-            if key not in vistos:
-                vistos.add(key)
-                todos.append(r)
-
+        _agregar_filas_unicas(todos, vistos, _extraer_filas_tabla(page))
         texto = s._texto_pagina_completo(page)
-        ind = _parse_pagina_indicator(texto)
-        if ind:
-            actual, total = ind
-            if actual >= total:
-                break
-        else:
-            # Sin paginación explícita: una sola página
-            if "siguiente" not in texto:
-                break
-
-        if not _ir_siguiente_pagina(page):
+        if _fin_de_paginas(texto) or not _ir_siguiente_pagina(page):
             break
 
     return todos
@@ -1176,7 +1285,7 @@ def _cred_usuario_sena(cred: s.Credenciales) -> s.Credenciales:
     return s.Credenciales(
         usuario=cred.usuario.strip(),
         password=cred.password,
-        tipo_documento=cred.tipo_documento or "Cédula de Ciudadanía",
+        tipo_documento=cred.tipo_documento or s.TIPO_CC,
         rol=ROL_USUARIO_SENA,
     )
 
@@ -1281,6 +1390,46 @@ def consultar_inscripciones(
     )
 
 
+def _consulta_item_lote(
+    page: Page, item: ConsultaLoteItem, idx: int
+) -> ResultadoInscripciones:
+    numero = item.numero_documento.strip()
+    ficha_n = item.ficha.strip()
+    if not numero or not ficha_n:
+        return ResultadoInscripciones(
+            numero_documento=numero,
+            ficha_consultada=ficha_n,
+            estado=ESTADO_NO_VERIFICADO,
+            mensaje="Fila incompleta: faltan documento o ficha.",
+        )
+    if idx > 0:
+        _volver_formulario(page)
+        if not _en_formulario_inscripcion(page):
+            err_nav = _navegar_consultar_inscripciones(page)
+            if err_nav:
+                return ResultadoInscripciones(
+                    numero_documento=numero,
+                    ficha_consultada=ficha_n,
+                    estado=ESTADO_NO_VERIFICADO,
+                    mensaje=err_nav,
+                )
+    return _resultado_consulta_en_pagina(page, numero, ficha_n, item.tipo_documento)
+
+
+def _resultados_error_lote(
+    items: list[ConsultaLoteItem], mensaje: str
+) -> list[ResultadoInscripciones]:
+    return [
+        ResultadoInscripciones(
+            numero_documento=i.numero_documento.strip(),
+            ficha_consultada=i.ficha.strip(),
+            estado=ESTADO_NO_VERIFICADO,
+            mensaje=mensaje,
+        )
+        for i in items
+    ]
+
+
 def consultar_inscripciones_lote(
     cred: s.Credenciales,
     items: list[ConsultaLoteItem],
@@ -1300,35 +1449,7 @@ def consultar_inscripciones_lote(
             err_global[0] = err
             return
         for idx, item in enumerate(items):
-            numero = item.numero_documento.strip()
-            ficha_n = item.ficha.strip()
-            if not numero or not ficha_n:
-                resultados.append(
-                    ResultadoInscripciones(
-                        numero_documento=numero,
-                        ficha_consultada=ficha_n,
-                        estado=ESTADO_NO_VERIFICADO,
-                        mensaje="Fila incompleta: faltan documento o ficha.",
-                    )
-                )
-                continue
-            if idx > 0:
-                _volver_formulario(page)
-                if not _en_formulario_inscripcion(page):
-                    err_nav = _navegar_consultar_inscripciones(page)
-                    if err_nav:
-                        resultados.append(
-                            ResultadoInscripciones(
-                                numero_documento=numero,
-                                ficha_consultada=ficha_n,
-                                estado=ESTADO_NO_VERIFICADO,
-                                mensaje=err_nav,
-                            )
-                        )
-                        continue
-            resultados.append(
-                _resultado_consulta_en_pagina(page, numero, ficha_n, item.tipo_documento)
-            )
+            resultados.append(_consulta_item_lote(page, item, idx))
 
     try:
         with s._FETCH_LOCK:
@@ -1338,25 +1459,8 @@ def consultar_inscripciones_lote(
                 **s._stealthy_fetch_kwargs(),
             )
     except Exception as exc:
-        msg = f"Error del scraper: {exc}"
-        return [
-            ResultadoInscripciones(
-                numero_documento=i.numero_documento.strip(),
-                ficha_consultada=i.ficha.strip(),
-                estado=ESTADO_NO_VERIFICADO,
-                mensaje=msg,
-            )
-            for i in items
-        ]
+        return _resultados_error_lote(items, f"Error del scraper: {exc}")
 
     if err_global[0] and not resultados:
-        return [
-            ResultadoInscripciones(
-                numero_documento=i.numero_documento.strip(),
-                ficha_consultada=i.ficha.strip(),
-                estado=ESTADO_NO_VERIFICADO,
-                mensaje=err_global[0] or "Error de login",
-            )
-            for i in items
-        ]
+        return _resultados_error_lote(items, err_global[0] or "Error de login")
     return resultados

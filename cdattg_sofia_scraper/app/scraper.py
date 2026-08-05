@@ -8,6 +8,7 @@ import threading
 import time
 from dataclasses import dataclass, field
 from typing import Any, Callable
+from urllib.parse import urljoin
 
 from patchright.sync_api import Frame, Page
 from scrapling.fetchers import StealthyFetcher
@@ -34,13 +35,16 @@ BROWSER_FLAGS = [
     "--no-sandbox",
     "--window-size=1280,720",
     "--lang=es-CO",
-    # En Docker, HTTPS :443 de SofiaPlus no responde; evitar upgrade automático.
-    "--disable-features=HttpsUpgrades,AutomaticHttpsDefault,UpgradeInsecureRequests",
+    # En Docker, HTTPS :443 de SofiaPlus no responde; evitar upgrade automático / bloqueos cliente.
+    "--disable-features=HttpsUpgrades,AutomaticHttpsDefault,UpgradeInsecureRequests,BlockInsecurePrivateNetworkRequests,HttpsFirstBalancedModeAutoEnable",
+    "--disable-client-side-phishing-detection",
+    "--disable-popup-blocking",
 ]
 
-JOSSO_SECURITY_CHECK_URL = "http://senasofiaplus.edu.co/sofia/josso_security_check"
-SOFIA_JOSSO_LOGIN_URL = "http://senasofiaplus.edu.co/sofia/josso_login/"
-SOFIA_SELECCION_ROL_URL = "http://senasofiaplus.edu.co/sofia/secured/seleccionarRol.jsp"
+# Portal Sofía Plus (Docker/local): HTTP intencional; HTTPS :443 no responde aquí.
+JOSSO_SECURITY_CHECK_URL = "http://senasofiaplus.edu.co/sofia/josso_security_check"  # NOSONAR python:S5332
+SOFIA_JOSSO_LOGIN_URL = "http://senasofiaplus.edu.co/sofia/josso_login/"  # NOSONAR python:S5332
+SOFIA_SELECCION_ROL_URL = "http://senasofiaplus.edu.co/sofia/secured/seleccionarRol.jsp"  # NOSONAR python:S5332
 
 # Contenedores típicos del portal interno (encabezado / sidebar) donde está la Lista de Roles.
 CONTENEDORES_ROLES = (
@@ -199,7 +203,14 @@ def _page_setup_http(page: Page) -> None:
     def reroute(route, request) -> None:
         url = request.url
         if url.startswith("https://") and _es_dominio_sofia(url):
-            route.continue_(url=_http_url(url))
+            # Preservar método/body: si no, el POST de JOSSO se rompe y Chromium
+            # acaba en chrome-error (ERR_BLOCKED_BY_CLIENT).
+            route.continue_(
+                url=_http_url(url),
+                method=request.method,
+                headers=request.headers,
+                post_data=request.post_data,
+            )
         else:
             route.continue_()
 
@@ -220,19 +231,67 @@ def _hay_error_chrome(page: Page) -> bool:
     return any(u.lower().startswith("chrome-error:") for u in _urls_pagina(page))
 
 
-def _recuperar_post_login(page: Page) -> bool:
-    """Si Chrome falló en HTTPS tras login, reabrir sesión JOSSO (no volver al formulario)."""
-    if not _hay_error_chrome(page):
+SOFIA_HOME_URL = "http://senasofiaplus.edu.co/sofia/home/principal.faces"  # NOSONAR python:S5332
+SOFIA_PUBLIC_HOME = "http://senasofiaplus.edu.co/sofia-public/"  # NOSONAR python:S5332
+
+
+def _pagina_error_sofia(page: Page) -> bool:
+    t = _texto_pagina_completo(page)
+    if "codigo de error" in t or "error 404" in t or "error 402" in t or "error 401" in t:
+        return True
+    try:
+        u = page.url.lower()
+        if "error404" in u or "error402" in u or "error401" in u:
+            return True
+    except Exception:
+        pass
+    return False
+
+
+def _sesion_post_login_ok(page: Page) -> bool:
+    """True si ya hay UI útil de Sofía (no basta con la URL)."""
+    if _hay_error_chrome(page) or _en_pagina_login(page) or _pagina_error_sofia(page):
         return False
-    for destino in (JOSSO_SECURITY_CHECK_URL, SOFIA_SELECCION_ROL_URL):
+    if _tiene_lista_roles(page):
+        return True
+    if _texto_visible_en_frames(page, "Bienvenido a SOFIA"):
+        return True
+    # Select de roles del sidebar suele mostrar Aspirante / Usuario SENA.
+    if _texto_visible_en_frames(page, "Aspirante") and (
+        _texto_visible_en_frames(page, "Inscripción")
+        or _texto_visible_en_frames(page, "Selección")
+        or _texto_visible_en_frames(page, "Usuario SENA")
+    ):
+        return True
+    if _texto_visible_en_frames(page, "SGS"):
+        return True
+    if _texto_visible_en_frames(page, "Inscripción") and _texto_visible_en_frames(page, "Usuario SENA"):
+        return True
+    return False
+
+
+def _recuperar_post_login(page: Page) -> bool:
+    """Si Chrome falló (ERR_BLOCKED_BY_CLIENT / HTTPS) tras login, reabrir sesión por HTTP."""
+    if not _hay_error_chrome(page) and _sesion_post_login_ok(page):
+        return True
+    if not _hay_error_chrome(page) and not _en_pagina_login(page):
+        # Aún sin menú visible; intentar home igualmente.
+        pass
+    elif not _hay_error_chrome(page):
+        return False
+
+    for destino in (
+        SOFIA_HOME_URL,
+        SOFIA_SELECCION_ROL_URL,
+        SOFIA_PUBLIC_HOME,
+    ):
         try:
-            page.goto(destino, wait_until="domcontentloaded", timeout=15000)
-            page.wait_for_timeout(1500)
-            if _tiene_lista_roles(page):
-                return True
-            if _texto_visible_en_frames(page, "SGS"):
-                return True
-            if not _hay_error_chrome(page) and not _en_pagina_login(page):
+            page.goto(_http_url(destino), wait_until="domcontentloaded", timeout=20000)
+            page.wait_for_timeout(2000)
+            if _pagina_error_sofia(page):
+                continue
+            if _sesion_post_login_ok(page):
+                _dump(page, "03_post_login_recuperado", solo_error=False)
                 return True
         except Exception:
             continue
@@ -251,6 +310,7 @@ def _stealthy_fetch_kwargs() -> dict[str, Any]:
         "block_webrtc": False,
         "hide_canvas": False,
         "disable_resources": False,
+        "block_ads": False,
         "extra_flags": BROWSER_FLAGS,
         "wait": WAIT_FORM_MS,
         "extra_headers": {"Referer": "http://senasofiaplus.edu.co/sofia/"},
@@ -387,7 +447,9 @@ def _normalizar_texto(s: str) -> str:
 def _dump(page: Page, paso: str, *, solo_error: bool = True) -> None:
     if not DIAGNOSTICO:
         return
-    if solo_error and not paso.startswith(("login_", "error", "resultado", "00_", "01_", "02_", "03_", "04_")):
+    if solo_error and not paso.startswith(
+        ("login_", "error", "resultado", "warn_", "00_", "01_", "02_", "03_", "04_", "05_")
+    ):
         return
     os.makedirs(DIAG_DIR, exist_ok=True)
     sello = time.strftime("%H%M%S")
@@ -635,8 +697,121 @@ def _llenar_campos_login(page: Page, cred: Credenciales) -> str | None:
     return None
 
 
+def _absolutizar_url_josso(action: str, page: Page) -> str:
+    action = (action or "").strip()
+    if action.startswith("https://"):
+        return _http_url(action)
+    if action.startswith("http://"):
+        return action
+    if action.startswith("/"):
+        # El form vive en authpre
+        return "http://authpre.senasofiaplus.edu.co" + action
+    try:
+        base = page.url
+        if "authpre." in base:
+            return _http_url(urljoin(base, action))
+    except Exception:
+        pass
+    return "http://authpre.senasofiaplus.edu.co/josso/signon/usernamePasswordLogin.do"
+
+
+def _login_por_request(page: Page) -> str | None:
+    """POST JOSSO vía APIRequest (comparte cookies) evitando ERR_BLOCKED_BY_CLIENT al navegar."""
+    frame = _frame_login(page)
+    if frame is None:
+        return "No se encontró el formulario de login JOSSO"
+
+    try:
+        data = frame.evaluate(
+            """
+            () => {
+                const form = document.querySelector('form[name=usernamePasswordLoginForm]');
+                if (!form) return null;
+                const tipoID = form.tipoId ? form.tipoId.value : '';
+                const numero = form.username ? form.username.value : '';
+                const sucursal = form.sucursal ? form.sucursal.value : '';
+                const password = form.josso_password ? form.josso_password.value : '';
+                let campo;
+                if (tipoID === 'NIT' && !sucursal) {
+                    campo = tipoID + ',' + numero;
+                } else {
+                    campo = tipoID + ',' + numero + ',' + sucursal;
+                }
+                if (form.josso_username) form.josso_username.value = campo;
+                const payload = {};
+                for (const el of Array.from(form.elements)) {
+                    if (!el.name || el.disabled) continue;
+                    if ((el.type === 'checkbox' || el.type === 'radio') && !el.checked) continue;
+                    payload[el.name] = el.value;
+                }
+                payload.josso_username = campo;
+                payload.josso_password = password;
+                return { action: form.action || '', campo, payload };
+            }
+            """
+        )
+    except Exception as exc:
+        return f"No se pudo leer el formulario JOSSO: {exc}"
+
+    if not data or not data.get("payload"):
+        return "Formulario JOSSO vacío o ilegible"
+
+    if DIAGNOSTICO and data.get("campo"):
+        os.makedirs(DIAG_DIR, exist_ok=True)
+        sello = time.strftime("%H%M%S")
+        with open(os.path.join(DIAG_DIR, f"{sello}_josso_username.txt"), "w", encoding="utf-8") as f:
+            f.write(str(data["campo"]))
+
+    action = _absolutizar_url_josso(str(data.get("action") or ""), page)
+    try:
+        resp = page.request.post(
+            action,
+            form=data["payload"],
+            max_redirects=15,
+            timeout=45000,
+            fail_on_status_code=False,
+        )
+    except Exception as exc:
+        return f"POST de login JOSSO falló: {exc}"
+
+    if DIAGNOSTICO:
+        os.makedirs(DIAG_DIR, exist_ok=True)
+        sello = time.strftime("%H%M%S")
+        with open(os.path.join(DIAG_DIR, f"{sello}_josso_post_status.txt"), "w", encoding="utf-8") as f:
+            f.write(f"status={resp.status}\nurl={resp.url}\n")
+
+    # Tras POST exitoso, ir al home (josso_security_check a menudo responde 404).
+    destinos = [SOFIA_HOME_URL, SOFIA_SELECCION_ROL_URL]
+    try:
+        final_url = _http_url(resp.url or "")
+        if final_url and "senasofiaplus.edu.co/sofia" in final_url and "josso_security_check" not in final_url:
+            destinos.insert(0, final_url)
+    except Exception:
+        pass
+
+    for destino in destinos:
+        try:
+            page.goto(_http_url(destino), wait_until="domcontentloaded", timeout=25000)
+            page.wait_for_timeout(2000)
+            if _login_fallido(page):
+                return "Credenciales SENA inválidas"
+            if _pagina_error_sofia(page):
+                continue
+            if _sesion_post_login_ok(page):
+                _dump(page, "03_post_login_request_ok", solo_error=False)
+                return None
+        except Exception:
+            continue
+
+    if _hay_error_chrome(page) and _recuperar_post_login(page) and _sesion_post_login_ok(page):
+        return None
+    if _sesion_post_login_ok(page):
+        return None
+    return "El POST de login no dejó sesión activa en SofiaPlus"
+
+
 def _enviar_formulario_login(page: Page) -> bool:
-    """Envía login JOSSO en el iframe (sin target _top, evita ERROR 402)."""
+    """Fallback: envía login JOSSO con submit del formulario en el iframe."""
     frame = _frame_login(page)
     if frame is None:
         return False
@@ -657,24 +832,11 @@ def _enviar_formulario_login(page: Page) -> bool:
                     campo = tipoID + ',' + numero + ',' + sucursal;
                 }
                 form.josso_username.value = campo;
-                if (typeof concatenarValores === 'function') {
-                    concatenarValores();
-                    return campo;
-                }
                 form.submit();
                 return campo;
             }
             """
         )
-        if DIAGNOSTICO and ok:
-            os.makedirs(DIAG_DIR, exist_ok=True)
-            sello = time.strftime("%H%M%S")
-            with open(
-                os.path.join(DIAG_DIR, f"{sello}_josso_username.txt"),
-                "w",
-                encoding="utf-8",
-            ) as f:
-                f.write(str(ok))
         return bool(ok)
     except Exception:
         pass
@@ -702,41 +864,69 @@ def _completar_login(page: Page, cred: Credenciales) -> str | None:
     _dump(page, "02_login_lleno", solo_error=False)
     page.wait_for_timeout(400)
 
+    # Preferir POST por APIRequest: evita ERR_BLOCKED_BY_CLIENT al navegar authpre.
+    err_req = _login_por_request(page)
+    if err_req is None:
+        return None
+    if err_req == "Credenciales SENA inválidas":
+        _dump(page, "error_credenciales")
+        return err_req
+
+    _dump(page, "03_post_login_request_fallback", solo_error=False)
+
+    # Fallback navegación clásica (submit + recuperación).
     if not _enviar_formulario_login(page):
-        _dump(page, "error_enviar_login")
-        return "No se pudo enviar el formulario de login (Ingresar)"
+        enviado = False
+        for texto in ("INGRESAR", "Ingresar"):
+            if _click_texto(page, texto):
+                enviado = True
+                break
+        if not enviado:
+            _dump(page, "error_enviar_login")
+            return err_req or "No se pudo enviar el formulario de login (Ingresar)"
 
     try:
         page.wait_for_load_state("domcontentloaded", timeout=30000)
     except Exception:
         pass
-    try:
-        page.wait_for_load_state("domcontentloaded", timeout=25000)
-    except Exception:
-        pass
-    page.wait_for_timeout(1500)
+    page.wait_for_timeout(2000)
     _dump(page, "03_post_login", solo_error=False)
+
+    if _hay_error_chrome(page):
+        _dump(page, "error_chrome_previo", solo_error=False)
+        if _recuperar_post_login(page) and _sesion_post_login_ok(page):
+            return None
 
     inicio = time.monotonic()
     pasos = max(1, WAIT_LOGIN_MS // 250)
     for i in range(pasos):
-        if _tiene_lista_roles(page):
+        if _sesion_post_login_ok(page):
             return None
         if _login_fallido(page):
             _dump(page, "error_credenciales")
             return "Credenciales SENA inválidas"
         transcurrido_ms = (time.monotonic() - inicio) * 1000
-        if _en_pagina_login(page) and transcurrido_ms > POST_LOGIN_FAIL_FAST_MS:
-            _dump(page, "login_no_completo")
-            return "El login no se completó (SofiaPlus siguió en pantalla de ingreso). Reintente."
         if _hay_error_chrome(page):
             _dump(page, "error_chrome_previo", solo_error=False)
             if _recuperar_post_login(page):
+                if _sesion_post_login_ok(page):
+                    return None
                 inicio = time.monotonic()
                 continue
             if transcurrido_ms > POST_LOGIN_FAIL_FAST_MS:
                 _dump(page, "error_chrome")
-                return "SofiaPlus no cargó tras el login (HTTPS bloqueado). Reintente."
+                return (
+                    "SofiaPlus bloqueó la navegación tras el login (ERR_BLOCKED_BY_CLIENT en authpre). "
+                    f"Detalle request: {err_req}"
+                )
+        if _en_pagina_login(page) and transcurrido_ms > POST_LOGIN_FAIL_FAST_MS:
+            if _recuperar_post_login(page) and _sesion_post_login_ok(page):
+                return None
+            _dump(page, "login_no_completo")
+            return (
+                "El login no se completó (SofiaPlus siguió en pantalla de ingreso). "
+                f"Detalle: {err_req}"
+            )
         if i > pasos - 3:
             err = _detectar_error_pagina(page, ignorar_si_hay_roles=True)
             if err:
@@ -744,10 +934,10 @@ def _completar_login(page: Page, cred: Credenciales) -> str | None:
                 return err
         page.wait_for_timeout(250)
 
-    if _tiene_lista_roles(page):
+    if _sesion_post_login_ok(page):
         return None
 
-    if _hay_error_chrome(page) and _recuperar_post_login(page) and _tiene_lista_roles(page):
+    if _hay_error_chrome(page) and _recuperar_post_login(page) and _sesion_post_login_ok(page):
         return None
 
     err = _detectar_error_pagina(page, ignorar_si_hay_roles=False)
@@ -756,7 +946,10 @@ def _completar_login(page: Page, cred: Credenciales) -> str | None:
         return err
     if _en_pagina_login(page):
         _dump(page, "login_no_completo")
-        return "El login no se completó (SofiaPlus siguió en pantalla de ingreso). Reintente."
+        return (
+            "El login no se completó (SofiaPlus siguió en pantalla de ingreso). "
+            f"Detalle: {err_req}"
+        )
     _dump(page, "login_sin_roles")
     return "Login completado pero no apareció la Lista de Roles en SofiaPlus (revise encabezado/sidebar)"
 
@@ -911,10 +1104,17 @@ def _login_fallido(page: Page) -> str | None:
 
 
 def _sesion_sofia_activa(page: Page) -> bool:
+    if _pagina_error_sofia(page) or _en_pagina_login(page) or _hay_error_chrome(page):
+        return False
     if _tiene_lista_roles(page):
         return True
+    if _sesion_post_login_ok(page):
+        return True
     url = page.url.lower()
-    return "senasofiaplus.edu.co/sofia" in url and "authpre" not in url and "josso/signon" not in url
+    if "josso_security_check" in url or "josso/signon" in url or "authpre" in url:
+        return False
+    # Home real del portal (no basta cualquier /sofia/).
+    return "senasofiaplus.edu.co/sofia/home" in url or "principal.faces" in url
 
 
 def _texto_visible_en_frames(page: Page, texto: str) -> bool:

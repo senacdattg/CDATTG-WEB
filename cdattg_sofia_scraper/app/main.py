@@ -7,7 +7,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from pydantic import BaseModel, Field
 
-from app import betowa_scraper, scraper
+from app import betowa_scraper, inscripciones_scraper, scraper
 from app.config import BETOWA_REGISTRO_URL, HEADLESS, TIMEOUT_SEGUNDOS, require_login_url
 from app.scraper import DocumentoLote
 
@@ -150,7 +150,82 @@ def betowa_verificar_lote(body: BetowaVerificarLoteIn):
 
 
 # ============================================================================
-# Consultar Inscripción (SofiaPlus) — extrae inscripciones de un aspirante
+# Consultar Inscripción (SofiaPlus) — programas por ficha (Usuario SENA)
 # ============================================================================
 
+
+class ConsultarInscripcionesIn(BaseModel):
+    credenciales: CredencialesIn
+    numero_documento: str
+    ficha: str
+    tipo_documento: str = ""
+
+
+class RegistroInscripcionOut(BaseModel):
+    ficha: str
+    programa: str
+    estado: str
+
+
+class ConsultarInscripcionesOut(BaseModel):
+    numero_documento: str
+    ficha_consultada: str
+    estado: str
+    tipo_encontrado: str = ""
+    registros: list[RegistroInscripcionOut] = Field(default_factory=list)
+    mensaje: str = ""
+
+
+def _inscripciones_out(r: inscripciones_scraper.ResultadoInscripciones) -> ConsultarInscripcionesOut:
+    return ConsultarInscripcionesOut(
+        numero_documento=r.numero_documento,
+        ficha_consultada=r.ficha_consultada,
+        estado=r.estado,
+        tipo_encontrado=r.tipo_encontrado,
+        registros=[
+            RegistroInscripcionOut(ficha=x.ficha, programa=x.programa, estado=x.estado)
+            for x in r.registros
+        ],
+        mensaje=r.mensaje,
+    )
+
+
+@app.post("/consultar-inscripciones", response_model=ConsultarInscripcionesOut)
+def consultar_inscripciones(body: ConsultarInscripcionesIn):
+    r = inscripciones_scraper.consultar_inscripciones(
+        _to_cred(body.credenciales),
+        body.numero_documento.strip(),
+        body.ficha.strip(),
+        body.tipo_documento.strip(),
+    )
+    return _inscripciones_out(r)
+
+
+class ConsultaInscripcionItemIn(BaseModel):
+    numero_documento: str
+    ficha: str
+    tipo_documento: str = ""
+
+
+class ConsultarInscripcionesLoteIn(BaseModel):
+    credenciales: CredencialesIn
+    consultas: list[ConsultaInscripcionItemIn] = Field(min_length=1)
+
+
+class ConsultarInscripcionesLoteOut(BaseModel):
+    resultados: list[ConsultarInscripcionesOut]
+
+
+@app.post("/consultar-inscripciones-lote", response_model=ConsultarInscripcionesLoteOut)
+def consultar_inscripciones_lote(body: ConsultarInscripcionesLoteIn):
+    items = [
+        inscripciones_scraper.ConsultaLoteItem(
+            numero_documento=c.numero_documento.strip(),
+            ficha=c.ficha.strip(),
+            tipo_documento=c.tipo_documento.strip(),
+        )
+        for c in body.consultas
+    ]
+    resultados = inscripciones_scraper.consultar_inscripciones_lote(_to_cred(body.credenciales), items)
+    return ConsultarInscripcionesLoteOut(resultados=[_inscripciones_out(r) for r in resultados])
 

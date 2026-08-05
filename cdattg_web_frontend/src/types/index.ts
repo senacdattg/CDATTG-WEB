@@ -1068,4 +1068,33 @@ export interface CredencialSofiaEstado {
   actualizada_en?: string;
 }
 
+export interface ConsultarInscripcionesRequest {
+  numero_documento: string;
+  ficha: string;
+  tipo_documento?: string;
+}
+
+export interface RegistroInscripcionFicha {
+  ficha: string;
+  programa: string;
+  estado: string;
+}
+
+export interface ConsultarInscripcionesResponse {
+  numero_documento: string;
+  ficha_consultada: string;
+  estado: string;
+  tipo_encontrado?: string;
+  registros: RegistroInscripcionFicha[];
+  mensaje?: string;
+}
+
+export interface ConsultarInscripcionesLoteResponse {
+  total: number;
+  encontrados: number;
+  no_encontrados: number;
+  no_verificados: number;
+  resultados: ConsultarInscripcionesResponse[];
+}
+
 

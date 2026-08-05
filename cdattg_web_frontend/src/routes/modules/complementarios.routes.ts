@@ -22,5 +22,15 @@ export const complementariosRoutes: RouteObject = {
         return { Component: ComplementariosBetowaVerificacionPage };
       },
     },
+    {
+      path: 'inscripciones',
+      handle: { breadcrumb: { label: 'Programas por ficha' } },
+      lazy: async () => {
+        const { ComplementariosInscripcionesPage } = await import(
+          '../../pages/complementarios/ComplementariosInscripcionesPage'
+        );
+        return { Component: ComplementariosInscripcionesPage };
+      },
+    },
   ],
 };

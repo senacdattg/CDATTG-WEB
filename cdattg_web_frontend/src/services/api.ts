@@ -63,6 +63,9 @@ import type {
   VerificarLoteResponse,
   GuardarCredencialSofiaRequest,
   CredencialSofiaEstado,
+  ConsultarInscripcionesRequest,
+  ConsultarInscripcionesResponse,
+  ConsultarInscripcionesLoteResponse,
   SedeCreateRequest,
   SedeUpdateRequest,
   SedeResponse,
@@ -1245,6 +1248,39 @@ class ApiService {
 
   async eliminarCredencialSofia(): Promise<void> {
     await this.api.delete('/complementarios/credenciales');
+  }
+
+  // Complementarios: Consultar Inscripciones (Usuario SENA) filtrado por ficha.
+  async consultarInscripcionesSofia(
+    data: ConsultarInscripcionesRequest,
+  ): Promise<ConsultarInscripcionesResponse> {
+    const response = await this.api.post<{ data: ConsultarInscripcionesResponse }>(
+      '/complementarios/consultar-inscripciones',
+      data,
+      { timeout: 300000 },
+    );
+    return response.data.data;
+  }
+
+  async descargarPlantillaInscripciones(): Promise<Blob> {
+    const response = await this.api.get('/complementarios/inscripciones/plantilla', {
+      responseType: 'blob',
+    });
+    return response.data as Blob;
+  }
+
+  async consultarInscripcionesLoteSofia(file: File): Promise<ConsultarInscripcionesLoteResponse> {
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await this.api.post<{ data: ConsultarInscripcionesLoteResponse }>(
+      '/complementarios/inscripciones/consultar-lote',
+      formData,
+      {
+        headers: { 'Content-Type': 'multipart/form-data' },
+        timeout: 2700000,
+      },
+    );
+    return response.data.data;
   }
 
   // Complementarios: carga masiva por Excel.

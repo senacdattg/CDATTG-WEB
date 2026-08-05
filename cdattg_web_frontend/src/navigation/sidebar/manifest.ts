@@ -153,6 +153,14 @@ export const SIDEBAR_MANIFEST: SidebarManifestItem[] = [
     rolesRequired: ['SUPER ADMINISTRADOR', 'ADMINISTRADOR', 'COORDINADOR'],
     iconKey: 'complementarios',
   },
+  {
+    section: 'FPI',
+    path: complementariosPaths.inscripciones,
+    label: 'Sofía · Programas por ficha',
+    permission: null,
+    rolesRequired: ['SUPER ADMINISTRADOR', 'ADMINISTRADOR', 'COORDINADOR'],
+    iconKey: 'complementarios',
+  },
 
   // —— Bienestar ——
   {

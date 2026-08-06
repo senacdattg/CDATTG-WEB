@@ -26,6 +26,7 @@ import (
 	"github.com/sena/cdattg-web-golang/config"
 	"github.com/sena/cdattg-web-golang/database"
 	"github.com/sena/cdattg-web-golang/dto"
+	"github.com/sena/cdattg-web-golang/models"
 	"github.com/sena/cdattg-web-golang/repositories"
 	"github.com/sena/cdattg-web-golang/services"
 )
@@ -37,6 +38,12 @@ func main() {
 	}
 
 	args := os.Args[1:]
+	mode := "verificar"
+	if len(args) > 0 && (args[0] == "ins" || args[0] == "inscripciones") {
+		mode = "ins"
+		args = args[1:]
+	}
+
 	usuarioID := uint(2)
 	if len(args) > 0 {
 		if id, err := strconv.ParseUint(args[0], 10, 32); err == nil {
@@ -44,8 +51,11 @@ func main() {
 			args = args[1:]
 		}
 	}
-	if len(args) == 0 || len(args)%2 != 0 {
+	if mode == "verificar" && (len(args) == 0 || len(args)%2 != 0) {
 		log.Fatal("Uso: go run ./cmd/sofia-debug [usuarioID] doc tipo [doc tipo ...]")
+	}
+	if mode == "ins" && (len(args) < 2 || len(args) > 3) {
+		log.Fatal("Uso: go run ./cmd/sofia-debug ins [usuarioID] numero tipo [programa]")
 	}
 
 	repo := repositories.NewSofiaCredencialRepository()
@@ -65,6 +75,11 @@ func main() {
 		Rol:           "Encargado de ingreso centro formación",
 	}
 
+	if mode == "ins" {
+		runInscripciones(credencial, password, args)
+		return
+	}
+
 	docs := make([]dto.LoteDocumento, 0, len(args)/2)
 	for i := 0; i < len(args); i += 2 {
 		docs = append(docs, dto.LoteDocumento{NumeroDocumento: args[i], TipoDocumento: args[i+1]})
@@ -79,6 +94,34 @@ func main() {
 			r.NumeroDocumento, r.Estado, or(r.TipoEncontrado, "-"),
 			or(r.Nombres, ""), or(r.PrimerApellido, ""),
 			or(r.Mensaje, or(r.Detalle, "")))
+	}
+}
+
+// modo inscripciones: lista las inscripciones del documento (programa opcional filtra).
+func runInscripciones(credencial *models.SofiaCredencial, password string, args []string) {
+	cred := services.SofiaCredenciales{
+		Usuario:       credencial.Usuario,
+		Password:      password,
+		TipoDocumento: credencial.TipoDocumento,
+		Rol:           "Usuario SENA",
+	}
+	numero, tipo := args[0], args[1]
+	programa := ""
+	if len(args) == 3 {
+		programa = args[2]
+	}
+
+	filas := []dto.LoteInscripcionFila{{NumeroDocumento: numero, Programa: programa, TipoDocumento: tipo}}
+	fmt.Printf("Operador: %s | inscripciones de %s %s (programa=%q)\n",
+		credencial.Usuario, numero, tipo, programa)
+	scraper := services.NewSofiaScraper()
+	resultados := scraper.ConsultarInscripcionesLote(cred, filas, "sofia-debug-ins")
+
+	for _, r := range resultados {
+		fmt.Printf("  %s | estado=%s | tipo=%s | mensaje=%s\n", r.NumeroDocumento, r.Estado, or(r.TipoEncontrado, "-"), or(r.Mensaje, ""))
+		for _, reg := range r.Registros {
+			fmt.Printf("     - programa: %s | ficha: %s | estado: %s\n", reg.Programa, reg.Ficha, reg.Estado)
+		}
 	}
 }
 

@@ -1,7 +1,11 @@
 # Propuesta: Fase 2 (inscripciones) por el portal público de SofíaPlus
 
-> **Estado: PROPUESTA — no implementada.** Validada con datos reales el
-> 2026-08-06. Fase 1 NO es candidata (ver "Limitaciones").
+> **Estado: DESCARTADA (2026-08-06).** Validada y rechazada: el portal público
+> solo muestra inscripciones ACTIVAS (Matriculado) y oculta las terminadas
+> (Certificado), que son las que la regla de negocio necesita (no repetir un
+> complementario ya cursado). Ver "Conclusión" al final. Se deja el documento
+> como registro de la investigación.
+
 
 ## Hallazgo
 
@@ -45,30 +49,46 @@ no salida), ni NIS.
 Los campos mapean 1:1 al DTO actual `dto.RegistroInscripcionFicha`
 (ficha/lugar/jornada/nivel), que es lo que muestra la tabla de la UI de Fase 2.
 
-## Limitaciones
+## Conclusión (actualizada 2026-08-06, tras validación con 1120561339)
 
-- **Fase 1 no es candidata**: la tabla de resultados necesita Tipo/Nombres/
-  Apellidos, que solo entrega el "Consultar Registro" del operador (con login).
-  El portal público responde "está inscrito", no "está registrado" (una persona
-  podría estar registrada sin inscripciones activas).
-- Semántica de estado: en el flujo público "sin inscripciones" ≈ NO_ENCONTRADO;
-  hay que validar la regla de negocio antes de adoptarlo.
-- Ritmo razonable: es un servicio público del SENA; no martillar.
+**El portal público queda DESCARTADO también para Fase 2.** Motivo (regla de
+negocio): un aprendiz no debe inscribirse en un complementario en el que ya
+estuvo. El flujo del operador (Usuario SENA -> Consultar Inscripciones) muestra
+el HISTORIAL COMPLETO con estado por registro:
 
-## Plan de implementación (cuando se apruebe)
+```
+1120561339 | ENCONTRADO
+  - SISTEMAS. | ficha 2074355 | Certificado
+  - INGLES BASICO - NIVEL 1 | ficha 3273435 | Certificado
+  - ANALISIS Y DESARROLLO DE SOFTWARE. | ficha 2923560 | Matriculado
+  - ... (6 registros: Certificado / Matriculado / Cancelado Academico)
+```
 
-1. Nuevo módulo en el scraper (p. ej. `app/publico_scraper.py`): GET de la
-   página pública → llenar tipo+número → submit → parsear lista de inscripciones
-   (reutilizar el parseo/`RegistroInscripcionFicha`).
-2. `consultar_inscripciones_lote`: probar el flujo público primero; si falla o
-   devuelve error, **fallback automático** al flujo actual del operador (ya
-   paralelo).
-3. Paralelismo agresivo para el público (headless + sin sesión): 8-10 workers.
-4. Sin cambios en Fase 1 ni en el frontend (el DTO y la tabla ya cubren los
-   campos del portal).
+El portal público solo muestra las inscripciones ACTIVAS (Matriculado) y oculta
+las terminadas (Certificado): con él, alguien que ya completó el complementario
+aparecería como "libre" y la regla se rompería.
+
+La UI de Fase 2 ya muestra y exporta el estado por registro, y el DTO
+`RegistroInscripcionFicha.Estado` lo transporta.
+
+## Hallazgo (sin cambios de código)
+
+Portal público devuelve solo la lista de inscripciones activas:
+programa, ficha, nivel, lugar, jornada. **NO devuelve** nombres/apellidos,
+tipo (es entrada), NIS, ni el historial de estados.
+
+## Plan de implementación (cuando se apruebe — ya sin el público)
+
+1. Definir la regla de negocio exacta: ¿bloquea solo `Matriculado`, o también
+   `Certificado` (ya completado)? (Pregunta para el negocio.)
+2. Si se automatiza: clasificar NO_ENCONTRADO/ENCONTRADO considerando el
+   `estado` de los registros según la regla (hoy devuelve todos los que
+   coinciden con el programa y el operador decide visualmente).
+3. Sin cambios de flujo: el operador (Usuario SENA) es la fuente correcta.
 
 ## Verificación pendiente
 
 - Respuesta del portal con persona sin inscripciones: confirmar el mensaje
-  exacto para clasificar NO_ENCONTRADO.
-- Estabilidad bajo carga (lote de 20 real).
+  exacto para clasificar NO_ENCONTRADO (ya no aplica: el público está
+  descartado).
+

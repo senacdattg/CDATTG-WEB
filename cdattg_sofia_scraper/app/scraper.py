@@ -2711,6 +2711,9 @@ def _resetear_form_consultar(page: Page) -> bool:
     if fr is None:
         return False
     try:
+        # Timeout explícito y corto: si el iframe está en mal estado, evaluate
+        # (sin timeout) podría bloquear el worker hasta PAGE_TIMEOUT_MS (180 s).
+        # Con 10 s de tope, ante cualquier bloqueo se recarga el iframe (fallback).
         fr.evaluate(
             """(sel) => {
                 const vaciar = (el) => {
@@ -2742,10 +2745,12 @@ def _resetear_form_consultar(page: Page) -> bool:
                 _DOM_AP1,
                 _DOM_AP2,
             ],
+            timeout=10000,
         )
         _esperar_sin_blockui(page, 3000)
         return True
-    except Exception:
+    except Exception as exc:
+        logger.warning("reset del formulario falló (%s); se recarga el iframe", exc)
         return False
 
 

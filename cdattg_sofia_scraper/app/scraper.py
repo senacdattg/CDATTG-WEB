@@ -6,8 +6,10 @@ y no debe importar ni reutilizar la sesión/navegador de este módulo.
 
 from __future__ import annotations
 
+import logging
 import os
 import re
+import shutil
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
@@ -26,6 +28,8 @@ from app.config import (
     HEADLESS,
     SOFIA_PARALLEL_WORKERS,
     SOFIA_RAPIDO,
+    SOFIA_SESSION_DIR,
+    SOFIA_SESSION_PERSISTENTE,
     TIMEOUT_SEGUNDOS,
     require_login_url,
 )
@@ -251,12 +255,16 @@ __all__ = (
 )
 
 
+logger = logging.getLogger("sofia.scraper")
+
+
 @dataclass
 class ContextoScrape:
     cred: Credenciales
     docs: list[DocumentoLote]
     resultados: list[ResultadoVerificacion] = field(default_factory=list)
     lote: bool = False
+    worker_id: int = 0
 
 
 class _FetchState:
@@ -266,6 +274,47 @@ class _FetchState:
 # Serializa SOLO la escritura de dumps (nombres con sello de segundos), no el navegador.
 # Los lotes corren en paralelo con ThreadPoolExecutor: cada worker abre su propio navegador.
 _DUMP_LOCK = threading.Lock()
+
+# Un lock por worker-slot: serializa el acceso al perfil de sesión persistente de cada slot
+# (Chromium no permite dos procesos sobre el mismo user_data_dir). No bloquea entre slots.
+_SESSION_SLOTS = max(SOFIA_PARALLEL_WORKERS + 2, 4)
+_SESSION_SLOT_LOCKS = [threading.Lock() for _ in range(_SESSION_SLOTS)]
+
+
+def _slot_sesion(worker_id: int) -> tuple[threading.Lock, str]:
+    idx = worker_id % _SESSION_SLOTS
+    perfil = os.path.join(SOFIA_SESSION_DIR, f"w{idx}")
+    return _SESSION_SLOT_LOCKS[idx], perfil
+
+
+def ejecutar_fetch(worker_id: int, page_action: Callable[[Page], None]) -> None:
+    """Abre el navegador con sesión persistente por worker-slot (reutilizable entre lotes).
+
+    Si la sesión JOSSO del perfil sigue viva, el siguiente lote arranca directo en el
+    formulario (sin re-loguear). Si el perfil está corrupto, se limpia y se reintenta 1 vez.
+    """
+    lock, perfil = _slot_sesion(worker_id)
+    kwargs = _stealthy_fetch_kwargs()
+    if SOFIA_SESSION_PERSISTENTE:
+        os.makedirs(perfil, exist_ok=True)
+        kwargs["user_data_dir"] = perfil
+
+    def _abrir() -> None:
+        StealthyFetcher.fetch(
+            require_login_url(),
+            page_action=page_action,
+            **kwargs,
+        )
+
+    with lock:
+        try:
+            _abrir()
+        except Exception:
+            # Perfil corrupto (p. ej. cambio de versión de Chromium): descartar y reintentar.
+            logger.warning("Perfil de sesión %s corrupto; se limpia y reintenta", perfil)
+            shutil.rmtree(perfil, ignore_errors=True)
+            os.makedirs(perfil, exist_ok=True)
+            _abrir()
 
 
 def _es_dominio_sofia(url: str) -> bool:
@@ -400,8 +449,10 @@ def _stealthy_fetch_kwargs() -> dict[str, Any]:
     }
 
 
-def _ejecutar_con_scrapling(cred: Credenciales, action: Callable[[Page], None]) -> str | None:
-    """Un fetch Scrapling por solicitud (StealthyFetcher), como en las pruebas que sí cargan login."""
+def _ejecutar_con_scrapling(
+    cred: Credenciales, action: Callable[[Page], None], worker_id: int = 0
+) -> str | None:
+    """Un fetch Scrapling por solicitud (StealthyFetcher), con sesión persistente por slot."""
     err_msg: list[str | None] = [None]
     estado = _FetchState()
 
@@ -417,11 +468,7 @@ def _ejecutar_con_scrapling(cred: Credenciales, action: Callable[[Page], None]) 
             err_msg[0] = f"Error del scraper: {exc}"
 
     try:
-        StealthyFetcher.fetch(
-            require_login_url(),
-            page_action=page_action,
-            **_stealthy_fetch_kwargs(),
-        )
+        ejecutar_fetch(worker_id, page_action)
     except Exception as exc:
         return f"Error del scraper: {exc}"
 
@@ -2653,13 +2700,22 @@ def _ejecutar_flujo(ctx: ContextoScrape) -> None:
             if idx > 0:
                 _cargar_iframe_consultar_registro(page)
                 _esperar_formulario_consultar(page, timeout_ms=10000)
-            ctx.resultados.append(
-                _buscar_documento(
-                    page, doc.numero_documento, doc.tipo_documento, lote=ctx.lote
-                )
+            t0 = time.time()
+            r = _buscar_documento(
+                page, doc.numero_documento, doc.tipo_documento, lote=ctx.lote
+            )
+            ctx.resultados.append(r)
+            logger.info(
+                "verificado doc=%s estado=%s tipo=%s en %.1fs (worker=%s lote=%s)",
+                doc.numero_documento,
+                r.estado,
+                r.tipo_encontrado or "-",
+                time.time() - t0,
+                ctx.worker_id,
+                ctx.lote,
             )
 
-    err = _ejecutar_con_scrapling(ctx.cred, consultar)
+    err = _ejecutar_con_scrapling(ctx.cred, consultar, worker_id=ctx.worker_id)
     if err and not ctx.resultados:
         for d in ctx.docs:
             ctx.resultados.append(_no_verificado(d.numero_documento, err))
@@ -2700,7 +2756,7 @@ def verificar_lote(cred: Credenciales, docs: list[DocumentoLote]) -> list[Result
 
     def _procesar_chunk(chunk_idx: int) -> None:
         chunk = chunks[chunk_idx]
-        ctx = ContextoScrape(cred=cred, docs=chunk, lote=True)
+        ctx = ContextoScrape(cred=cred, docs=chunk, lote=True, worker_id=chunk_idx)
         _ejecutar_flujo(ctx)
         if not ctx.resultados:
             ctx.resultados = [

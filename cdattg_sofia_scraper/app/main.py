@@ -13,6 +13,7 @@ en Betowa no debe alterar Sofía, y viceversa.
 
 from __future__ import annotations
 
+import logging
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -21,6 +22,11 @@ from pydantic import BaseModel, Field
 from app import betowa_scraper, inscripciones_scraper, scraper
 from app.config import BETOWA_REGISTRO_URL, HEADLESS, TIMEOUT_SEGUNDOS, require_login_url
 from app.types import DocumentoLote
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="[%(asctime)s] %(levelname)s %(name)s: %(message)s",
+)
 
 
 @asynccontextmanager

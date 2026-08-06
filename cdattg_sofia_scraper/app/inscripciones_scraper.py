@@ -9,15 +9,14 @@ Flujo (Scrapling StealthyFetcher):
 from __future__ import annotations
 
 import re
+import time
 import unicodedata
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from urllib.parse import urljoin
 
 from patchright.sync_api import Page
-from scrapling.fetchers import StealthyFetcher
 
-from app.config import require_login_url
 from app import scraper as s
 
 ROL_USUARIO_SENA = s.ROL_USUARIO_SENA
@@ -1799,11 +1798,7 @@ def consultar_inscripciones(
         )
 
     try:
-        StealthyFetcher.fetch(
-            require_login_url(),
-            page_action=page_action,
-            **s._stealthy_fetch_kwargs(),
-        )
+        s.ejecutar_fetch(0, page_action)
     except Exception as exc:
         return ResultadoInscripciones(
             numero_documento=numero,
@@ -1872,6 +1867,7 @@ def _resultados_error_lote(
 def _consultar_inscripciones_lote_secuencial(
     cred: s.Credenciales,
     items: list[ConsultaLoteItem],
+    worker_id: int = 0,
 ) -> list[ResultadoInscripciones]:
     """Un solo login Scrapling; consulta cada fila (documento + programa) en secuencia."""
     if not items:
@@ -1888,14 +1884,19 @@ def _consultar_inscripciones_lote_secuencial(
             err_global[0] = err
             return
         for idx, item in enumerate(items):
-            resultados.append(_consulta_item_lote(page, item, idx))
+            t0 = time.time()
+            r = _consulta_item_lote(page, item, idx)
+            resultados.append(r)
+            s.logger.info(
+                "inscripcion doc=%s estado=%s en %.1fs (worker=%s)",
+                item.numero_documento,
+                r.estado,
+                time.time() - t0,
+                worker_id,
+            )
 
     try:
-        StealthyFetcher.fetch(
-            require_login_url(),
-            page_action=page_action,
-            **s._stealthy_fetch_kwargs(),
-        )
+        s.ejecutar_fetch(worker_id, page_action)
     except Exception as exc:
         return _resultados_error_lote(items, f"Error del scraper: {exc}")
 
@@ -1926,7 +1927,7 @@ def consultar_inscripciones_lote(
 
     def _procesar_chunk(chunk_idx: int) -> None:
         chunk = chunks[chunk_idx]
-        res = _consultar_inscripciones_lote_secuencial(cred, chunk)
+        res = _consultar_inscripciones_lote_secuencial(cred, chunk, worker_id=chunk_idx)
         for j, r in enumerate(res):
             resultados[chunk_idx + j * workers] = r
 

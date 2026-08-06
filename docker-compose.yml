@@ -83,6 +83,7 @@ services:
     shm_size: "512mb"
     volumes:
       - sofia_diagnostico:/srv/sofia-scraper/storage/sofia_diagnostico
+      - sofia_session:/srv/sofia-scraper/storage/sofia_session
 
   frontend:
     build:
@@ -100,3 +101,4 @@ volumes:
   postgres_data:
   backend_storage:
   sofia_diagnostico:
+  sofia_session:

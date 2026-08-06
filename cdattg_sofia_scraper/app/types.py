@@ -32,5 +32,8 @@ class ResultadoVerificacion:
     estado: str
     tipo_encontrado: str = ""
     nombre: str = ""
+    nombres: str = ""
+    primer_apellido: str = ""
+    segundo_apellido: str = ""
     detalle: str = ""
     mensaje: str = ""

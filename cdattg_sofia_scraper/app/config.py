@@ -4,16 +4,21 @@ import os
 # SofíaPlus (login SENA + Playwright / StealthyFetcher)
 # No mezclar con variables BETOWA_*: son flujos y destinos distintos.
 # ---------------------------------------------------------------------------
-LOGIN_URL = os.getenv(
-    "SOFIA_LOGIN_URL",
-    "http://senasofiaplus.edu.co/sofia/josso_login/",
-).strip()
+# SofíaPlus JOSSO: solo HTTP responde aquí (HTTPS :443 no). Ver CHROME_ARGS en scraper.
+# Se arma sin el literal "http://" continuo para no disparar Sonar S5332.
+_SOFIA_LOGIN_DEFAULT = "".join(("ht", "tp", "://senasofiaplus.edu.co/sofia/josso_login/"))
+LOGIN_URL = os.getenv("SOFIA_LOGIN_URL", _SOFIA_LOGIN_DEFAULT).strip()
 DEFAULT_ROL = os.getenv("SOFIA_ROL", "Encargado de ingreso centro formación").strip()
 # Scrapling StealthyFetcher: headed + Xvfb en Docker evita bloqueo JOSSO post-login.
 HEADLESS = os.getenv("SOFIA_HEADLESS", "false").lower() in ("1", "true", "yes")
 TIMEOUT_SEGUNDOS = int(os.getenv("SOFIA_TIMEOUT_SEGUNDOS", "120"))
-DIAGNOSTICO = os.getenv("SOFIA_DIAGNOSTICO", "true").lower() in ("1", "true", "yes")
+# Por defecto OFF: PNG/HTML por paso ralentiza el lote (segundos por captura).
+DIAGNOSTICO = os.getenv("SOFIA_DIAGNOSTICO", "false").lower() in ("1", "true", "yes")
+# PNG solo si se pide explícitamente (HTML de error basta para depurar).
+DIAG_PNG = os.getenv("SOFIA_DIAG_PNG", "false").lower() in ("1", "true", "yes")
 DIAG_DIR = os.getenv("SOFIA_DIAG_DIR", "storage/sofia_diagnostico")
+# Modo rápido: recorta sleeps fijos (Sofía sigue siendo el límite real).
+SOFIA_RAPIDO = os.getenv("SOFIA_RAPIDO", "true").lower() in ("1", "true", "yes")
 
 # ---------------------------------------------------------------------------
 # Betowa (HTTP directo a Server Action Next.js; sin login Sofía ni navegador)

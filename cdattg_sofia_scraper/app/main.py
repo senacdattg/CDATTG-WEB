@@ -68,6 +68,9 @@ class ResultadoOut(BaseModel):
     estado: str
     tipo_encontrado: str = ""
     nombre: str = ""
+    nombres: str = ""
+    primer_apellido: str = ""
+    segundo_apellido: str = ""
     detalle: str = ""
     mensaje: str = ""
 
@@ -91,6 +94,9 @@ def _to_out(r: scraper.ResultadoVerificacion) -> ResultadoOut:
         estado=r.estado,
         tipo_encontrado=r.tipo_encontrado,
         nombre=r.nombre,
+        nombres=getattr(r, "nombres", "") or "",
+        primer_apellido=getattr(r, "primer_apellido", "") or "",
+        segundo_apellido=getattr(r, "segundo_apellido", "") or "",
         detalle=r.detalle,
         mensaje=r.mensaje,
     )

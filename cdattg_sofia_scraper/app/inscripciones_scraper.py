@@ -76,7 +76,10 @@ class ConsultaLoteItem:
 
 
 ROL_ASPIRANTE = "Aspirante"
-MENU_INSCRIPCION = "Inscripción"
+MENU_INSCRIPCION = s.MSG_INSCRIPCION
+MSG_IDENT_FICHA = s.MSG_IDENT_FICHA
+MSG_NO_ENCONTR = s.MSG_NO_ENCONTR
+SEL_INPUT_TEXT = s.SEL_INPUT_TEXT
 MENU_CONSULTAR_PROGRAMAS = "Consultar Programas de Formación"
 MENU_CONSULTAR_INSCRIPCIONES = "Consultar Inscripciones a Programas de Formación"
 # Usuario SENA usa validarUsuarioConsulta.faces (menId=11).
@@ -89,7 +92,7 @@ URL_CONSULTAR_INSCRIPCION_USUARIO_SENA = (
     + "senasofiaplus.edu.co/sofia/inscripcion/consultarinscripcion/"
     + "validarUsuarioConsulta.faces?menId=11&fwkmenu=si"
 )
-WAIT_IFRAME_FORM_MS = 25000
+WAIT_IFRAME_FORM_MS = 12000 if s.SOFIA_RAPIDO else 25000
 VALOR_ROL_USUARIO_SENA = "2"
 
 
@@ -145,17 +148,20 @@ def _en_formulario_inscripcion(page: Page) -> bool:
 
 
 def _esperar_formulario_inscripcion(page: Page, timeout_ms: int = WAIT_IFRAME_FORM_MS) -> bool:
-    for _ in range(max(1, timeout_ms // 250)):
+    poll = s.POLL_MS
+    for _ in range(max(1, timeout_ms // poll)):
         if _en_formulario_inscripcion(page):
             # Dar tiempo a que JSF pinte inputs dentro del iframe.
-            page.wait_for_timeout(1000)
+            s._pause(page, 400 if s.SOFIA_RAPIDO else 1000)
             return True
-        page.wait_for_timeout(250)
+        page.wait_for_timeout(poll)
     return False
 
 
 def _dump_iframe_contenido(page: Page, paso: str) -> None:
     """Guarda HTML del iframe contenido (el dump normal solo ve el shell principal)."""
+    if s.SOFIA_RAPIDO and not paso.startswith("error"):
+        return
     fr = _frame_contenido(page)
     if fr is None:
         return
@@ -232,10 +238,12 @@ def _blockui_visible(page: Page) -> bool:
 
 def _esperar_sin_blockui(page: Page, timeout_ms: int = 30000) -> bool:
     """Espera a que desaparezca el overlay blockUI de Sofía (cambio de rol / menú)."""
-    for _ in range(max(1, timeout_ms // 250)):
+    to = min(timeout_ms, 10000) if s.SOFIA_RAPIDO else timeout_ms
+    poll = s.POLL_MS
+    for _ in range(max(1, to // poll)):
         if not _blockui_visible(page):
             return True
-        page.wait_for_timeout(250)
+        page.wait_for_timeout(poll)
     return not _blockui_visible(page)
 
 
@@ -352,7 +360,7 @@ def _intentar_seleccionar_usuario_sena(page: Page) -> bool:
     if _blockui_visible(page) or modo.startswith("a4j-error"):
         try:
             page.goto(s.SOFIA_HOME_URL, wait_until="domcontentloaded", timeout=25000)
-            page.wait_for_timeout(2000)
+            s._pause(page, 2000)
             _esperar_sin_blockui(page, 15000)
         except Exception:
             pass
@@ -377,7 +385,7 @@ def _confirmar_rol_usuario_sena_estable(page: Page) -> bool:
 def _recargar_home_roles(page: Page) -> None:
     try:
         page.goto(s.SOFIA_HOME_URL, wait_until="domcontentloaded", timeout=25000)
-        page.wait_for_timeout(2000)
+        s._pause(page, 2000)
         _esperar_sin_blockui(page, 15000)
     except Exception:
         pass
@@ -488,9 +496,9 @@ def _abrir_menu_consultar_inscripciones(page: Page) -> bool:
             continue
     if not s._click_texto(page, MENU_INSCRIPCION):
         return False
-    page.wait_for_timeout(500)
+    s._pause(page, 500)
     s._click_texto(page, MENU_CONSULTAR_PROGRAMAS)
-    page.wait_for_timeout(500)
+    s._pause(page, 500)
     return s._click_texto(page, MENU_CONSULTAR_INSCRIPCIONES)
 
 
@@ -509,7 +517,7 @@ def _cargar_iframe_inscripcion_directo(page: Page) -> bool:
         fr = page.frame(name="contenido")
         if fr is not None:
             fr.goto(abs_url, wait_until="domcontentloaded", timeout=30000)
-            page.wait_for_timeout(1200)
+            s._pause(page, 1200)
             if _en_formulario_inscripcion(page):
                 return True
     except Exception:
@@ -526,7 +534,7 @@ def _cargar_iframe_inscripcion_directo(page: Page) -> bool:
             }""",
             abs_url,
         )
-        page.wait_for_timeout(2000)
+        s._pause(page, 2000)
         _esperar_sin_blockui(page, 15000)
         return _en_formulario_inscripcion(page)
     except Exception:
@@ -545,7 +553,7 @@ def _navegar_consultar_inscripciones(page: Page) -> str | None:
 
     _esperar_sin_blockui(page, 20000)
     abierto = _abrir_menu_consultar_inscripciones(page)
-    page.wait_for_timeout(1200)
+    s._pause(page, 1200)
     _esperar_sin_blockui(page, 15000)
     s._dump(page, "05_tras_click_menu_inscripcion", solo_error=False)
 
@@ -578,7 +586,7 @@ def _sesion_reconocible(page: Page) -> bool:
 def _ir_home_sofia(page: Page) -> None:
     try:
         page.goto(s.SOFIA_HOME_URL, wait_until="domcontentloaded", timeout=25000)
-        page.wait_for_timeout(1500)
+        s._pause(page, 1500)
     except Exception:
         pass
 
@@ -589,7 +597,7 @@ def _login_si_necesario(page: Page, cred: s.Credenciales) -> str | None:
     if _sesion_reconocible(page):
         return None
 
-    page.wait_for_timeout(800)
+    s._pause(page, 800)
     if s._en_pagina_login(page):
         return s._completar_login(page, cred)
     if s._sesion_sofia_activa(page) or s._texto_visible_en_frames(page, ROL_ASPIRANTE):
@@ -715,7 +723,7 @@ def _set_input_value(campo, valor: str) -> bool:
 
 
 _SELECTORES_INPUT_DOC = [
-    'input[type="text"]',
+    SEL_INPUT_TEXT,
     "input:not([type])",
     'input[type="number"]',
     'input[type="tel"]',
@@ -872,38 +880,163 @@ def _escribir_numero_en_formulario(page: Page, numero: str) -> bool:
     return False
 
 
+def _esperar_select_tipo_documento(page: Page, timeout_ms: int = 12000) -> bool:
+    for _ in range(max(1, timeout_ms // 250)):
+        if _hay_select_tipo_documento(page):
+            return True
+        page.wait_for_timeout(250)
+    return _hay_select_tipo_documento(page)
+
+
 def _asegurar_form_antes_llenar(page: Page) -> str | None:
     _esperar_sin_blockui(page, 20000)
     if not _rol_actual_parece_usuario_sena(page):
         err = _seleccionar_usuario_sena(page)
         if err:
             return err
-    if _en_formulario_inscripcion(page):
+    # Tras un resultado, la URL puede seguir “de inscripción” pero sin el <select> de tipo.
+    if _en_formulario_inscripcion(page) and _hay_select_tipo_documento(page):
+        return None
+    if not _en_formulario_inscripcion(page) or not _hay_select_tipo_documento(page):
+        _volver_formulario(page)
+    if _esperar_formulario_inscripcion(page, timeout_ms=8000) and _esperar_select_tipo_documento(page, 8000):
         return None
     _cargar_iframe_inscripcion_directo(page)
-    if _esperar_formulario_inscripcion(page, timeout_ms=12000):
+    if _esperar_formulario_inscripcion(page, timeout_ms=12000) and _esperar_select_tipo_documento(
+        page, 12000
+    ):
         return None
     s._dump(page, "error_form_antes_llenar")
     _dump_iframe_contenido(page, "error_form_antes_llenar")
     return "No se cargó el formulario Consultar Inscripción (validarUsuarioConsulta)"
 
 
-def _select_tiene_tipo(frame, sel, tipo: str) -> bool:
+def _codigo_tipo_doc(tipo: str) -> str:
+    """Normaliza etiqueta o código a CC/TI/CE/…"""
+    raw = (tipo or "").strip()
+    if not raw:
+        return ""
+    up = raw.upper()
+    if up in s.SOFIA_CODIGO_A_TIPO or up in _CODIGO_EXTRA:
+        return up
+    for codigo, etiqueta in s.SOFIA_CODIGO_A_TIPO.items():
+        if s._texto_coincide(etiqueta, raw):
+            return codigo
+    for codigo, etiqueta in _CODIGO_EXTRA.items():
+        if s._texto_coincide(etiqueta, raw):
+            return codigo
+    return up
+
+
+def _select_es_tipo_documento(frame, sel) -> bool:
+    """Select del form de inscripción (valores CC/TI/CE…), no el de roles."""
     labels = s._labels_select(frame, sel)
     if s._es_select_roles(labels):
         return False
-    return any(s._texto_coincide(lb, tipo) for lb in labels)
+    try:
+        vals = [
+            (sel.locator("option").nth(j).get_attribute("value") or "").strip().upper()
+            for j in range(sel.locator("option").count())
+        ]
+    except Exception:
+        vals = []
+    codigos = {"CC", "TI", "CE", "PEP", "PPT", "DNI", "NCS", "PAS"}
+    if sum(1 for v in vals if v in codigos) >= 2:
+        return True
+    return any(
+        s._texto_coincide(lb, t)
+        for lb in labels
+        for t in (s.TIPO_CC, s.TIPO_TI, s.TIPO_CE)
+    )
+
+
+def _select_tiene_tipo(frame, sel, tipo: str) -> bool:
+    if not _select_es_tipo_documento(frame, sel):
+        return False
+    codigo = _codigo_tipo_doc(tipo)
+    labels = s._labels_select(frame, sel)
+    if any(s._texto_coincide(lb, tipo) for lb in labels):
+        return True
+    if codigo:
+        try:
+            for j in range(sel.locator("option").count()):
+                val = (sel.locator("option").nth(j).get_attribute("value") or "").strip().upper()
+                if val == codigo:
+                    return True
+        except Exception:
+            pass
+    return False
+
+
+def _forzar_value_tipo_doc(sel, codigo: str) -> bool:
+    try:
+        return bool(
+            sel.evaluate(
+                """(el, codigo) => {
+                    const v = String(codigo).toUpperCase();
+                    let found = null;
+                    for (const o of el.options) {
+                        if (String(o.value || '').toUpperCase() === v) { found = o.value; break; }
+                    }
+                    if (found == null) return false;
+                    el.value = found;
+                    for (const o of el.options) o.selected = o.value === found;
+                    el.dispatchEvent(new Event('change', { bubbles: true }));
+                    el.dispatchEvent(new Event('input', { bubbles: true }));
+                    return String(el.value || '').toUpperCase() === v;
+                }""",
+                codigo,
+            )
+        )
+    except Exception:
+        return False
+
+
+def _try_select_option(sel, *, value: str = "", label: str = "") -> bool:
+    try:
+        if value:
+            sel.select_option(value=value, timeout=5000)
+            return True
+        if label:
+            sel.select_option(label=label, timeout=5000)
+            return True
+    except Exception:
+        pass
+    return False
+
+
+def _aplicar_opcion_por_label(sel, tipo: str, label: str, value: str) -> bool:
+    if not s._texto_coincide(label, tipo):
+        return False
+    if _try_select_option(sel, value=value or label):
+        return True
+    return _try_select_option(sel, label=label)
 
 
 def _aplicar_tipo_en_select(sel, tipo: str) -> bool:
+    codigo = _codigo_tipo_doc(tipo)
+    if codigo and _try_select_option(sel, value=codigo):
+        return True
     for j in range(sel.locator("option").count()):
         opt = sel.locator("option").nth(j)
         label = opt.inner_text().strip()
-        if not s._texto_coincide(label, tipo):
+        value = (opt.get_attribute("value") or "").strip()
+        if codigo and value.upper() == codigo and _try_select_option(sel, value=value):
+            return True
+        if _aplicar_opcion_por_label(sel, tipo, label, value):
+            return True
+    return bool(codigo and _forzar_value_tipo_doc(sel, codigo))
+
+
+def _hay_select_tipo_documento(page: Page) -> bool:
+    for frame in _frames_formulario(page):
+        try:
+            selects = frame.locator("select")
+            for i in range(selects.count()):
+                if _select_es_tipo_documento(frame, selects.nth(i)):
+                    return True
+        except Exception:
             continue
-        value = opt.get_attribute("value") or label
-        sel.select_option(value=value, timeout=5000)
-        return True
     return False
 
 
@@ -917,6 +1050,12 @@ def _seleccionar_tipo_en_formulario(page: Page, tipo: str) -> bool:
                     return True
         except Exception:
             continue
+    # Fallback: por código en cualquier select del form.
+    codigo = _codigo_tipo_doc(tipo)
+    if codigo and codigo in s.SOFIA_CODIGO_A_TIPO:
+        etiqueta = s.SOFIA_CODIGO_A_TIPO[codigo]
+        if s._seleccionar_por_texto(page, "select", etiqueta):
+            return True
     return s._seleccionar_por_texto(page, "select", tipo)
 
 
@@ -1004,7 +1143,7 @@ def _llenar_consulta(page: Page, tipo: str, numero: str) -> str | None:
         return f"No se pudo seleccionar tipo de identificación '{tipo}'"
 
     # Tras elegir tipo, JSF/A4J a veces re-renderiza el campo número.
-    page.wait_for_timeout(1000)
+    s._pause(page, 1000)
 
     if not _escribir_numero_en_formulario(page, numero):
         s._dump(page, "error_sin_input_documento")
@@ -1015,9 +1154,10 @@ def _llenar_consulta(page: Page, tipo: str, numero: str) -> str | None:
     if not _click_consultar_en_formulario(page):
         return "No se pudo hacer clic en Consultar"
 
-    if not _esperar_resultado_consulta(page, timeout_ms=20000):
+    wait_res = 8000 if s.SOFIA_RAPIDO else 20000
+    if not _esperar_resultado_consulta(page, timeout_ms=wait_res):
         _click_consultar_js(page, _JS_REINTENTO_CONSULTAR)
-        _esperar_resultado_consulta(page, timeout_ms=20000)
+        _esperar_resultado_consulta(page, timeout_ms=wait_res)
     return None
 
 
@@ -1027,11 +1167,11 @@ def _hay_tabla_o_vacio_inscripciones(page: Page) -> bool:
             cuerpo = s._normalizar_texto(frame.inner_text("body"))
         except Exception:
             continue
-        if "identificador ficha" in cuerpo and "programa" in cuerpo:
+        if MSG_IDENT_FICHA in cuerpo and "programa" in cuerpo:
             return True
         if "pagina" in cuerpo and " de " in cuerpo and any(ch.isdigit() for ch in cuerpo):
             return True
-        if "no se encontr" in cuerpo or "sin resultados" in cuerpo or "no hay registros" in cuerpo:
+        if MSG_NO_ENCONTR in cuerpo or "sin resultados" in cuerpo or "no hay registros" in cuerpo:
             return True
     return False
 
@@ -1150,7 +1290,7 @@ def _parse_linea_inscripcion(line: str) -> RegistroInscripcion | None:
 
 
 def _header_es_tabla_inscripcion(header: str) -> bool:
-    return "identificador ficha" in header or "programa de formacion" in header
+    return MSG_IDENT_FICHA in header or "programa de formacion" in header
 
 
 def _registro_desde_cells(cells) -> RegistroInscripcion | None:
@@ -1338,7 +1478,7 @@ def _esperar_avance_pagina(page: Page, pagina_antes: int | None, timeout_ms: int
     """Espera A4J/blockUI y que el indicador pase de pagina_antes."""
     _esperar_sin_blockui(page, min(15000, timeout_ms))
     if pagina_antes is None:
-        page.wait_for_timeout(800)
+        s._pause(page, 800)
         return True
     for _ in range(max(1, timeout_ms // 250)):
         ind = _indicador_pagina_actual(page)
@@ -1379,7 +1519,7 @@ def _avanzar_con_indicador(page: Page, actual: int, total: int) -> bool:
         return False
     if _ir_siguiente_pagina(page, actual):
         return True
-    page.wait_for_timeout(500)
+    s._pause(page, 500)
     return _ir_siguiente_pagina(page, actual)
 
 
@@ -1460,8 +1600,9 @@ def _consultar_un_tipo(
             mensaje=err,
         )
 
-    s._dump(page, f"inscripcion_resultado_{s._sanitize(tipo)}", solo_error=False)
-    _dump_iframe_contenido(page, f"inscripcion_resultado_{s._sanitize(tipo)}")
+    s._dump(page, f"inscripcion_resultado_{s._sanitize(tipo)}", solo_error=True)
+    if not s.SOFIA_RAPIDO:
+        _dump_iframe_contenido(page, f"inscripcion_resultado_{s._sanitize(tipo)}")
     ind0 = _indicador_pagina_actual(page)
     todos, paginas_leidas = _recolectar_todas_paginas(page)
     filtrados = _filtrar_por_programa(todos, programa)
@@ -1498,7 +1639,7 @@ def _consultar_un_tipo(
 
     # Sin filas: puede ser tipo incorrecto o sin historial
     cuerpo = s._texto_pagina_completo(page)
-    if "no se encontr" in cuerpo or "sin resultados" in cuerpo or "no hay registros" in cuerpo:
+    if MSG_NO_ENCONTR in cuerpo or "sin resultados" in cuerpo or "no hay registros" in cuerpo:
         return ResultadoInscripciones(
             numero_documento=numero,
             programa_consultado=programa,
@@ -1516,13 +1657,67 @@ def _consultar_un_tipo(
     )
 
 
+def _en_resultados_inscripcion(page: Page) -> bool:
+    """True si el iframe muestra tabla/mensaje de resultado (sin select de tipo)."""
+    if _hay_select_tipo_documento(page):
+        return False
+    for frame in _frames_formulario(page):
+        try:
+            url = (getattr(frame, "url", "") or "").lower()
+            if "buscadorinscripciones" in url.replace("_", ""):
+                return True
+            cuerpo = s._normalizar_texto(frame.inner_text("body"))
+            if MSG_IDENT_FICHA in cuerpo and "programa" in cuerpo:
+                return True
+            if "pagina anterior" in cuerpo or MSG_NO_ENCONTR in cuerpo:
+                return True
+        except Exception:
+            continue
+    return False
+
+
+def _click_pagina_anterior_inscripcion(page: Page) -> bool:
+    """Vuelve del resultado al formulario (enlace salirCM / Página Anterior)."""
+    for frame in _frames_formulario(page):
+        try:
+            for sel in (
+                'a[id*="salirCM"]',
+                'a[id$="salirCM"]',
+                'a:has-text("Página Anterior")',
+                'a:has-text("Pagina Anterior")',
+            ):
+                loc = frame.locator(sel)
+                if loc.count() == 0:
+                    continue
+                loc.first.click(timeout=5000, force=True)
+                s._pause(page, 800)
+                _esperar_sin_blockui(page, 10000)
+                return True
+        except Exception:
+            continue
+    if s._click_texto(page, "Página Anterior") or s._click_texto(page, "Pagina Anterior"):
+        s._pause(page, 800)
+        _esperar_sin_blockui(page, 10000)
+        return True
+    return False
+
+
 def _volver_formulario(page: Page) -> None:
-    """Tras una consulta, volver al formulario si el menú lo permite."""
-    if _en_formulario_inscripcion(page) and s._texto_visible_en_frames(page, "Tipo de Identificación"):
-        # Si hay tabla y formulario juntos, ok
+    """Tras una consulta, volver al formulario con select de tipo listo."""
+    if _hay_select_tipo_documento(page) and _en_formulario_inscripcion(page):
         return
+    if _en_resultados_inscripcion(page) or not _hay_select_tipo_documento(page):
+        _click_pagina_anterior_inscripcion(page)
+        if _esperar_select_tipo_documento(page, 8000):
+            return
     if s._click_texto(page, MENU_CONSULTAR_INSCRIPCIONES):
         page.wait_for_timeout(s.WAIT_FORM_MS)
+        _esperar_sin_blockui(page, 10000)
+        if _esperar_select_tipo_documento(page, 8000):
+            return
+    _cargar_iframe_inscripcion_directo(page)
+    _esperar_formulario_inscripcion(page, timeout_ms=12000)
+    _esperar_select_tipo_documento(page, 12000)
 
 
 def _cred_usuario_sena(cred: s.Credenciales) -> s.Credenciales:

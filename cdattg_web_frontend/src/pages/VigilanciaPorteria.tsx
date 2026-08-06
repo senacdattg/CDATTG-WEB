@@ -25,6 +25,9 @@ import type {
 
 const DOC_INPUT_ID = 'porteria-documento-input';
 const DEBOUNCE_MS = 2500;
+/** Espera tras dejar de digitar/escanear antes de consultar (evita buscar a medias). */
+const AUTO_LOOKUP_MS = 3000;
+const DOC_MIN_LEN = 5;
 const FEEDBACK_MS = 5000;
 const STORAGE_KEY = 'porteria_contexto_v1';
 
@@ -132,7 +135,7 @@ function FichaPersonaResumen({
       <FichaRow label="Documento" value={persona.numero_documento} />
       <FichaRow label="Nombre" value={persona.nombre_completo || 'Sin nombre'} />
       <FichaRow label="Contacto" value={persona.celular || persona.email || persona.telefono || '—'} />
-      <FichaRow label="Tipo sugerido" value={labelTipo(persona.tipo_sugerido) || '—'} />
+      <FichaRow label="Tipo" value={labelTipo(persona.tipo_sugerido) || '—'} />
       {visitaLabel ? <FichaRow label="Dentro desde" value={visitaLabel} /> : null}
       {ficha ? (
         <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 dark:border-emerald-800 dark:bg-emerald-950/40">
@@ -243,6 +246,93 @@ function FormSalidaMotivo({
   );
 }
 
+function tituloFicha(
+  esIngreso: boolean,
+  alerta: boolean,
+  forzarSinIngreso: boolean,
+  salidaAutoDesdeEntrada: boolean,
+): string {
+  if (salidaAutoDesdeEntrada) return 'Ya tiene ingreso · Registrar salida';
+  if (!alerta) return esIngreso ? 'Modo ENTRADA' : 'Modo SALIDA';
+  if (esIngreso) return 'Entrada bloqueada';
+  if (forzarSinIngreso) return 'Salida irregular';
+  return 'Sin ingreso abierto';
+}
+
+function colorBannerFicha(
+  esIngreso: boolean,
+  forzarSinIngreso: boolean,
+  salidaAutoDesdeEntrada: boolean,
+): string {
+  if (salidaAutoDesdeEntrada) return 'bg-amber-500';
+  if (esIngreso) return 'bg-emerald-600';
+  if (forzarSinIngreso) return 'bg-red-600';
+  return 'bg-amber-500';
+}
+
+function claseBtnConfirmar(esIngreso: boolean, forzarSinIngreso: boolean): string {
+  if (esIngreso) return '!bg-emerald-600 hover:!bg-emerald-700';
+  if (forzarSinIngreso) return '!bg-red-600 hover:!bg-red-700';
+  return '!bg-amber-500 hover:!bg-amber-600';
+}
+
+function textoBtnConfirmar(
+  confirmando: boolean,
+  esIngreso: boolean,
+  forzarSinIngreso: boolean,
+): string {
+  if (confirmando) return 'Registrando…';
+  if (forzarSinIngreso) return 'Confirmar salida irregular';
+  if (esIngreso) return 'Confirmar ingreso';
+  return 'Confirmar salida';
+}
+
+function PanelFichaSalida({
+  tipos,
+  motivos,
+  tipoPersona,
+  motivoSalida,
+  observacionSalida,
+  confirmando,
+  forzarSinIngreso,
+  puedeNormal,
+  onTipo,
+  onMotivo,
+  onObservacion,
+}: Readonly<{
+  tipos: string[];
+  motivos: string[];
+  tipoPersona: AccesoTipoPersona;
+  motivoSalida: AccesoMotivoSalida;
+  observacionSalida: string;
+  confirmando: boolean;
+  forzarSinIngreso: boolean;
+  puedeNormal: boolean;
+  onTipo: (v: AccesoTipoPersona) => void;
+  onMotivo: (v: AccesoMotivoSalida) => void;
+  onObservacion: (v: string) => void;
+}>) {
+  return (
+    <>
+      {(puedeNormal || forzarSinIngreso) && (
+        <>
+          {forzarSinIngreso ? (
+            <FormIngresoTipo tipos={tipos} tipoPersona={tipoPersona} onChange={onTipo} disabled={confirmando} />
+          ) : null}
+          <FormSalidaMotivo
+            motivos={motivos}
+            motivoSalida={motivoSalida}
+            observacionSalida={observacionSalida}
+            onMotivo={onMotivo}
+            onObservacion={onObservacion}
+            disabled={confirmando}
+          />
+        </>
+      )}
+    </>
+  );
+}
+
 function PanelFicha({
   lookup,
   modo,
@@ -251,10 +341,10 @@ function PanelFicha({
   observacionSalida,
   confirmando,
   forzarSinIngreso,
+  salidaAutoDesdeEntrada,
   onTipo,
   onMotivo,
   onObservacion,
-  onForzarSinIngreso,
   onConfirmar,
   onCancelar,
 }: Readonly<{
@@ -265,10 +355,10 @@ function PanelFicha({
   observacionSalida: string;
   confirmando: boolean;
   forzarSinIngreso: boolean;
+  salidaAutoDesdeEntrada: boolean;
   onTipo: (v: AccesoTipoPersona) => void;
   onMotivo: (v: AccesoMotivoSalida) => void;
   onObservacion: (v: string) => void;
-  onForzarSinIngreso: (v: boolean) => void;
   onConfirmar: () => void;
   onCancelar: () => void;
 }>) {
@@ -280,7 +370,8 @@ function PanelFicha({
     );
   }
 
-  const esIngreso = modo === 'ENTRADA';
+  // Si está en ENTRADA pero la persona ya está adentro, el flujo efectivo es SALIDA (sin cambiar el botón).
+  const esIngreso = modo === 'ENTRADA' && !salidaAutoDesdeEntrada;
   const tipos = lookup.tipos_persona?.length ? lookup.tipos_persona : TIPOS_DEFAULT;
   const motivos = lookup.motivos_salida?.length ? lookup.motivos_salida : Object.keys(MOTIVO_LABELS);
   const visitaLabel = lookup.visita_abierta
@@ -289,86 +380,57 @@ function PanelFicha({
   const puedeNormal = lookup.puede_confirmar;
   const puedeIrregular = !esIngreso && lookup.permite_salida_sin_ingreso && forzarSinIngreso;
   const puedeConfirmar = puedeNormal || puedeIrregular;
-
-  let titulo = esIngreso ? 'Modo ENTRADA' : 'Modo SALIDA';
-  if (lookup.alerta) titulo = esIngreso ? 'Entrada bloqueada' : forzarSinIngreso ? 'Salida irregular' : 'Sin ingreso abierto';
+  const titulo = tituloFicha(esIngreso, Boolean(lookup.alerta), forzarSinIngreso, salidaAutoDesdeEntrada);
 
   return (
     <>
       <div
-        className={`rounded-xl px-4 py-3 text-center text-lg font-bold text-white ${
-          esIngreso ? 'bg-emerald-600' : forzarSinIngreso ? 'bg-red-600' : 'bg-amber-500'
-        }`}
+        className={`rounded-xl px-4 py-3 text-center text-lg font-bold text-white ${colorBannerFicha(esIngreso, forzarSinIngreso, salidaAutoDesdeEntrada)}`}
       >
         {titulo}
         {lookup.persona.es_nueva ? ' · Persona nueva' : ''}
       </div>
 
-      {lookup.alerta ? (
-        <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100">
-          {lookup.alerta}
-        </p>
-      ) : null}
+      {(() => {
+        const aviso = salidaAutoDesdeEntrada
+          ? 'Ya tiene un ingreso abierto. Puede confirmar la salida aquí sin cambiar a SALIDA.'
+          : lookup.alerta;
+        if (!aviso) return null;
+        return (
+          <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100">
+            {aviso}
+          </p>
+        );
+      })()}
 
       <FichaPersonaResumen persona={lookup.persona} visitaLabel={visitaLabel} ficha={lookup.ficha} />
 
       {esIngreso ? (
         <FormIngresoTipo tipos={tipos} tipoPersona={tipoPersona} onChange={onTipo} disabled={confirmando || !puedeConfirmar} />
       ) : (
-        <>
-          {lookup.permite_salida_sin_ingreso ? (
-            <label className="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-900 dark:border-red-800 dark:bg-red-950/30 dark:text-red-100">
-              <input
-                type="checkbox"
-                className="mt-1"
-                checked={forzarSinIngreso}
-                onChange={(e) => onForzarSinIngreso(e.target.checked)}
-                disabled={confirmando}
-              />
-              <span>
-                Registrar <strong>salida sin ingreso previo</strong> (la persona está/salió pero no había registro de
-                entrada).
-              </span>
-            </label>
-          ) : null}
-          {(puedeNormal || forzarSinIngreso) && (
-            <>
-              {forzarSinIngreso ? (
-                <FormIngresoTipo tipos={tipos} tipoPersona={tipoPersona} onChange={onTipo} disabled={confirmando} />
-              ) : null}
-              <FormSalidaMotivo
-                motivos={motivos}
-                motivoSalida={motivoSalida}
-                observacionSalida={observacionSalida}
-                onMotivo={onMotivo}
-                onObservacion={onObservacion}
-                disabled={confirmando}
-              />
-            </>
-          )}
-        </>
+        <PanelFichaSalida
+          tipos={tipos}
+          motivos={motivos}
+          tipoPersona={tipoPersona}
+          motivoSalida={motivoSalida}
+          observacionSalida={observacionSalida}
+          confirmando={confirmando}
+          forzarSinIngreso={forzarSinIngreso}
+          puedeNormal={puedeNormal}
+          onTipo={onTipo}
+          onMotivo={onMotivo}
+          onObservacion={onObservacion}
+        />
       )}
 
       <div className="flex flex-wrap gap-2">
         <button
           type="button"
-          className={`btn-primary min-h-[48px] flex-1 text-base ${
-            esIngreso
-              ? '!bg-emerald-600 hover:!bg-emerald-700'
-              : forzarSinIngreso
-                ? '!bg-red-600 hover:!bg-red-700'
-                : '!bg-amber-500 hover:!bg-amber-600'
-          }`}
+          className={`btn-primary min-h-[48px] flex-1 text-base ${claseBtnConfirmar(esIngreso, forzarSinIngreso)}`}
           disabled={confirmando || !puedeConfirmar}
           onClick={onConfirmar}
         >
-          {confirmando
-            ? 'Registrando…'
-            : forzarSinIngreso
-              ? 'Confirmar salida irregular'
-              : esIngreso
-                ? 'Confirmar ingreso'
-                : 'Confirmar salida'}
+          {textoBtnConfirmar(confirmando, esIngreso, forzarSinIngreso)}
         </button>
         <button type="button" className="btn-secondary min-h-[48px] px-4" disabled={confirmando} onClick={onCancelar}>
           Cancelar
@@ -429,6 +491,8 @@ export function VigilanciaPorteria() {
   const [motivoSalida, setMotivoSalida] = useState<AccesoMotivoSalida>('DESCANSO');
   const [observacionSalida, setObservacionSalida] = useState('');
   const [forzarSinIngreso, setForzarSinIngreso] = useState(false);
+  /** ENTRADA + persona ya adentro → flujo de salida sin cambiar el botón ENTRADA/SALIDA. */
+  const [salidaAutoDesdeEntrada, setSalidaAutoDesdeEntrada] = useState(false);
   const [loadingLookup, setLoadingLookup] = useState(false);
   const [confirmando, setConfirmando] = useState(false);
   const [error, setError] = useState('');
@@ -488,6 +552,7 @@ export function VigilanciaPorteria() {
     setLookup(null);
     setObservacionSalida('');
     setForzarSinIngreso(false);
+    setSalidaAutoDesdeEntrada(false);
     focusDocInput();
   }, []);
 
@@ -500,6 +565,7 @@ export function VigilanciaPorteria() {
     setContextoListo(true);
     setError('');
     setLookup(null);
+    setSalidaAutoDesdeEntrada(false);
     void refreshDentro(sedeId);
     focusDocInput();
   };
@@ -508,6 +574,7 @@ export function VigilanciaPorteria() {
     setModo(next);
     setLookup(null);
     setForzarSinIngreso(false);
+    setSalidaAutoDesdeEntrada(false);
     setError('');
     if (contextoListo && regionalId && sedeId) {
       saveContexto({ regionalId, sedeId, modo: next });
@@ -535,6 +602,7 @@ export function VigilanciaPorteria() {
       setError('');
       setFeedback(null);
       setForzarSinIngreso(false);
+      setSalidaAutoDesdeEntrada(false);
       setMetodo(metodoRegistro);
       try {
         const res = await apiService.accesoLookup({
@@ -543,14 +611,34 @@ export function VigilanciaPorteria() {
           metodo: metodoRegistro,
           modo,
         });
-        setLookup(res);
-        setDocumento(doc);
-        setTipoPersona(resolveTipoInicial(res));
-        if (res.motivos_salida?.length) {
-          setMotivoSalida(res.motivos_salida[0] as AccesoMotivoSalida);
+        // En ENTRADA, si ya está adentro: abrir flujo de salida sin pedir clic en SALIDA.
+        if (modo === 'ENTRADA' && res.dentro) {
+          const resSalida = await apiService.accesoLookup({
+            numero_documento: doc,
+            sede_id: sedeId,
+            metodo: metodoRegistro,
+            modo: 'SALIDA',
+          });
+          setLookup(resSalida);
+          setSalidaAutoDesdeEntrada(true);
+          setDocumento('');
+          setTipoPersona(resolveTipoInicial(resSalida));
+          if (resSalida.motivos_salida?.length) {
+            setMotivoSalida(resSalida.motivos_salida[0] as AccesoMotivoSalida);
+          }
+          setForzarSinIngreso(false);
+        } else {
+          setLookup(res);
+          setDocumento('');
+          setTipoPersona(resolveTipoInicial(res));
+          if (res.motivos_salida?.length) {
+            setMotivoSalida(res.motivos_salida[0] as AccesoMotivoSalida);
+          }
+          setForzarSinIngreso(modo === 'SALIDA' && Boolean(res.permite_salida_sin_ingreso));
         }
       } catch (e: unknown) {
         setLookup(null);
+        setSalidaAutoDesdeEntrada(false);
         setError(axiosErrorMessage(e, 'No se pudo consultar el documento.'));
       } finally {
         setLoadingLookup(false);
@@ -575,21 +663,36 @@ export function VigilanciaPorteria() {
     [runLookup],
   );
 
+  // Consulta automática al digitar o al terminar el barrido del láser (sin clic en Buscar).
+  useEffect(() => {
+    if (!contextoListo || !sedeId || confirmando || loadingLookup) return;
+    const doc = normalizarDocumentoEscaneado(documento);
+    if (doc.length < DOC_MIN_LEN) return;
+    if (lookup?.persona.numero_documento === doc) return;
+
+    const timer = globalThis.setTimeout(() => {
+      void runLookup(documento, 'LASER');
+    }, AUTO_LOOKUP_MS);
+    return () => globalThis.clearTimeout(timer);
+  }, [
+    documento,
+    contextoListo,
+    sedeId,
+    confirmando,
+    loadingLookup,
+    lookup?.persona.numero_documento,
+    runLookup,
+  ]);
+
   const handleConfirmar = async () => {
     if (!lookup || confirmando || !sedeId) return;
     const doc = lookup.persona.numero_documento;
+    const registrarSalida = modo === 'SALIDA' || salidaAutoDesdeEntrada;
     setConfirmando(true);
     setError('');
     try {
       let res: AccesoRegistroResponse;
-      if (modo === 'ENTRADA') {
-        res = await apiService.accesoIngreso({
-          numero_documento: doc,
-          tipo_persona: tipoPersona,
-          metodo_registro: metodo,
-          sede_id: sedeId,
-        });
-      } else {
+      if (registrarSalida) {
         if (motivoSalida === 'OTRO' && !observacionSalida.trim()) {
           setError('Indique una observación cuando el motivo es Otro.');
           setConfirmando(false);
@@ -603,6 +706,13 @@ export function VigilanciaPorteria() {
           sede_id: sedeId,
           permitir_sin_ingreso: forzarSinIngreso || undefined,
           tipo_persona: forzarSinIngreso ? tipoPersona : undefined,
+        });
+      } else {
+        res = await apiService.accesoIngreso({
+          numero_documento: doc,
+          tipo_persona: tipoPersona,
+          metodo_registro: metodo,
+          sede_id: sedeId,
         });
       }
       const msg =
@@ -753,11 +863,14 @@ export function VigilanciaPorteria() {
             <IdentificationIcon className="h-6 w-6 text-primary-600" />
             <h2 className="text-lg font-semibold">3. Documento</h2>
           </div>
-          <form onSubmit={handleSubmitDocumento} className="flex flex-col gap-2 sm:flex-row sm:items-end">
-            <div className="flex-1">
-              <label htmlFor={DOC_INPUT_ID} className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                Número de documento (láser / manual)
-              </label>
+          <form onSubmit={handleSubmitDocumento} className="mx-auto w-full max-w-xl space-y-2">
+            <label
+              htmlFor={DOC_INPUT_ID}
+              className="block text-center text-sm font-medium text-gray-700 dark:text-gray-300"
+            >
+              Número de documento (láser / manual)
+            </label>
+            <div className="flex items-stretch gap-2">
               <input
                 id={DOC_INPUT_ID}
                 type="text"
@@ -765,21 +878,33 @@ export function VigilanciaPorteria() {
                 autoComplete="off"
                 value={documento}
                 onChange={(e) => {
-                  setDocumento(e.target.value);
+                  const next = e.target.value;
+                  setDocumento(next);
                   setError('');
+                  const norm = normalizarDocumentoEscaneado(next);
+                  if (lookup && lookup.persona.numero_documento !== norm) {
+                    setLookup(null);
+                  }
                 }}
-                placeholder="Apunte el láser o digite y Enter"
-                className="input-field w-full text-lg"
+                placeholder="Apunte el láser o digite el documento"
+                className="input-field min-h-[48px] flex-1 text-center text-lg"
                 disabled={!escaneoHabilitado || loadingLookup || confirmando}
               />
+              <button
+                type="submit"
+                disabled={!escaneoHabilitado || loadingLookup || confirmando || !documento.trim()}
+                className="btn-primary min-h-[48px] shrink-0 touch-manipulation px-5"
+              >
+                {loadingLookup ? 'Buscando…' : 'Buscar'}
+              </button>
             </div>
-            <button
-              type="submit"
-              disabled={!escaneoHabilitado || loadingLookup || confirmando || !documento.trim()}
-              className="btn-primary min-h-[44px] shrink-0 touch-manipulation"
-            >
-              {loadingLookup ? 'Buscando…' : 'Buscar'}
-            </button>
+            {loadingLookup ? (
+              <p className="text-center text-sm text-primary-600 dark:text-primary-400">Buscando…</p>
+            ) : (
+              <p className="text-center text-xs text-gray-500 dark:text-gray-400">
+                Automático (~3 s), Enter o botón Buscar (útil en celular).
+              </p>
+            )}
           </form>
 
           <div className="border-t border-gray-100 pt-4 dark:border-gray-700">
@@ -820,15 +945,16 @@ export function VigilanciaPorteria() {
             observacionSalida={observacionSalida}
             confirmando={confirmando}
             forzarSinIngreso={forzarSinIngreso}
+            salidaAutoDesdeEntrada={salidaAutoDesdeEntrada}
             onTipo={setTipoPersona}
             onMotivo={setMotivoSalida}
             onObservacion={setObservacionSalida}
-            onForzarSinIngreso={setForzarSinIngreso}
             onConfirmar={() => void handleConfirmar()}
             onCancelar={() => {
               setLookup(null);
               setDocumento('');
               setForzarSinIngreso(false);
+              setSalidaAutoDesdeEntrada(false);
               focusDocInput();
             }}
           />

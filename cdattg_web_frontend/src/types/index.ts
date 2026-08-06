@@ -1217,6 +1217,11 @@ export interface AccesoHistorialResponse {
   fecha_hasta?: string;
 }
 
+export interface AccesoHoraBucket {
+  hora: number;
+  n: number;
+}
+
 export interface AccesoEstadisticasResponse {
   fecha_desde: string;
   fecha_hasta: string;
@@ -1226,9 +1231,14 @@ export interface AccesoEstadisticasResponse {
   salidas_sin_ingreso: number;
   visitas_abiertas_periodo: number;
   visitas_cerradas_periodo: number;
+  indice_salida_ingreso: number;
+  hora_pico_ingreso?: number;
+  hora_pico_salida?: number;
   por_tipo_persona: Record<string, number>;
   por_motivo_salida: Record<string, number>;
   por_metodo: Record<string, number>;
+  ingresos_por_hora: AccesoHoraBucket[];
+  salidas_por_hora: AccesoHoraBucket[];
 }
 
 export interface AccesoHistorialParams {
@@ -1239,6 +1249,7 @@ export interface AccesoHistorialParams {
   tipo_persona?: string;
   documento?: string;
   estado?: string;
+  motivo_salida?: string;
   salida_sin_ingreso?: boolean;
   page?: number;
   page_size?: number;

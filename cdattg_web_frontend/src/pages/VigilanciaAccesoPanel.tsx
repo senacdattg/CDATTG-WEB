@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ChartBarIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { ChartBarIcon, ClockIcon, MagnifyingGlassIcon, UserIcon } from '@heroicons/react/24/outline';
 import { apiService } from '../services/api';
 import { axiosErrorMessage } from '../utils/httpError';
 import type {
@@ -7,6 +7,7 @@ import type {
   AccesoHistorialItem,
   AccesoHistorialParams,
   AccesoHistorialResponse,
+  AccesoHoraBucket,
   RegionalItem,
   SedeItem,
 } from '../types';
@@ -17,6 +18,8 @@ const TIPO_LABELS: Record<string, string> = {
   ADMINISTRATIVO: 'Administrativo',
   VISITANTE: 'Visitante',
 };
+
+const LIVE_REFRESH_MS = 5000;
 
 const MOTIVO_LABELS: Record<string, string> = {
   DESCANSO: 'Descanso',
@@ -95,6 +98,140 @@ function DistList({ title, data, labels }: Readonly<{ title: string; data?: Reco
   );
 }
 
+function formatHoraLabel(h: number): string {
+  return `${String(h).padStart(2, '0')}:00`;
+}
+
+function formatIndice(v: number): string {
+  if (!Number.isFinite(v) || v <= 0) return '—';
+  return `${(v * 100).toFixed(0)}%`;
+}
+
+function normalizeHoras24(data?: AccesoHoraBucket[]): AccesoHoraBucket[] {
+  if (data?.length === 24) return data;
+  return Array.from({ length: 24 }, (_, hora) => ({
+    hora,
+    n: data?.find((d) => d.hora === hora)?.n ?? 0,
+  }));
+}
+
+/** Todas las horas empatadas en el máximo (puede haber varias horas pico). */
+function horasPicoEmpatadas(data?: AccesoHoraBucket[]): { horas: number[]; n: number } {
+  const rows = normalizeHoras24(data);
+  const max = Math.max(0, ...rows.map((r) => r.n));
+  if (max <= 0) return { horas: [], n: 0 };
+  return { horas: rows.filter((r) => r.n === max).map((r) => r.hora), n: max };
+}
+
+function formatHorasPico(horas: number[], n: number): string {
+  if (horas.length === 0 || n <= 0) return 'Sin movimientos';
+  const labels = horas.map((h) => formatHoraLabel(h)).join(', ');
+  if (horas.length === 1) return `${labels} (${n})`;
+  return `${labels} — ${n} c/u`;
+}
+
+/** Tabla estilo boceto: horas 0–11 | 12–23, con cantidad por hora. */
+function HalfDayHourTable({
+  title,
+  metricLabel,
+  data,
+  tone,
+}: Readonly<{
+  title: string;
+  metricLabel: string;
+  data?: AccesoHoraBucket[];
+  tone: 'emerald' | 'amber';
+}>) {
+  const rows = normalizeHoras24(data);
+  const pico = horasPicoEmpatadas(rows);
+  const picoSet = new Set(pico.horas);
+  const left = rows.slice(0, 12);
+  const right = rows.slice(12, 24);
+
+  const headTone =
+    tone === 'emerald'
+      ? 'bg-emerald-700 text-white dark:bg-emerald-800'
+      : 'bg-amber-700 text-white dark:bg-amber-800';
+  const picoCell =
+    tone === 'emerald'
+      ? 'bg-emerald-50 font-bold text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200'
+      : 'bg-amber-50 font-bold text-amber-800 dark:bg-amber-950/40 dark:text-amber-200';
+
+  const renderHalf = (half: AccesoHoraBucket[], keyPrefix: string) => (
+    <table className="min-w-0 w-full table-fixed border-collapse">
+      <thead>
+        <tr className={headTone}>
+          <th className="px-2 py-2 text-left text-xs font-semibold uppercase tracking-wide">
+            <span className="inline-flex items-center gap-1.5">
+              <ClockIcon className="h-4 w-4" aria-hidden />
+              Hora
+            </span>
+          </th>
+          <th className="px-2 py-2 text-right text-xs font-semibold uppercase tracking-wide">
+            <span className="inline-flex items-center justify-end gap-1.5">
+              <UserIcon className="h-4 w-4" aria-hidden />
+              {metricLabel}
+            </span>
+          </th>
+        </tr>
+      </thead>
+      <tbody>
+        {half.map((row) => {
+          const esPico = picoSet.has(row.hora);
+          return (
+            <tr key={`${keyPrefix}-${row.hora}`} className="border-b border-gray-200 dark:border-gray-700">
+              <td className="px-2 py-1.5 text-sm tabular-nums text-gray-800 dark:text-gray-200">
+                {row.hora}
+                {esPico ? (
+                  <span className="ml-1.5 text-[10px] font-semibold uppercase text-primary-600 dark:text-primary-300">
+                    pico
+                  </span>
+                ) : null}
+              </td>
+              <td
+                className={`px-2 py-1.5 text-right text-sm tabular-nums ${
+                  esPico ? picoCell : 'text-gray-900 dark:text-white'
+                }`}
+              >
+                {row.n > 0 ? row.n : ''}
+              </td>
+            </tr>
+          );
+        })}
+      </tbody>
+    </table>
+  );
+
+  return (
+    <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800">
+      <div className="border-b border-gray-100 px-4 py-3 dark:border-gray-700">
+        <h3 className="text-sm font-semibold text-gray-900 dark:text-white">{title}</h3>
+        <p className="mt-1 text-xs text-gray-600 dark:text-gray-400">
+          Pico:{' '}
+          <strong className={tone === 'emerald' ? 'text-emerald-700 dark:text-emerald-300' : 'text-amber-700 dark:text-amber-300'}>
+            {formatHorasPico(pico.horas, pico.n)}
+          </strong>
+        </p>
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2">
+        <div className="min-w-0 border-b border-gray-200 sm:border-b-0 sm:border-r dark:border-gray-700">
+          {renderHalf(left, 'am')}
+        </div>
+        <div className="min-w-0">{renderHalf(right, 'pm')}</div>
+      </div>
+    </div>
+  );
+}
+
+function shiftDayISO(iso: string, delta: number): string {
+  const d = new Date(`${iso}T12:00:00`);
+  d.setDate(d.getDate() + delta);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
 export function VigilanciaAccesoPanel() {
   const [regionales, setRegionales] = useState<RegionalItem[]>([]);
   const [sedes, setSedes] = useState<SedeItem[]>([]);
@@ -103,6 +240,7 @@ export function VigilanciaAccesoPanel() {
   const [fechaDesde, setFechaDesde] = useState(haceDiasISO(7));
   const [fechaHasta, setFechaHasta] = useState(hoyISO());
   const [tipoPersona, setTipoPersona] = useState('');
+  const [motivoSalida, setMotivoSalida] = useState('');
   const [documento, setDocumento] = useState('');
   const [estado, setEstado] = useState('todos');
   const [soloSinIngreso, setSoloSinIngreso] = useState(false);
@@ -111,6 +249,12 @@ export function VigilanciaAccesoPanel() {
   const [error, setError] = useState('');
   const [historial, setHistorial] = useState<AccesoHistorialResponse | null>(null);
   const [stats, setStats] = useState<AccesoEstadisticasResponse | null>(null);
+  const [diaGrafico, setDiaGrafico] = useState(hoyISO());
+  const [statsDia, setStatsDia] = useState<AccesoEstadisticasResponse | null>(null);
+  const [loadingDia, setLoadingDia] = useState(false);
+  const [liveUpdating, setLiveUpdating] = useState(false);
+  const [ultimaActualizacion, setUltimaActualizacion] = useState<Date | null>(null);
+  const liveInFlight = useRef(false);
 
   const sedesFiltradas = useMemo(
     () => sedes.filter((s) => !regionalId || String(s.regional_id ?? '') === regionalId),
@@ -132,6 +276,7 @@ export function VigilanciaAccesoPanel() {
         fecha_desde: fechaDesde || undefined,
         fecha_hasta: fechaHasta || undefined,
         tipo_persona: tipoPersona || undefined,
+        motivo_salida: motivoSalida || undefined,
         documento: documento.trim() || undefined,
         estado: estado === 'todos' ? undefined : estado,
         page: pageOverride ?? page,
@@ -142,14 +287,59 @@ export function VigilanciaAccesoPanel() {
       if (soloSinIngreso) params.salida_sin_ingreso = true;
       return params;
     },
-    [fechaDesde, fechaHasta, tipoPersona, documento, estado, page, regionalId, sedeId, soloSinIngreso],
+    [
+      fechaDesde,
+      fechaHasta,
+      tipoPersona,
+      motivoSalida,
+      documento,
+      estado,
+      page,
+      regionalId,
+      sedeId,
+      soloSinIngreso,
+    ],
+  );
+
+  const cargarDiaGrafico = useCallback(
+    async (dia: string, overrides?: Partial<AccesoHistorialParams>, opts?: { silent?: boolean }) => {
+      if (!opts?.silent) setLoadingDia(true);
+      try {
+        const params: AccesoHistorialParams = {
+          ...buildParams(1),
+          ...overrides,
+          fecha_desde: dia,
+          fecha_hasta: dia,
+          page: 1,
+        };
+        const est = await apiService.accesoEstadisticas(params);
+        setStatsDia(est);
+        setUltimaActualizacion(new Date());
+      } catch (e: unknown) {
+        if (!opts?.silent) {
+          setError(axiosErrorMessage(e, 'No se pudo cargar la tabla del día.'));
+        }
+      } finally {
+        if (!opts?.silent) setLoadingDia(false);
+      }
+    },
+    [buildParams],
   );
 
   const cargar = useCallback(
-    async (pageOverride?: number) => {
-      setLoading(true);
-      setError('');
-      const params = buildParams(pageOverride);
+    async (
+      pageOverride?: number,
+      overrides?: Partial<AccesoHistorialParams>,
+      diaChart?: string,
+      opts?: { silent?: boolean },
+    ) => {
+      if (!opts?.silent) {
+        setLoading(true);
+        setError('');
+      } else {
+        setLiveUpdating(true);
+      }
+      const params = { ...buildParams(pageOverride), ...overrides };
       try {
         const [hist, est] = await Promise.all([
           apiService.accesoHistorial(params),
@@ -157,14 +347,20 @@ export function VigilanciaAccesoPanel() {
         ]);
         setHistorial(hist);
         setStats(est);
-        if (pageOverride) setPage(pageOverride);
+        if (pageOverride && !opts?.silent) setPage(pageOverride);
+        const dia = diaChart ?? diaGrafico;
+        if (diaChart) setDiaGrafico(diaChart);
+        await cargarDiaGrafico(dia, overrides, { silent: opts?.silent });
       } catch (e: unknown) {
-        setError(axiosErrorMessage(e, 'No se pudo cargar el reporte.'));
+        if (!opts?.silent) {
+          setError(axiosErrorMessage(e, 'No se pudo cargar el reporte.'));
+        }
       } finally {
-        setLoading(false);
+        if (!opts?.silent) setLoading(false);
+        else setLiveUpdating(false);
       }
     },
-    [buildParams],
+    [buildParams, cargarDiaGrafico, diaGrafico],
   );
 
   useEffect(() => {
@@ -173,7 +369,25 @@ export function VigilanciaAccesoPanel() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Tiempo real: refresca KPIs, historial y tabla horaria cada pocos segundos.
+  useEffect(() => {
+    const id = globalThis.setInterval(() => {
+      if (liveInFlight.current) return;
+      liveInFlight.current = true;
+      void cargar(undefined, undefined, undefined, { silent: true }).finally(() => {
+        liveInFlight.current = false;
+      });
+    }, LIVE_REFRESH_MS);
+    return () => globalThis.clearInterval(id);
+  }, [cargar]);
+
   const totalPages = historial ? Math.max(1, Math.ceil(historial.total / historial.page_size)) : 1;
+
+  const irDiaGrafico = (dia: string) => {
+    if (dia > hoyISO()) return;
+    setDiaGrafico(dia);
+    void cargarDiaGrafico(dia);
+  };
 
   return (
     <div className="mx-auto max-w-7xl space-y-4 pb-8">
@@ -183,7 +397,8 @@ export function VigilanciaAccesoPanel() {
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white sm:text-3xl">Reporte de accesos</h1>
         </div>
         <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
-          Historial de ingresos/salidas, filtros y estadísticas por sede o regional.
+          Historial, índice entrada/salida, horas pico (incluye empates) y filtros por tipo, motivo y fechas.
+          Los datos se actualizan en tiempo real cada 5 segundos.
         </p>
       </header>
 
@@ -272,6 +487,24 @@ export function VigilanciaAccesoPanel() {
             </select>
           </div>
           <div>
+            <label htmlFor="rep-motivo" className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
+              Motivo de salida
+            </label>
+            <select
+              id="rep-motivo"
+              className="input-field w-full"
+              value={motivoSalida}
+              onChange={(e) => setMotivoSalida(e.target.value)}
+            >
+              <option value="">Todos</option>
+              {Object.entries(MOTIVO_LABELS).map(([k, v]) => (
+                <option key={k} value={k}>
+                  {v}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
             <label htmlFor="rep-estado" className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
               Estado
             </label>
@@ -299,7 +532,7 @@ export function VigilanciaAccesoPanel() {
               placeholder="Buscar documento"
             />
           </div>
-          <div className="flex items-end gap-3">
+          <div className="flex items-end gap-3 sm:col-span-2">
             <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
               <input
                 type="checkbox"
@@ -325,12 +558,52 @@ export function VigilanciaAccesoPanel() {
             className="btn-secondary"
             disabled={loading}
             onClick={() => {
-              setFechaDesde(hoyISO());
-              setFechaHasta(hoyISO());
-              setTimeout(() => void cargar(1), 0);
+              const hoy = hoyISO();
+              setFechaDesde(hoy);
+              setFechaHasta(hoy);
+              void cargar(1, { fecha_desde: hoy, fecha_hasta: hoy }, hoy);
             }}
           >
             Solo hoy
+          </button>
+          <button
+            type="button"
+            className="btn-secondary"
+            disabled={loading}
+            onClick={() => {
+              const desde = haceDiasISO(7);
+              const hasta = hoyISO();
+              setFechaDesde(desde);
+              setFechaHasta(hasta);
+              void cargar(1, { fecha_desde: desde, fecha_hasta: hasta });
+            }}
+          >
+            Últimos 7 días
+          </button>
+          <button
+            type="button"
+            className="btn-secondary"
+            disabled={loading}
+            onClick={() => {
+              const desde = haceDiasISO(30);
+              const hasta = hoyISO();
+              setFechaDesde(desde);
+              setFechaHasta(hasta);
+              void cargar(1, { fecha_desde: desde, fecha_hasta: hasta });
+            }}
+          >
+            Últimos 30 días
+          </button>
+          <button
+            type="button"
+            className="btn-secondary"
+            disabled={loading}
+            onClick={() => {
+              setTipoPersona('APRENDIZ');
+              void cargar(1, { tipo_persona: 'APRENDIZ' });
+            }}
+          >
+            Solo aprendices
           </button>
         </div>
       </section>
@@ -342,11 +615,93 @@ export function VigilanciaAccesoPanel() {
       ) : null}
 
       {stats ? (
-        <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
           <KpiCard label="Ingresos (periodo)" value={stats.total_ingresos} tone="emerald" />
           <KpiCard label="Salidas (periodo)" value={stats.total_salidas} tone="amber" />
+          <KpiCard
+            label="Índice salida/ingreso"
+            value={formatIndice(stats.indice_salida_ingreso)}
+            tone="emerald"
+          />
           <KpiCard label="Dentro ahora" value={stats.dentro_ahora} />
           <KpiCard label="Salidas sin ingreso" value={stats.salidas_sin_ingreso} tone="red" />
+        </section>
+      ) : null}
+
+      {stats || statsDia ? (
+        <section className="space-y-3">
+          <div className="flex flex-col gap-3 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Tablas por hora (24 h)</h2>
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                Una tabla de ingresos y otra de salidas (0–11 y 12–23). Si varias horas empatan el máximo, todas
+                aparecen como pico. Se actualiza en tiempo real.
+              </p>
+              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                {liveUpdating ? 'Actualizando…' : 'En vivo'}
+                {ultimaActualizacion
+                  ? ` · Última sync ${ultimaActualizacion.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}`
+                  : ''}
+              </p>
+            </div>
+            <div className="flex flex-wrap items-end gap-2">
+              <button
+                type="button"
+                className="btn-secondary min-h-[40px]"
+                disabled={loadingDia}
+                onClick={() => irDiaGrafico(shiftDayISO(diaGrafico, -1))}
+              >
+                ← Día anterior
+              </button>
+              <div>
+                <label htmlFor="dia-grafico" className="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400">
+                  Día de la tabla
+                </label>
+                <input
+                  id="dia-grafico"
+                  type="date"
+                  className="input-field"
+                  max={hoyISO()}
+                  value={diaGrafico}
+                  disabled={loadingDia}
+                  onChange={(e) => irDiaGrafico(e.target.value)}
+                />
+              </div>
+              <button
+                type="button"
+                className="btn-secondary min-h-[40px]"
+                disabled={loadingDia || diaGrafico >= hoyISO()}
+                onClick={() => irDiaGrafico(shiftDayISO(diaGrafico, 1))}
+              >
+                Día siguiente →
+              </button>
+              <button
+                type="button"
+                className="btn-secondary min-h-[40px]"
+                disabled={loadingDia || diaGrafico === hoyISO()}
+                onClick={() => irDiaGrafico(hoyISO())}
+              >
+                Hoy
+              </button>
+            </div>
+          </div>
+          {loadingDia ? (
+            <p className="text-sm text-primary-600 dark:text-primary-400">Cargando tabla del {diaGrafico}…</p>
+          ) : null}
+          <div className="grid gap-3 lg:grid-cols-2">
+            <HalfDayHourTable
+              title={`Ingresos — ${diaGrafico}`}
+              metricLabel="Ingreso"
+              data={statsDia?.ingresos_por_hora}
+              tone="emerald"
+            />
+            <HalfDayHourTable
+              title={`Salidas — ${diaGrafico}`}
+              metricLabel="Salida"
+              data={statsDia?.salidas_por_hora}
+              tone="amber"
+            />
+          </div>
         </section>
       ) : null}
 

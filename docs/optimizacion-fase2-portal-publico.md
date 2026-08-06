@@ -5,6 +5,12 @@
 > (Certificado), que son las que la regla de negocio necesita (no repetir un
 > complementario ya cursado). Ver "Conclusión" al final. Se deja el documento
 > como registro de la investigación.
+>
+> **Betowa también descartado para Fase 2 (misma limitación):** el público
+> `betowa.sena.edu.co/consultar-inscripciones` (Server Action
+> `getEnrollmentsByDocument`) devuelve solo las inscripciones activas de Betowa;
+> con 1120561339 (6 registros en el operador de SofíaPlus) devuelve vacío.
+> Ver sección "Betowa" abajo.
 
 
 ## Hallazgo
@@ -92,3 +98,24 @@ tipo (es entrada), NIS, ni el historial de estados.
   exacto para clasificar NO_ENCONTRADO (ya no aplica: el público está
   descartado).
 
+
+## Betowa (betowa.sena.edu.co) — probado 2026-08-06
+
+`/consultar-inscripciones` es público (sin login) y usa la Server Action de
+Next.js `getEnrollmentsByDocument` (HTTP directo, rápido, sin navegador).
+
+Respuesta por documento:
+```
+1120571336 (TI) -> 1 enrollment: ORGANIZACION DE ARCHIVOS DE GESTION. ficha 3586901,
+                   estadoInscripcion=PREINSCRITO, nivel CURSO ESPECIAL, jornada MIXTA
+1120561339 (CC) -> enrollments=[] ("No se encontraron inscripciones")
+```
+
+**Limitación:** solo devuelve las inscripciones ACTIVAS de Betowa. Para
+1120561339 (que en el operador de SofíaPlus tiene 6 registros, incl. varios
+Certificado) Betowa responde vacío → **no sirve para la regla de negocio**
+(no repetir complementarios ya cursados). Misma limitación que el portal
+público de SofíaPlus.
+
+**Útil para:** la validación de Fase 1 tipo Betowa (`validateUserDocument`,
+ya implementada ~150 ms/doc: "¿existe cuenta?"), no para el historial.

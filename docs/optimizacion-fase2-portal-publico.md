@@ -119,3 +119,34 @@ público de SofíaPlus.
 
 **Útil para:** la validación de Fase 1 tipo Betowa (`validateUserDocument`,
 ya implementada ~150 ms/doc: "¿existe cuenta?"), no para el historial.
+
+## SENA Certificados Digital (certificados.sena.edu.co) — probado 2026-08-06
+
+`/CertificadoDigital/com.sena.consultacer` — página GeneXus pública (sin login)
+que permite "digitar el tipo y número de su documento... obtener una lista de
+los certificados disponibles". Es el único de los tres que tiene el dato que
+faltaba: los programas **completados (Certificado)**.
+
+Campos: `vTIPO_CONSULTA` (Documento|Registro), `vTIPO_DOCUMENTO`,
+`vNUMERO_DOCUMENTO`, `vREGISTRO`, botón `CONSULTAR`.
+
+**Bloqueo: CAPTCHA de imagen obligatorio** (`vCAPTCHAIMAGE` + `vCAPTCHATEXT` +
+validación `vISOKCAPTCHA`). Probado con 1120561339: sin captcha y con captcha
+incorrecto el submit no devuelve resultados (se bloquea silenciosamente).
+
+**Conclusión:** no automatizable de forma confiable (requeriría OCR frágil o un
+servicio de captcha de pago, probablemente contra los términos del sitio).
+Además solo cubre el subconjunto Certificado (no Matriculado/Cancelado) — sería
+complementario, no reemplazo.
+
+## Balance final de fuentes públicas (2026-08-06)
+
+| Fuente | Activas | Historial (Certificado) | Automatizable |
+|---|---|---|---|
+| SofíaPlus `sofia-public` | sí | no | sí (sin captcha) |
+| Betowa `getEnrollmentsByDocument` | sí | no | sí (sin captcha) |
+| SENA Certificados Digital | no | sí | **no (CAPTCHA)** |
+
+**Ninguna reemplaza al flujo del operador (Usuario SENA -> Consultar
+Inscripciones en SofíaPlus): única fuente completa y sin captcha.**
+Investigación cerrada.

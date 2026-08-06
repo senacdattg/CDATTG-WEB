@@ -68,13 +68,18 @@ func descifrarSecreto(enc string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	if len(data) < gcm.NonceSize() {
-		return "", errors.New("dato cifrado inválido")
-	}
-	nonce, ct := data[:gcm.NonceSize()], data[gcm.NonceSize():]
+	nonce := data[:gcm.NonceSize()]
+	ct := data[gcm.NonceSize():]
 	plano, err := gcm.Open(nil, nonce, ct, nil)
 	if err != nil {
 		return "", err
 	}
 	return string(plano), nil
+}
+
+// DescifrarSofiaPassword descifra en memoria una contraseña de SofiaPlus cifrada
+// con cifrarSecreto. Exportada para herramientas internas (p. ej. cmd/sofia-debug);
+// la contraseña nunca se loguea ni se expone por API.
+func DescifrarSofiaPassword(cifrada string) (string, error) {
+	return descifrarSecreto(cifrada)
 }

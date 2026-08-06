@@ -26,6 +26,9 @@ SOFIA_PARALLEL_WORKERS = max(1, int(os.getenv("SOFIA_PARALLEL_WORKERS", "5")))
 # (cookies del navegador). Los lotes siguientes arrancan sin re-loguear.
 SOFIA_SESSION_PERSISTENTE = os.getenv("SOFIA_SESSION_PERSISTENTE", "true").lower() in ("1", "true", "yes")
 SOFIA_SESSION_DIR = os.getenv("SOFIA_SESSION_DIR", "storage/sofia_session").strip()
+# Debug: registra cada petición del navegador (método, URL, body redactado, status, ms).
+# Útil para entender cómo envía SofíaPlus los formularios (JOSSO/A4J). False en producción.
+SOFIA_DEBUG_RED = os.getenv("SOFIA_DEBUG_RED", "false").lower() in ("1", "true", "yes")
 
 # ---------------------------------------------------------------------------
 # Betowa (HTTP directo a Server Action Next.js; sin login Sofía ni navegador)

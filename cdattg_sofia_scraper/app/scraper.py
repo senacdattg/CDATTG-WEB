@@ -28,6 +28,7 @@ from app.config import (
     HEADLESS,
     SOFIA_PARALLEL_WORKERS,
     SOFIA_RAPIDO,
+    SOFIA_DEBUG_RED,
     SOFIA_SESSION_DIR,
     SOFIA_SESSION_PERSISTENTE,
     TIMEOUT_SEGUNDOS,
@@ -345,6 +346,49 @@ def _page_setup_http(page: Page) -> None:
             route.continue_()
 
     page.route("**/*", reroute)
+
+    if SOFIA_DEBUG_RED:
+        _loguear_red(page)
+
+
+_SOFIA_ASSETS = (".css", ".js", ".png", ".jpg", ".jpeg", ".gif", ".svg", ".woff", ".woff2", ".ico", ".webp")
+
+
+def _redactar_cuerpo(cuerpo: str) -> str:
+    """Enmascara valores de credenciales en cuerpos POST (password/josso_password...)."""
+    return re.sub(r"(?i)(password|josso_password|clave|pass)=([^&\s]+)", r"\1=***", cuerpo)
+
+
+def _loguear_red(page: Page) -> None:
+    """Registra cada petición del navegador a SofíaPlus (método, URL, body redactado, status, ms)."""
+    activos: dict[int, tuple[str, float]] = {}
+
+    def on_request(req) -> None:
+        url = req.url
+        if not _es_dominio_sofia(url) or url.lower().endswith(_SOFIA_ASSETS):
+            return
+        metodo = req.method
+        activos[id(req)] = (url, time.time())
+        cuerpo = ""
+        if metodo in ("POST", "PUT", "PATCH"):
+            try:
+                datos = req.post_data
+                if datos:
+                    cuerpo = _redactar_cuerpo(datos)[:500]
+            except Exception:
+                pass
+        logger.info("RED>> %s %s%s", metodo, url, f" | body: {cuerpo}" if cuerpo else "")
+
+    def on_response(resp) -> None:
+        url = resp.url
+        if not _es_dominio_sofia(url) or url.lower().endswith(_SOFIA_ASSETS):
+            return
+        t0 = activos.pop(id(resp.request), None)
+        ms = f" en {(time.time() - t0[1]) * 1000:.0f}ms" if t0 else ""
+        logger.info("RED<< %s %s%s", resp.status, url, ms)
+
+    page.on("request", on_request)
+    page.on("response", on_response)
 
 
 def _urls_pagina(page: Page) -> list[str]:

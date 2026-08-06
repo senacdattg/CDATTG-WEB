@@ -20,6 +20,7 @@ import { complementariosPaths } from '../../routes/paths';
 import { axiosErrorMessage } from '../../utils/httpError';
 import type {
   CredencialSofiaEstado,
+  ProgresoLoteResponse,
   VerificarAspiranteResponse,
   VerificarLoteResponse,
 } from '../../types';
@@ -406,7 +407,19 @@ const CargaMasivaPanel = () => {
   const [descargando, setDescargando] = useState(false);
   const [error, setError] = useState('');
   const [res, setRes] = useState<VerificarLoteResponse | null>(null);
+  const [progreso, setProgreso] = useState<ProgresoLoteResponse | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const detenerPolling = useCallback(() => {
+    if (pollingRef.current !== null) {
+      clearInterval(pollingRef.current);
+      pollingRef.current = null;
+    }
+  }, []);
+
+  // Limpieza al desmontar: nunca dejar un intervalo vivo.
+  useEffect(() => detenerPolling, [detenerPolling]);
 
   const handleDescargarPlantilla = async () => {
     setDescargando(true);
@@ -429,13 +442,33 @@ const CargaMasivaPanel = () => {
     setProcesando(true);
     setError('');
     setRes(null);
+    setProgreso(null);
     try {
-      const r = await apiService.verificarLote(file);
-      setRes(r);
+      const iniciado = await apiService.verificarLote(file);
+      setProgreso({ lote_id: iniciado.lote_id, total: iniciado.total, procesados: 0, terminado: false });
+
+      // Polling: consulta el avance del lote cada 2 s hasta que termine.
+      pollingRef.current = setInterval(async () => {
+        try {
+          const p = await apiService.progresoLote(iniciado.lote_id);
+          setProgreso(p);
+          if (p.terminado) {
+            detenerPolling();
+            const r = await apiService.resultadosLote(iniciado.lote_id);
+            setRes(r);
+            setProcesando(false);
+            setProgreso(null);
+          }
+        } catch (err: unknown) {
+          detenerPolling();
+          setProcesando(false);
+          setProgreso(null);
+          setError(axiosErrorMessage(err, 'No se pudo consultar el avance del escaneo.'));
+        }
+      }, 2000);
     } catch (err: unknown) {
-      setError(axiosErrorMessage(err, 'No se pudo procesar el archivo.'));
-    } finally {
       setProcesando(false);
+      setError(axiosErrorMessage(err, 'No se pudo procesar el archivo.'));
     }
   };
 
@@ -515,7 +548,8 @@ const CargaMasivaPanel = () => {
       <button type="button" className="btn-primary inline-flex items-center gap-2" onClick={handleProcesar} disabled={procesando || !file}>
         {procesando ? (
           <>
-            <ArrowPathIcon className="w-5 h-5 animate-spin" aria-hidden /> Escaneo completo en Sofía…
+            <ArrowPathIcon className="w-5 h-5 animate-spin" aria-hidden /> Escaneo completo en Sofía…{' '}
+            {progreso ? `${progreso.procesados}/${progreso.total}` : ''}
           </>
         ) : (
           <>
@@ -523,6 +557,25 @@ const CargaMasivaPanel = () => {
           </>
         )}
       </button>
+
+      {procesando && progreso && (
+        <div className="space-y-1">
+          <div className="h-2 w-full overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700">
+            <div
+              className="h-full rounded-full bg-green-600 transition-all duration-500"
+              style={{
+                width: progreso.total > 0 ? `${Math.round((progreso.procesados / progreso.total) * 100)}%` : '0%',
+              }}
+            />
+          </div>
+          {progreso.actual_doc && (
+            <p className="text-xs text-gray-500">
+              Verificando {progreso.actual_doc}
+              {progreso.estado_actual ? ` · ${progreso.estado_actual}` : ''}…
+            </p>
+          )}
+        </div>
+      )}
 
       {res && (
         <div className="space-y-3">

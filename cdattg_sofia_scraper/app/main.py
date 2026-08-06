@@ -17,9 +17,10 @@ import logging
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
-from app import betowa_scraper, inscripciones_scraper, scraper
+from app import betowa_scraper, inscripciones_scraper, progreso, scraper
 from app.config import BETOWA_REGISTRO_URL, HEADLESS, TIMEOUT_SEGUNDOS, require_login_url
 from app.types import DocumentoLote
 
@@ -67,6 +68,16 @@ class VerificarIn(BaseModel):
 class VerificarLoteIn(BaseModel):
     credenciales: CredencialesIn
     documentos: list[DocumentoIn] = Field(min_length=1)
+    lote_id: str = ""
+
+
+@app.get("/progreso/{lote_id}")
+def progreso_lote(lote_id: str):
+    """Estado en vivo de un lote en curso (creado por POST /verificar-lote)."""
+    p = progreso.obtener(lote_id)
+    if p is None:
+        return JSONResponse(status_code=404, content={"error": "lote no encontrado o expirado"})
+    return p
 
 
 class ResultadoOut(BaseModel):
@@ -161,7 +172,7 @@ def verificar_lote(body: VerificarLoteIn):
         )
         for d in body.documentos
     ]
-    resultados = scraper.verificar_lote(cred, docs)
+    resultados = scraper.verificar_lote(cred, docs, lote_id=body.lote_id.strip())
     return VerificarLoteOut(resultados=[_to_out(r) for r in resultados])
 
 
@@ -257,6 +268,7 @@ class ConsultaInscripcionItemIn(BaseModel):
 class ConsultarInscripcionesLoteIn(BaseModel):
     credenciales: CredencialesIn
     consultas: list[ConsultaInscripcionItemIn] = Field(min_length=1)
+    lote_id: str = ""
 
 
 class ConsultarInscripcionesLoteOut(BaseModel):
@@ -273,6 +285,8 @@ def consultar_inscripciones_lote(body: ConsultarInscripcionesLoteIn):
         )
         for c in body.consultas
     ]
-    resultados = inscripciones_scraper.consultar_inscripciones_lote(_to_cred(body.credenciales), items)
+    resultados = inscripciones_scraper.consultar_inscripciones_lote(
+        _to_cred(body.credenciales), items, lote_id=body.lote_id.strip()
+    )
     return ConsultarInscripcionesLoteOut(resultados=[_inscripciones_out(r) for r in resultados])
 

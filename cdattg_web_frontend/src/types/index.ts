@@ -1056,6 +1056,24 @@ export interface VerificarLoteResponse {
   resultados: VerificarAspiranteResponse[];
 }
 
+// Respuesta inmediata de POST /verificar-lote: el escaneo corre en segundo plano.
+export interface LoteIniciadoResponse {
+  lote_id: string;
+  total: number;
+}
+
+// Avance en vivo del lote (polling GET /verificar-lote/progreso/:lote_id).
+export interface ProgresoLoteResponse {
+  lote_id: string;
+  fase?: string;
+  total: number;
+  procesados: number;
+  actual_doc?: string;
+  estado_actual?: string;
+  terminado: boolean;
+  error?: string;
+}
+
 export interface GuardarCredencialSofiaRequest {
   tipo_documento: string;
   usuario: string;

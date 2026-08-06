@@ -32,6 +32,25 @@ type VerificarLoteResponse struct {
 	Resultados    []VerificarAspiranteResponse `json:"resultados"`
 }
 
+// LoteIniciadoResponse respuesta inmediata de POST /verificar-lote: el lote corre
+// en segundo plano y el avance se consulta por lote_id (GET .../progreso/:lote_id).
+type LoteIniciadoResponse struct {
+	LoteID string `json:"lote_id"`
+	Total  int    `json:"total"`
+}
+
+// ProgresoLoteResponse avance en vivo de un lote en curso.
+type ProgresoLoteResponse struct {
+	LoteID       string `json:"lote_id"`
+	Fase         string `json:"fase"`
+	Total        int    `json:"total"`
+	Procesados   int    `json:"procesados"`
+	ActualDoc    string `json:"actual_doc"`
+	EstadoActual string `json:"estado_actual"`
+	Terminado    bool   `json:"terminado"`
+	Error        string `json:"error,omitempty"`
+}
+
 // GuardarCredencialSofiaRequest datos para registrar/actualizar el usuario SENA del operador.
 type GuardarCredencialSofiaRequest struct {
 	TipoDocumento string `json:"tipo_documento" binding:"required"`

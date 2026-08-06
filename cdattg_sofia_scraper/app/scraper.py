@@ -33,6 +33,7 @@ from app.config import (
     TIMEOUT_SEGUNDOS,
     require_login_url,
 )
+from app import progreso
 from app.types import Credenciales, DocumentoLote, ResultadoVerificacion
 
 # Waits: modo rápido recorta sleeps fijos (el cuello de botella sigue siendo Sofía/A4J).
@@ -265,6 +266,7 @@ class ContextoScrape:
     resultados: list[ResultadoVerificacion] = field(default_factory=list)
     lote: bool = False
     worker_id: int = 0
+    lote_id: str = ""
 
 
 class _FetchState:
@@ -2714,11 +2716,14 @@ def _ejecutar_flujo(ctx: ContextoScrape) -> None:
                 ctx.worker_id,
                 ctx.lote,
             )
+            progreso.reportar(ctx.lote_id, doc.numero_documento, r.estado)
 
     err = _ejecutar_con_scrapling(ctx.cred, consultar, worker_id=ctx.worker_id)
     if err and not ctx.resultados:
         for d in ctx.docs:
-            ctx.resultados.append(_no_verificado(d.numero_documento, err))
+            r = _no_verificado(d.numero_documento, err)
+            ctx.resultados.append(r)
+            progreso.reportar(ctx.lote_id, d.numero_documento, r.estado)
 
 
 def verificar_documento(numero: str, cred: Credenciales, tipo_codigo: str = "") -> ResultadoVerificacion:
@@ -2732,22 +2737,29 @@ def verificar_documento(numero: str, cred: Credenciales, tipo_codigo: str = "") 
     return _no_verificado(numero, "No se obtuvo respuesta del scraper")
 
 
-def verificar_lote(cred: Credenciales, docs: list[DocumentoLote]) -> list[ResultadoVerificacion]:
+def verificar_lote(
+    cred: Credenciales, docs: list[DocumentoLote], lote_id: str = ""
+) -> list[ResultadoVerificacion]:
     """Verifica N documentos en SofíaPlus (paralelo controlado por navegador).
 
     Cada worker abre su propio navegador (con su propio login) y procesa un
     subconjunto de documentos; la lógica de consulta/clasificación es exactamente
     la misma que en secuencial. Los resultados se devuelven en el orden de entrada.
+    Si se pasa ``lote_id``, cada documento reporta su avance a ``app.progreso``.
     """
     if not docs:
         return []
 
+    progreso.iniciar(lote_id, len(docs), fase="verificar")
+
     workers = min(SOFIA_PARALLEL_WORKERS, len(docs))
     if workers <= 1:
-        ctx = ContextoScrape(cred=cred, docs=docs, lote=True)
+        ctx = ContextoScrape(cred=cred, docs=docs, lote=True, lote_id=lote_id)
         _ejecutar_flujo(ctx)
         if ctx.resultados:
+            progreso.terminar(lote_id)
             return ctx.resultados
+        progreso.terminar(lote_id, error="No se obtuvo respuesta del scraper")
         return [_no_verificado(d.numero_documento, "No se obtuvo respuesta del scraper") for d in docs]
 
     # Round-robin: reparte documentos adyacentes entre workers (balance de carga).
@@ -2756,7 +2768,9 @@ def verificar_lote(cred: Credenciales, docs: list[DocumentoLote]) -> list[Result
 
     def _procesar_chunk(chunk_idx: int) -> None:
         chunk = chunks[chunk_idx]
-        ctx = ContextoScrape(cred=cred, docs=chunk, lote=True, worker_id=chunk_idx)
+        ctx = ContextoScrape(
+            cred=cred, docs=chunk, lote=True, worker_id=chunk_idx, lote_id=lote_id
+        )
         _ejecutar_flujo(ctx)
         if not ctx.resultados:
             ctx.resultados = [
@@ -2768,6 +2782,7 @@ def verificar_lote(cred: Credenciales, docs: list[DocumentoLote]) -> list[Result
     with ThreadPoolExecutor(max_workers=workers) as pool:
         list(pool.map(_procesar_chunk, range(workers)))
 
+    progreso.terminar(lote_id)
     return [
         r
         if r is not None

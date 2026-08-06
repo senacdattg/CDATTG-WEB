@@ -1868,6 +1868,7 @@ def _consultar_inscripciones_lote_secuencial(
     cred: s.Credenciales,
     items: list[ConsultaLoteItem],
     worker_id: int = 0,
+    lote_id: str = "",
 ) -> list[ResultadoInscripciones]:
     """Un solo login Scrapling; consulta cada fila (documento + programa) en secuencia."""
     if not items:
@@ -1894,6 +1895,7 @@ def _consultar_inscripciones_lote_secuencial(
                 time.time() - t0,
                 worker_id,
             )
+            s.progreso.reportar(lote_id, item.numero_documento, r.estado)
 
     try:
         s.ejecutar_fetch(worker_id, page_action)
@@ -1908,32 +1910,39 @@ def _consultar_inscripciones_lote_secuencial(
 def consultar_inscripciones_lote(
     cred: s.Credenciales,
     items: list[ConsultaLoteItem],
+    lote_id: str = "",
 ) -> list[ResultadoInscripciones]:
     """Consulta inscripciones por fila en paralelo (navegador por worker).
 
     La lógica por fila (_consulta_item_lote → _resultado_consulta_en_pagina) es
     idéntica a la secuencial; solo se reparten los items entre navegadores.
-    Resultados en el mismo orden de entrada.
+    Resultados en el mismo orden de entrada. Con ``lote_id`` reporta avance.
     """
     if not items:
         return []
 
+    s.progreso.iniciar(lote_id, len(items), fase="inscripciones")
     workers = min(s.SOFIA_PARALLEL_WORKERS, len(items))
     if workers <= 1:
-        return _consultar_inscripciones_lote_secuencial(cred, items)
+        res = _consultar_inscripciones_lote_secuencial(cred, items, lote_id=lote_id)
+        s.progreso.terminar(lote_id)
+        return res
 
     chunks: list[list[ConsultaLoteItem]] = [items[i::workers] for i in range(workers)]
     resultados: list[ResultadoInscripciones | None] = [None] * len(items)
 
     def _procesar_chunk(chunk_idx: int) -> None:
         chunk = chunks[chunk_idx]
-        res = _consultar_inscripciones_lote_secuencial(cred, chunk, worker_id=chunk_idx)
+        res = _consultar_inscripciones_lote_secuencial(
+            cred, chunk, worker_id=chunk_idx, lote_id=lote_id
+        )
         for j, r in enumerate(res):
             resultados[chunk_idx + j * workers] = r
 
     with ThreadPoolExecutor(max_workers=workers) as pool:
         list(pool.map(_procesar_chunk, range(workers)))
 
+    s.progreso.terminar(lote_id)
     return [
         r
         if r is not None

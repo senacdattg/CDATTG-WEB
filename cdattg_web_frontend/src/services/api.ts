@@ -61,6 +61,8 @@ import type {
   VerificarAspiranteRequest,
   VerificarAspiranteResponse,
   VerificarLoteResponse,
+  LoteIniciadoResponse,
+  ProgresoLoteResponse,
   GuardarCredencialSofiaRequest,
   CredencialSofiaEstado,
   ConsultarInscripcionesRequest,
@@ -1289,14 +1291,30 @@ class ApiService {
     return response.data as Blob;
   }
 
-  async verificarLote(file: File): Promise<VerificarLoteResponse> {
+  async verificarLote(file: File): Promise<LoteIniciadoResponse> {
     const formData = new FormData();
     formData.append('file', file);
-    const response = await this.api.post<{ data: VerificarLoteResponse }>('/complementarios/verificar-lote', formData, {
+    const response = await this.api.post<{ data: LoteIniciadoResponse }>('/complementarios/verificar-lote', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
-      // Lote Sofía: login + N consultas en un solo navegador (hasta ~45 min).
-      timeout: 2700000,
+      // El POST solo valida el Excel y arranca el lote; el escaneo corre en segundo plano.
+      timeout: 60000,
     });
+    return response.data.data;
+  }
+
+  async progresoLote(loteId: string): Promise<ProgresoLoteResponse> {
+    const response = await this.api.get<{ data: ProgresoLoteResponse }>(
+      `/complementarios/verificar-lote/progreso/${loteId}`,
+      { timeout: 15000 },
+    );
+    return response.data.data;
+  }
+
+  async resultadosLote(loteId: string): Promise<VerificarLoteResponse> {
+    const response = await this.api.get<{ data: VerificarLoteResponse }>(
+      `/complementarios/verificar-lote/resultados/${loteId}`,
+      { timeout: 15000 },
+    );
     return response.data.data;
   }
 

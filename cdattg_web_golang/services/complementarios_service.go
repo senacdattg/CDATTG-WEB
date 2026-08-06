@@ -1,8 +1,12 @@
 package services
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"errors"
 	"strings"
+	"sync"
+	"time"
 
 	"github.com/sena/cdattg-web-golang/dto"
 	"github.com/sena/cdattg-web-golang/models"
@@ -16,6 +20,65 @@ import (
 //  - verificación individual de aspirantes en SofiaPlus
 
 const msgDocumentoObligatorio = "El número de documento es obligatorio."
+
+// ---------------------------------------------------------------------------
+// Registro en memoria de lotes en segundo plano (verificación por Excel).
+// El POST devuelve el lote_id al instante; el scraper reporta avance y el
+// frontend hace polling a /progreso/:lote_id y /resultados/:lote_id.
+// ---------------------------------------------------------------------------
+
+type loteJob struct {
+	LoteID     string
+	Fase       string
+	Total      int
+	Resultados []dto.VerificarAspiranteResponse
+	Done       chan struct{}
+	Creado     time.Time
+}
+
+var (
+	lotesMu sync.Mutex
+	lotes   = map[string]*loteJob{}
+	loteTTL = 30 * time.Minute
+)
+
+func nuevoLoteID() string {
+	b := make([]byte, 8)
+	_, _ = rand.Read(b)
+	return hex.EncodeToString(b)
+}
+
+func registrarLote(fase string, total int) *loteJob {
+	lotesMu.Lock()
+	defer lotesMu.Unlock()
+
+	// Limpieza perezosa: descarta lotes terminados con más de TTL.
+	ahora := time.Now()
+	for k, j := range lotes {
+		if jobTerminado(j) && ahora.Sub(j.Creado) > loteTTL {
+			delete(lotes, k)
+		}
+	}
+
+	job := &loteJob{
+		LoteID: nuevoLoteID(),
+		Fase:   fase,
+		Total:  total,
+		Done:   make(chan struct{}),
+		Creado: ahora,
+	}
+	lotes[job.LoteID] = job
+	return job
+}
+
+func jobTerminado(job *loteJob) bool {
+	select {
+	case <-job.Done:
+		return true
+	default:
+		return false
+	}
+}
 
 type ComplementariosService struct {
 	repo *repositories.SofiaCredencialRepository
@@ -230,6 +293,7 @@ func (s *ComplementariosService) PlantillaLote() ([]byte, error) {
 }
 
 // VerificarLote procesa el Excel de documentos vía login SENA + Consultar Registro.
+// (síncrono; se mantiene por compatibilidad, el handler usa VerificarLoteAsync)
 func (s *ComplementariosService) VerificarLote(usuarioID uint, contenido []byte) (dto.VerificarLoteResponse, error) {
 	docs, err := ParsearLoteExcel(contenido)
 	if err != nil {
@@ -247,10 +311,95 @@ func (s *ComplementariosService) VerificarLote(usuarioID uint, contenido []byte)
 	cred.Rol = "Encargado de ingreso centro formación"
 
 	scraper := NewSofiaScraper()
-	resultados := scraper.VerificarLote(cred, docs)
+	resultados := scraper.VerificarLote(cred, docs, "")
 
 	out := dto.VerificarLoteResponse{Total: len(resultados), Resultados: resultados}
 	for _, r := range resultados {
+		switch r.Estado {
+		case dto.VerificacionRegistrado:
+			out.Registrados++
+		case dto.VerificacionNoRegistrado:
+			out.NoRegistrados++
+		default:
+			out.NoVerificados++
+		}
+	}
+	return out, nil
+}
+
+// VerificarLoteAsync valida el Excel, arranca el lote en segundo plano y
+// devuelve de inmediato el lote_id para consultar progreso/resultados.
+func (s *ComplementariosService) VerificarLoteAsync(usuarioID uint, contenido []byte) (dto.LoteIniciadoResponse, error) {
+	docs, err := ParsearLoteExcel(contenido)
+	if err != nil {
+		return dto.LoteIniciadoResponse{}, err
+	}
+	if len(docs) == 0 {
+		return dto.LoteIniciadoResponse{}, errors.New("el Excel no tiene documentos válidos (revisa la columna numero_documento)")
+	}
+
+	cred, err := s.credencialesDeUsuario(usuarioID)
+	if err != nil {
+		return dto.LoteIniciadoResponse{}, err
+	}
+	// Fase 1: siempre Encargado de ingreso (Consultar Registro / SGS).
+	cred.Rol = "Encargado de ingreso centro formación"
+
+	job := registrarLote("verificar", len(docs))
+	go func() {
+		defer close(job.Done)
+		scraper := NewSofiaScraper()
+		job.Resultados = scraper.VerificarLote(cred, docs, job.LoteID)
+	}()
+
+	return dto.LoteIniciadoResponse{LoteID: job.LoteID, Total: len(docs)}, nil
+}
+
+// ProgresoLote devuelve el avance en vivo de un lote (proxy al scraper cuando
+// está en curso; estado local cuando ya terminó).
+func (s *ComplementariosService) ProgresoLote(loteID string) (dto.ProgresoLoteResponse, error) {
+	lotesMu.Lock()
+	job, ok := lotes[loteID]
+	lotesMu.Unlock()
+	if !ok {
+		return dto.ProgresoLoteResponse{}, errors.New("lote no encontrado o expirado")
+	}
+	if jobTerminado(job) {
+		return dto.ProgresoLoteResponse{
+			LoteID:     job.LoteID,
+			Fase:       job.Fase,
+			Total:      job.Total,
+			Procesados: job.Total,
+			Terminado:  true,
+		}, nil
+	}
+
+	scraper := NewSofiaScraper()
+	prog, err := scraper.ProgresoLote(loteID)
+	if err != nil {
+		return dto.ProgresoLoteResponse{}, err
+	}
+	prog.LoteID = job.LoteID
+	if prog.Total == 0 {
+		prog.Total = job.Total
+	}
+	return prog, nil
+}
+
+// ResultadosLote devuelve el resultado final del lote cuando ya terminó.
+func (s *ComplementariosService) ResultadosLote(loteID string) (dto.VerificarLoteResponse, error) {
+	lotesMu.Lock()
+	job, ok := lotes[loteID]
+	lotesMu.Unlock()
+	if !ok {
+		return dto.VerificarLoteResponse{}, errors.New("lote no encontrado o expirado")
+	}
+	if !jobTerminado(job) {
+		return dto.VerificarLoteResponse{}, errors.New("el lote aún está en curso")
+	}
+
+	out := dto.VerificarLoteResponse{Total: len(job.Resultados), Resultados: job.Resultados}
+	for _, r := range job.Resultados {
 		switch r.Estado {
 		case dto.VerificacionRegistrado:
 			out.Registrados++

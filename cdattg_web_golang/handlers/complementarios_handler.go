@@ -136,6 +136,8 @@ func (h *ComplementariosHandler) DescargarPlantilla(c *gin.Context) {
 }
 
 // VerificarLote POST /complementarios/verificar-lote (multipart: file)
+// Devuelve lote_id al instante; el escaneo corre en segundo plano y el avance
+// se consulta con GET /complementarios/verificar-lote/progreso/:lote_id.
 func (h *ComplementariosHandler) VerificarLote(c *gin.Context) {
 	userID, ok := requireUsuarioComplementarios(c)
 	if !ok {
@@ -145,7 +147,33 @@ func (h *ComplementariosHandler) VerificarLote(c *gin.Context) {
 	if !ok {
 		return
 	}
-	res, err := h.svc.VerificarLote(userID, contenido)
+	res, err := h.svc.VerificarLoteAsync(userID, contenido)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"data": res})
+}
+
+// ProgresoLote GET /complementarios/verificar-lote/progreso/:lote_id
+func (h *ComplementariosHandler) ProgresoLote(c *gin.Context) {
+	if _, ok := requireUsuarioComplementarios(c); !ok {
+		return
+	}
+	prog, err := h.svc.ProgresoLote(c.Param("lote_id"))
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"data": prog})
+}
+
+// ResultadosLote GET /complementarios/verificar-lote/resultados/:lote_id
+func (h *ComplementariosHandler) ResultadosLote(c *gin.Context) {
+	if _, ok := requireUsuarioComplementarios(c); !ok {
+		return
+	}
+	res, err := h.svc.ResultadosLote(c.Param("lote_id"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return

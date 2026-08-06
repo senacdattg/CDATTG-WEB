@@ -65,6 +65,7 @@ type scraperVerificarPayload struct {
 type scraperVerificarLotePayload struct {
 	Credenciales scraperCredencialesPayload `json:"credenciales"`
 	Documentos   []scraperDocumentoPayload  `json:"documentos"`
+	LoteID       string                     `json:"lote_id"`
 }
 
 type scraperResultadoPayload struct {
@@ -81,6 +82,17 @@ type scraperResultadoPayload struct {
 
 type scraperVerificarLoteResponse struct {
 	Resultados []scraperResultadoPayload `json:"resultados"`
+}
+
+type scraperProgresoPayload struct {
+	LoteID       string `json:"lote_id"`
+	Fase         string `json:"fase"`
+	Total        int    `json:"total"`
+	Procesados   int    `json:"procesados"`
+	ActualDoc    string `json:"actual_doc"`
+	EstadoActual string `json:"estado_actual"`
+	Terminado    bool   `json:"terminado"`
+	Error        string `json:"error"`
 }
 
 func (s *SofiaScraper) postJSON(path string, payload any, out any) error {
@@ -104,6 +116,31 @@ func (s *SofiaScraper) postJSON(path string, payload any, out any) error {
 				s.baseURL, err,
 			)
 		}
+		return fmt.Errorf("no se pudo contactar el servicio de scraping (%s): %w", s.baseURL, err)
+	}
+	defer resp.Body.Close()
+
+	raw, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return err
+	}
+	if resp.StatusCode >= 400 {
+		return fmt.Errorf("scraper respondió %d: %s", resp.StatusCode, strings.TrimSpace(string(raw)))
+	}
+	if out == nil {
+		return nil
+	}
+	return json.Unmarshal(raw, out)
+}
+
+// getJSON hace una petición GET y decodifica la respuesta JSON (p. ej. /progreso/:id).
+func (s *SofiaScraper) getJSON(path string, out any) error {
+	req, err := http.NewRequest(http.MethodGet, s.baseURL+path, nil)
+	if err != nil {
+		return err
+	}
+	resp, err := s.client.Do(req)
+	if err != nil {
 		return fmt.Errorf("no se pudo contactar el servicio de scraping (%s): %w", s.baseURL, err)
 	}
 	defer resp.Body.Close()
@@ -171,7 +208,7 @@ func (s *SofiaScraper) VerificarDocumento(cred SofiaCredenciales, numero, tipoCo
 }
 
 // VerificarLote consulta varios documentos reutilizando la sesión SENA.
-func (s *SofiaScraper) VerificarLote(cred SofiaCredenciales, docs []dto.LoteDocumento) []dto.VerificarAspiranteResponse {
+func (s *SofiaScraper) VerificarLote(cred SofiaCredenciales, docs []dto.LoteDocumento, loteID string) []dto.VerificarAspiranteResponse {
 	payloadDocs := make([]scraperDocumentoPayload, len(docs))
 	for i, d := range docs {
 		payloadDocs[i] = scraperDocumentoPayload{
@@ -191,6 +228,7 @@ func (s *SofiaScraper) VerificarLote(cred SofiaCredenciales, docs []dto.LoteDocu
 	err := loteClient.postJSON("/verificar-lote", scraperVerificarLotePayload{
 		Credenciales: mapCredenciales(cred),
 		Documentos:   payloadDocs,
+		LoteID:       loteID,
 	}, &res)
 	if err != nil {
 		out := make([]dto.VerificarAspiranteResponse, len(docs))
@@ -205,6 +243,13 @@ func (s *SofiaScraper) VerificarLote(cred SofiaCredenciales, docs []dto.LoteDocu
 		out[i] = mapResultado(r)
 	}
 	return out
+}
+
+// ProgresoLote consulta al scraper el avance en vivo de un lote por su lote_id.
+func (s *SofiaScraper) ProgresoLote(loteID string) (dto.ProgresoLoteResponse, error) {
+	var prog dto.ProgresoLoteResponse
+	err := s.getJSON("/progreso/"+loteID, &prog)
+	return prog, err
 }
 
 type scraperConsultarInscripcionesPayload struct {

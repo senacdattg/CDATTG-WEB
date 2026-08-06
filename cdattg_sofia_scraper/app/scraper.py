@@ -10,6 +10,7 @@ import os
 import re
 import threading
 import time
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from typing import Any, Callable
 from urllib.parse import urljoin
@@ -23,6 +24,7 @@ from app.config import (
     DIAG_PNG,
     DIAGNOSTICO,
     HEADLESS,
+    SOFIA_PARALLEL_WORKERS,
     SOFIA_RAPIDO,
     TIMEOUT_SEGUNDOS,
     require_login_url,
@@ -261,7 +263,9 @@ class _FetchState:
     consulta_url = ""
 
 
-_FETCH_LOCK = threading.Lock()
+# Serializa SOLO la escritura de dumps (nombres con sello de segundos), no el navegador.
+# Los lotes corren en paralelo con ThreadPoolExecutor: cada worker abre su propio navegador.
+_DUMP_LOCK = threading.Lock()
 
 
 def _es_dominio_sofia(url: str) -> bool:
@@ -413,12 +417,11 @@ def _ejecutar_con_scrapling(cred: Credenciales, action: Callable[[Page], None]) 
             err_msg[0] = f"Error del scraper: {exc}"
 
     try:
-        with _FETCH_LOCK:
-            StealthyFetcher.fetch(
-                require_login_url(),
-                page_action=page_action,
-                **_stealthy_fetch_kwargs(),
-            )
+        StealthyFetcher.fetch(
+            require_login_url(),
+            page_action=page_action,
+            **_stealthy_fetch_kwargs(),
+        )
     except Exception as exc:
         return f"Error del scraper: {exc}"
 
@@ -542,23 +545,27 @@ def _dump(page: Page, paso: str, *, solo_error: bool = True) -> None:
         ("login_", "error", "resultado", "warn_", "00_", "01_", "02_", "03_", "04_", "05_")
     ):
         return
-    os.makedirs(DIAG_DIR, exist_ok=True)
-    sello = time.strftime("%H%M%S")
-    base = os.path.join(DIAG_DIR, f"{sello}_{_sanitize(paso)}")
-    if DIAG_PNG:
-        try:
-            page.screenshot(path=f"{base}.png", full_page=True)
-        except Exception:
-            pass
     try:
-        with open(f"{base}.html", "w", encoding="utf-8") as f:
-            f.write(page.content())
-    except Exception:
-        pass
-    try:
-        with open(f"{base}.urls.txt", "w", encoding="utf-8") as f:
-            for i, url in enumerate(_urls_pagina(page)):
-                f.write(f"frame[{i}]: {url}\n")
+        os.makedirs(DIAG_DIR, exist_ok=True)
+        sello = time.strftime("%H%M%S")
+        base = os.path.join(DIAG_DIR, f"{sello}_{_sanitize(paso)}")
+        with _DUMP_LOCK:
+            if DIAG_PNG:
+                try:
+                    page.screenshot(path=f"{base}.png", full_page=True)
+                except Exception:
+                    pass
+            try:
+                with open(f"{base}.html", "w", encoding="utf-8") as f:
+                    f.write(page.content())
+            except Exception:
+                pass
+            try:
+                with open(f"{base}.urls.txt", "w", encoding="utf-8") as f:
+                    for i, url in enumerate(_urls_pagina(page)):
+                        f.write(f"frame[{i}]: {url}\n")
+            except Exception:
+                pass
     except Exception:
         pass
 
@@ -2670,11 +2677,46 @@ def verificar_documento(numero: str, cred: Credenciales, tipo_codigo: str = "") 
 
 
 def verificar_lote(cred: Credenciales, docs: list[DocumentoLote]) -> list[ResultadoVerificacion]:
-    ctx = ContextoScrape(cred=cred, docs=docs, lote=True)
-    _ejecutar_flujo(ctx)
-    if ctx.resultados:
-        return ctx.resultados
-    msg = "No se obtuvo respuesta del scraper"
-    return [_no_verificado(d.numero_documento, msg) for d in docs]
+    """Verifica N documentos en SofíaPlus (paralelo controlado por navegador).
+
+    Cada worker abre su propio navegador (con su propio login) y procesa un
+    subconjunto de documentos; la lógica de consulta/clasificación es exactamente
+    la misma que en secuencial. Los resultados se devuelven en el orden de entrada.
+    """
+    if not docs:
+        return []
+
+    workers = min(SOFIA_PARALLEL_WORKERS, len(docs))
+    if workers <= 1:
+        ctx = ContextoScrape(cred=cred, docs=docs, lote=True)
+        _ejecutar_flujo(ctx)
+        if ctx.resultados:
+            return ctx.resultados
+        return [_no_verificado(d.numero_documento, "No se obtuvo respuesta del scraper") for d in docs]
+
+    # Round-robin: reparte documentos adyacentes entre workers (balance de carga).
+    chunks: list[list[DocumentoLote]] = [docs[i::workers] for i in range(workers)]
+    resultados: list[ResultadoVerificacion | None] = [None] * len(docs)
+
+    def _procesar_chunk(chunk_idx: int) -> None:
+        chunk = chunks[chunk_idx]
+        ctx = ContextoScrape(cred=cred, docs=chunk, lote=True)
+        _ejecutar_flujo(ctx)
+        if not ctx.resultados:
+            ctx.resultados = [
+                _no_verificado(d.numero_documento, "No se obtuvo respuesta del scraper") for d in chunk
+            ]
+        for j, r in enumerate(ctx.resultados):
+            resultados[chunk_idx + j * workers] = r
+
+    with ThreadPoolExecutor(max_workers=workers) as pool:
+        list(pool.map(_procesar_chunk, range(workers)))
+
+    return [
+        r
+        if r is not None
+        else _no_verificado(docs[i].numero_documento, "Sin resultado de verificación.")
+        for i, r in enumerate(resultados)
+    ]
 
 

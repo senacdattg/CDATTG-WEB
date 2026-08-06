@@ -9,4 +9,4 @@ if ! pgrep -x Xvfb >/dev/null 2>&1; then
   Xvfb "${DISPLAY}" -screen 0 1280x720x24 -ac +extension GLX +render -noreset &
   sleep 1
 fi
-exec /app/.venv/bin/python -m uvicorn app.main:app --host 0.0.0.0 --port 8090
+exec /app/.venv/bin/python -m uvicorn app.main:app --host 0.0.0.0 --port 8090 --loop asyncio

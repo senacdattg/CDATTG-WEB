@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import re
 import unicodedata
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from urllib.parse import urljoin
 
@@ -1798,12 +1799,11 @@ def consultar_inscripciones(
         )
 
     try:
-        with s._FETCH_LOCK:
-            StealthyFetcher.fetch(
-                require_login_url(),
-                page_action=page_action,
-                **s._stealthy_fetch_kwargs(),
-            )
+        StealthyFetcher.fetch(
+            require_login_url(),
+            page_action=page_action,
+            **s._stealthy_fetch_kwargs(),
+        )
     except Exception as exc:
         return ResultadoInscripciones(
             numero_documento=numero,
@@ -1869,7 +1869,7 @@ def _resultados_error_lote(
     ]
 
 
-def consultar_inscripciones_lote(
+def _consultar_inscripciones_lote_secuencial(
     cred: s.Credenciales,
     items: list[ConsultaLoteItem],
 ) -> list[ResultadoInscripciones]:
@@ -1891,15 +1891,51 @@ def consultar_inscripciones_lote(
             resultados.append(_consulta_item_lote(page, item, idx))
 
     try:
-        with s._FETCH_LOCK:
-            StealthyFetcher.fetch(
-                require_login_url(),
-                page_action=page_action,
-                **s._stealthy_fetch_kwargs(),
-            )
+        StealthyFetcher.fetch(
+            require_login_url(),
+            page_action=page_action,
+            **s._stealthy_fetch_kwargs(),
+        )
     except Exception as exc:
         return _resultados_error_lote(items, f"Error del scraper: {exc}")
 
     if err_global[0] and not resultados:
         return _resultados_error_lote(items, err_global[0] or "Error de login")
     return resultados
+
+
+def consultar_inscripciones_lote(
+    cred: s.Credenciales,
+    items: list[ConsultaLoteItem],
+) -> list[ResultadoInscripciones]:
+    """Consulta inscripciones por fila en paralelo (navegador por worker).
+
+    La lógica por fila (_consulta_item_lote → _resultado_consulta_en_pagina) es
+    idéntica a la secuencial; solo se reparten los items entre navegadores.
+    Resultados en el mismo orden de entrada.
+    """
+    if not items:
+        return []
+
+    workers = min(s.SOFIA_PARALLEL_WORKERS, len(items))
+    if workers <= 1:
+        return _consultar_inscripciones_lote_secuencial(cred, items)
+
+    chunks: list[list[ConsultaLoteItem]] = [items[i::workers] for i in range(workers)]
+    resultados: list[ResultadoInscripciones | None] = [None] * len(items)
+
+    def _procesar_chunk(chunk_idx: int) -> None:
+        chunk = chunks[chunk_idx]
+        res = _consultar_inscripciones_lote_secuencial(cred, chunk)
+        for j, r in enumerate(res):
+            resultados[chunk_idx + j * workers] = r
+
+    with ThreadPoolExecutor(max_workers=workers) as pool:
+        list(pool.map(_procesar_chunk, range(workers)))
+
+    return [
+        r
+        if r is not None
+        else _resultados_error_lote(items, "Sin resultado de consulta de inscripciones.")[i]
+        for i, r in enumerate(resultados)
+    ]

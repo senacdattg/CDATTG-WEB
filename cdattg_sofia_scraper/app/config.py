@@ -19,6 +19,9 @@ DIAG_PNG = os.getenv("SOFIA_DIAG_PNG", "false").lower() in ("1", "true", "yes")
 DIAG_DIR = os.getenv("SOFIA_DIAG_DIR", "storage/sofia_diagnostico")
 # Modo rápido: recorta sleeps fijos (Sofía sigue siendo el límite real).
 SOFIA_RAPIDO = os.getenv("SOFIA_RAPIDO", "true").lower() in ("1", "true", "yes")
+# Lotes Sofía: cuántos navegadores procesan documentos en paralelo (mismo patrón Betowa).
+# Cada worker abre su propio navegador con su propio login; calibrar contra bloqueos de Sofía.
+SOFIA_PARALLEL_WORKERS = max(1, int(os.getenv("SOFIA_PARALLEL_WORKERS", "3")))
 
 # ---------------------------------------------------------------------------
 # Betowa (HTTP directo a Server Action Next.js; sin login Sofía ni navegador)

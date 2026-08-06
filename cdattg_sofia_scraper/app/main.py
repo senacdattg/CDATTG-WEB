@@ -28,6 +28,9 @@ logging.basicConfig(
     level=logging.INFO,
     format="[%(asctime)s] %(levelname)s %(name)s: %(message)s",
 )
+# Scrapling ya configura su propio handler; evitar que sus INFO se impriman dos veces
+# (una por su handler y otra al propagar al root configurado por basicConfig).
+logging.getLogger("scrapling").propagate = False
 
 
 @asynccontextmanager

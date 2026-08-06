@@ -18,9 +18,24 @@ type AccesoHistorialQuery struct {
 	TipoPersona      string
 	Documento        string
 	Estado           string // abierto | cerrado | todos
+	MotivoSalida     string
 	SalidaSinIngreso *bool
 	Page             int
 	PageSize         int
+}
+
+// AccesoStatsResult agregados del reporte de accesos.
+type AccesoStatsResult struct {
+	TotalIngresos   int64
+	TotalSalidas    int64
+	Abiertas        int64
+	Cerradas        int64
+	SinIngreso      int64
+	PorTipo         map[string]int64
+	PorMotivo       map[string]int64
+	PorMetodo       map[string]int64
+	IngresosPorHora [24]int64
+	SalidasPorHora  [24]int64
 }
 
 // PersonaIngresoSalidaRepository acceso a registros de portería.
@@ -31,7 +46,7 @@ type PersonaIngresoSalidaRepository interface {
 	ListAbiertasBySede(sedeID uint) ([]models.PersonaIngresoSalida, error)
 	CountAbiertasBySede(sedeID *uint, regionalID *uint) (int64, error)
 	ListHistorial(q AccesoHistorialQuery) ([]models.PersonaIngresoSalida, int64, error)
-	StatsHistorial(q AccesoHistorialQuery) (totalIngresos, totalSalidas, abiertas, cerradas, sinIngreso int64, porTipo, porMotivo, porMetodo map[string]int64, err error)
+	StatsHistorial(q AccesoHistorialQuery) (AccesoStatsResult, error)
 }
 
 type personaIngresoSalidaRepository struct {
@@ -91,6 +106,9 @@ func (r *personaIngresoSalidaRepository) baseQuery(q AccesoHistorialQuery) *gorm
 	if tp := strings.TrimSpace(q.TipoPersona); tp != "" {
 		tx = tx.Where("persona_ingreso_salida.tipo_persona = ?", strings.ToUpper(tp))
 	}
+	if motivo := strings.TrimSpace(q.MotivoSalida); motivo != "" {
+		tx = tx.Where("persona_ingreso_salida.motivo_salida = ?", strings.ToUpper(motivo))
+	}
 	if doc := strings.TrimSpace(q.Documento); doc != "" {
 		tx = tx.Joins("LEFT JOIN personas ON personas.id = persona_ingreso_salida.persona_id").
 			Where("personas.numero_documento LIKE ?", "%"+doc+"%")
@@ -145,76 +163,170 @@ func (r *personaIngresoSalidaRepository) ListHistorial(q AccesoHistorialQuery) (
 	return rows, total, err
 }
 
-func (r *personaIngresoSalidaRepository) StatsHistorial(q AccesoHistorialQuery) (
-	totalIngresos, totalSalidas, abiertas, cerradas, sinIngreso int64,
-	porTipo, porMotivo, porMetodo map[string]int64,
-	err error,
-) {
-	porTipo = map[string]int64{}
-	porMotivo = map[string]int64{}
-	porMetodo = map[string]int64{}
+type accesoStatsKV struct {
+	K string
+	N int64
+}
 
-	base := r.baseQuery(q)
-	if err = base.Count(&totalIngresos).Error; err != nil {
-		return
+type accesoStatsHoraKV struct {
+	Hora int
+	N    int64
+}
+
+func (r *personaIngresoSalidaRepository) countAccesoQuery(q AccesoHistorialQuery, dest *int64) error {
+	return r.baseQuery(q).Count(dest).Error
+}
+
+func fillAccesoStatsMap(dest map[string]int64, rows []accesoStatsKV) {
+	for _, row := range rows {
+		dest[row.K] = row.N
+	}
+}
+
+func fillAccesoHoras(dest *[24]int64, rows []accesoStatsHoraKV) {
+	for _, row := range rows {
+		if row.Hora < 0 || row.Hora >= 24 {
+			continue
+		}
+		dest[row.Hora] = row.N
+	}
+}
+
+func (r *personaIngresoSalidaRepository) scanAccesoGroupCounts(
+	q AccesoHistorialQuery,
+	selectSQL string,
+	groupSQL string,
+	extraWhere string,
+) ([]accesoStatsKV, error) {
+	var rows []accesoStatsKV
+	db := r.baseQuery(q).Select(selectSQL)
+	if extraWhere != "" {
+		db = db.Where(extraWhere)
+	}
+	err := db.Group(groupSQL).Scan(&rows).Error
+	return rows, err
+}
+
+func (r *personaIngresoSalidaRepository) scanAccesoHoras(
+	q AccesoHistorialQuery,
+	selectSQL string,
+	groupSQL string,
+	extraWhere string,
+) ([]accesoStatsHoraKV, error) {
+	var rows []accesoStatsHoraKV
+	db := r.baseQuery(q).Select(selectSQL)
+	if extraWhere != "" {
+		db = db.Where(extraWhere)
+	}
+	err := db.Group(groupSQL).Scan(&rows).Error
+	return rows, err
+}
+
+func (r *personaIngresoSalidaRepository) fillAccesoStatsCounts(q AccesoHistorialQuery, out *AccesoStatsResult) error {
+	if err := r.countAccesoQuery(q, &out.TotalIngresos); err != nil {
+		return err
 	}
 
 	qCerrado := q
 	qCerrado.Estado = "cerrado"
-	if err = r.baseQuery(qCerrado).Count(&totalSalidas).Error; err != nil {
-		return
+	if err := r.countAccesoQuery(qCerrado, &out.TotalSalidas); err != nil {
+		return err
 	}
-	cerradas = totalSalidas
+	out.Cerradas = out.TotalSalidas
 
 	qAbierto := q
 	qAbierto.Estado = "abierto"
-	if err = r.baseQuery(qAbierto).Count(&abiertas).Error; err != nil {
-		return
+	if err := r.countAccesoQuery(qAbierto, &out.Abiertas); err != nil {
+		return err
 	}
 
 	flag := true
 	qSin := q
 	qSin.SalidaSinIngreso = &flag
-	if err = r.baseQuery(qSin).Count(&sinIngreso).Error; err != nil {
-		return
-	}
+	return r.countAccesoQuery(qSin, &out.SinIngreso)
+}
 
-	type kv struct {
-		K string
-		N int64
-	}
-	var tipos []kv
-	if err = r.baseQuery(q).
-		Select("persona_ingreso_salida.tipo_persona as k, COUNT(*) as n").
-		Group("persona_ingreso_salida.tipo_persona").
-		Scan(&tipos).Error; err != nil {
-		return
-	}
-	for _, row := range tipos {
-		porTipo[row.K] = row.N
-	}
+func (r *personaIngresoSalidaRepository) fillAccesoStatsDistribuciones(q AccesoHistorialQuery, out *AccesoStatsResult) error {
+	qCerrado := q
+	qCerrado.Estado = "cerrado"
 
-	var motivos []kv
-	if err = r.baseQuery(qCerrado).
-		Select("persona_ingreso_salida.motivo_salida as k, COUNT(*) as n").
-		Where("persona_ingreso_salida.motivo_salida <> ''").
-		Group("persona_ingreso_salida.motivo_salida").
-		Scan(&motivos).Error; err != nil {
-		return
+	tipos, err := r.scanAccesoGroupCounts(
+		q,
+		"persona_ingreso_salida.tipo_persona as k, COUNT(*) as n",
+		"persona_ingreso_salida.tipo_persona",
+		"",
+	)
+	if err != nil {
+		return err
 	}
-	for _, row := range motivos {
-		porMotivo[row.K] = row.N
-	}
+	fillAccesoStatsMap(out.PorTipo, tipos)
 
-	var metodos []kv
-	if err = r.baseQuery(q).
-		Select("persona_ingreso_salida.metodo_registro as k, COUNT(*) as n").
-		Group("persona_ingreso_salida.metodo_registro").
-		Scan(&metodos).Error; err != nil {
-		return
+	motivos, err := r.scanAccesoGroupCounts(
+		qCerrado,
+		"persona_ingreso_salida.motivo_salida as k, COUNT(*) as n",
+		"persona_ingreso_salida.motivo_salida",
+		"persona_ingreso_salida.motivo_salida <> ''",
+	)
+	if err != nil {
+		return err
 	}
-	for _, row := range metodos {
-		porMetodo[row.K] = row.N
+	fillAccesoStatsMap(out.PorMotivo, motivos)
+
+	metodos, err := r.scanAccesoGroupCounts(
+		q,
+		"persona_ingreso_salida.metodo_registro as k, COUNT(*) as n",
+		"persona_ingreso_salida.metodo_registro",
+		"",
+	)
+	if err != nil {
+		return err
 	}
-	return
+	fillAccesoStatsMap(out.PorMetodo, metodos)
+	return nil
+}
+
+func (r *personaIngresoSalidaRepository) fillAccesoStatsHoras(q AccesoHistorialQuery, out *AccesoStatsResult) error {
+	qCerrado := q
+	qCerrado.Estado = "cerrado"
+
+	ingresosH, err := r.scanAccesoHoras(
+		q,
+		"EXTRACT(HOUR FROM persona_ingreso_salida.timestamp_entrada)::int as hora, COUNT(*) as n",
+		"EXTRACT(HOUR FROM persona_ingreso_salida.timestamp_entrada)",
+		"",
+	)
+	if err != nil {
+		return err
+	}
+	fillAccesoHoras(&out.IngresosPorHora, ingresosH)
+
+	salidasH, err := r.scanAccesoHoras(
+		qCerrado,
+		"EXTRACT(HOUR FROM persona_ingreso_salida.timestamp_salida)::int as hora, COUNT(*) as n",
+		"EXTRACT(HOUR FROM persona_ingreso_salida.timestamp_salida)",
+		"persona_ingreso_salida.timestamp_salida IS NOT NULL",
+	)
+	if err != nil {
+		return err
+	}
+	fillAccesoHoras(&out.SalidasPorHora, salidasH)
+	return nil
+}
+
+func (r *personaIngresoSalidaRepository) StatsHistorial(q AccesoHistorialQuery) (AccesoStatsResult, error) {
+	out := AccesoStatsResult{
+		PorTipo:   map[string]int64{},
+		PorMotivo: map[string]int64{},
+		PorMetodo: map[string]int64{},
+	}
+	if err := r.fillAccesoStatsCounts(q, &out); err != nil {
+		return out, err
+	}
+	if err := r.fillAccesoStatsDistribuciones(q, &out); err != nil {
+		return out, err
+	}
+	if err := r.fillAccesoStatsHoras(q, &out); err != nil {
+		return out, err
+	}
+	return out, nil
 }

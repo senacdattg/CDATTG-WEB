@@ -71,6 +71,7 @@ func filtrosDesdeQuery(c *gin.Context) (dto.AccesoHistorialFiltros, error) {
 		TipoPersona:      c.Query("tipo_persona"),
 		Documento:        c.Query("documento"),
 		Estado:           c.Query("estado"),
+		MotivoSalida:     c.Query("motivo_salida"),
 		SalidaSinIngreso: parseBoolPtrQuery(c, "salida_sin_ingreso"),
 		Page:             page,
 		PageSize:         pageSize,

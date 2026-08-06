@@ -112,6 +112,7 @@ type AccesoHistorialFiltros struct {
 	TipoPersona      string
 	Documento        string
 	Estado           string // abierto | cerrado | todos
+	MotivoSalida     string
 	SalidaSinIngreso *bool
 	Page             int
 	PageSize         int
@@ -145,17 +146,28 @@ type AccesoHistorialResponse struct {
 	FechaHasta string                `json:"fecha_hasta,omitempty"`
 }
 
+// AccesoHoraBucket conteo por hora del día (0-23).
+type AccesoHoraBucket struct {
+	Hora int   `json:"hora"`
+	N    int64 `json:"n"`
+}
+
 // AccesoEstadisticasResponse KPIs del panel.
 type AccesoEstadisticasResponse struct {
-	FechaDesde              string            `json:"fecha_desde"`
-	FechaHasta              string            `json:"fecha_hasta"`
-	TotalIngresos           int64             `json:"total_ingresos"`
-	TotalSalidas            int64             `json:"total_salidas"`
-	DentroAhora             int64             `json:"dentro_ahora"`
-	SalidasSinIngreso       int64             `json:"salidas_sin_ingreso"`
-	VisitasAbiertasPeriodo  int64             `json:"visitas_abiertas_periodo"`
-	VisitasCerradasPeriodo  int64             `json:"visitas_cerradas_periodo"`
-	PorTipoPersona          map[string]int64  `json:"por_tipo_persona"`
-	PorMotivoSalida         map[string]int64  `json:"por_motivo_salida"`
-	PorMetodo               map[string]int64  `json:"por_metodo"`
+	FechaDesde             string             `json:"fecha_desde"`
+	FechaHasta             string             `json:"fecha_hasta"`
+	TotalIngresos          int64              `json:"total_ingresos"`
+	TotalSalidas           int64              `json:"total_salidas"`
+	DentroAhora            int64              `json:"dentro_ahora"`
+	SalidasSinIngreso      int64              `json:"salidas_sin_ingreso"`
+	VisitasAbiertasPeriodo int64              `json:"visitas_abiertas_periodo"`
+	VisitasCerradasPeriodo int64              `json:"visitas_cerradas_periodo"`
+	IndiceSalidaIngreso    float64            `json:"indice_salida_ingreso"`
+	HoraPicoIngreso        *int               `json:"hora_pico_ingreso,omitempty"`
+	HoraPicoSalida         *int               `json:"hora_pico_salida,omitempty"`
+	PorTipoPersona         map[string]int64   `json:"por_tipo_persona"`
+	PorMotivoSalida        map[string]int64   `json:"por_motivo_salida"`
+	PorMetodo              map[string]int64   `json:"por_metodo"`
+	IngresosPorHora        []AccesoHoraBucket `json:"ingresos_por_hora"`
+	SalidasPorHora         []AccesoHoraBucket `json:"salidas_por_hora"`
 }

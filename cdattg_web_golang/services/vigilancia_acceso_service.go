@@ -627,10 +627,41 @@ func (s *vigilanciaAccesoService) toRepoQuery(f dto.AccesoHistorialFiltros) (rep
 		TipoPersona:      f.TipoPersona,
 		Documento:        f.Documento,
 		Estado:           f.Estado,
+		MotivoSalida:    f.MotivoSalida,
 		SalidaSinIngreso: f.SalidaSinIngreso,
 		Page:             f.Page,
 		PageSize:         f.PageSize,
 	}, nil
+}
+
+func bucketsDesdeHoras(arr [24]int64) []dto.AccesoHoraBucket {
+	out := make([]dto.AccesoHoraBucket, 24)
+	for h := 0; h < 24; h++ {
+		out[h] = dto.AccesoHoraBucket{Hora: h, N: arr[h]}
+	}
+	return out
+}
+
+func horaPico(arr [24]int64) *int {
+	var maxN int64
+	maxH := -1
+	for h, n := range arr {
+		if n > maxN {
+			maxN = n
+			maxH = h
+		}
+	}
+	if maxH < 0 || maxN == 0 {
+		return nil
+	}
+	return &maxH
+}
+
+func indiceSalidaIngreso(ingresos, salidas int64) float64 {
+	if ingresos <= 0 {
+		return 0
+	}
+	return float64(salidas) / float64(ingresos)
 }
 
 func historialItemFromRow(row *models.PersonaIngresoSalida) dto.AccesoHistorialItem {
@@ -702,7 +733,7 @@ func (s *vigilanciaAccesoService) Estadisticas(f dto.AccesoHistorialFiltros) (*d
 	if err != nil {
 		return nil, err
 	}
-	ingresos, salidas, abiertas, cerradas, sinIngreso, porTipo, porMotivo, porMetodo, err := s.accesoRepo.StatsHistorial(q)
+	st, err := s.accesoRepo.StatsHistorial(q)
 	if err != nil {
 		return nil, err
 	}
@@ -713,14 +744,19 @@ func (s *vigilanciaAccesoService) Estadisticas(f dto.AccesoHistorialFiltros) (*d
 	return &dto.AccesoEstadisticasResponse{
 		FechaDesde:             f.FechaDesde,
 		FechaHasta:             f.FechaHasta,
-		TotalIngresos:          ingresos,
-		TotalSalidas:           salidas,
+		TotalIngresos:          st.TotalIngresos,
+		TotalSalidas:           st.TotalSalidas,
 		DentroAhora:            dentroAhora,
-		SalidasSinIngreso:      sinIngreso,
-		VisitasAbiertasPeriodo: abiertas,
-		VisitasCerradasPeriodo: cerradas,
-		PorTipoPersona:         porTipo,
-		PorMotivoSalida:        porMotivo,
-		PorMetodo:              porMetodo,
+		SalidasSinIngreso:      st.SinIngreso,
+		VisitasAbiertasPeriodo: st.Abiertas,
+		VisitasCerradasPeriodo: st.Cerradas,
+		IndiceSalidaIngreso:    indiceSalidaIngreso(st.TotalIngresos, st.TotalSalidas),
+		HoraPicoIngreso:        horaPico(st.IngresosPorHora),
+		HoraPicoSalida:         horaPico(st.SalidasPorHora),
+		PorTipoPersona:         st.PorTipo,
+		PorMotivoSalida:        st.PorMotivo,
+		PorMetodo:              st.PorMetodo,
+		IngresosPorHora:        bucketsDesdeHoras(st.IngresosPorHora),
+		SalidasPorHora:         bucketsDesdeHoras(st.SalidasPorHora),
 	}, nil
 }

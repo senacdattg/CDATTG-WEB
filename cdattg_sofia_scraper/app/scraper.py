@@ -441,7 +441,9 @@ def _stealthy_fetch_kwargs() -> dict[str, Any]:
         "load_dom": True,
         "block_webrtc": False,
         "hide_canvas": False,
-        "disable_resources": False,
+        # Bloquear fuentes/imágenes/estilos de las páginas JSF: las consultas
+        # solo leen DOM, así que cargar assets solo ralentiza cada página.
+        "disable_resources": True,
         "block_ads": False,
         "extra_flags": BROWSER_FLAGS,
         "wait": WAIT_FORM_MS,
@@ -2695,11 +2697,63 @@ def _buscar_documento(
     return _cerrar_busqueda_documento(numero, hubo_no_registrado, errores)
 
 
+def _resetear_form_consultar(page: Page) -> bool:
+    """Limpia el formulario Consultar Registro entre docs sin recargar el iframe.
+
+    Vacía por JS los selects (tipo usuario / tipo doc), el número y el bloque de
+    resultado/mensaje de la consulta anterior. Mucho más barato que recargar el
+    iframe (fr.goto + pausa + espera). Retorna False si el formulario no está
+    sano: el caller debe recargar como fallback.
+    """
+    if not _form_consultar_sano(page):
+        return False
+    fr = _frame_consultar_registro(page)
+    if fr is None:
+        return False
+    try:
+        fr.evaluate(
+            """(sel) => {
+                const vaciar = (el) => {
+                    if (el.tagName === 'SELECT') { el.selectedIndex = 0; }
+                    else if (el.tagName === 'INPUT') { el.value = ''; }
+                    else { el.textContent = ''; }
+                    el.dispatchEvent(new Event('change', {bubbles: true}));
+                    el.dispatchEvent(new Event('input', {bubbles: true}));
+                };
+                for (const s of sel) {
+                    const el = document.querySelector(s);
+                    if (el) vaciar(el);
+                }
+                // Mensajes de resultado (p. ej. "no se encuentra registrado...").
+                for (const el of document.querySelectorAll('span, div, p, td, label')) {
+                    if (el.children.length === 0 && /no se encuentra registrado/i.test(el.textContent || '')) {
+                        el.textContent = '';
+                    }
+                }
+            }""",
+            [
+                SEL_TIPO_USUARIO,
+                SEL_TIPO_DOC,
+                SEL_NUMERO_DOC,
+                _DOM_NIS,
+                _DOM_TIPO,
+                _DOM_NUMERO,
+                _DOM_NOMBRES,
+                _DOM_AP1,
+                _DOM_AP2,
+            ],
+        )
+        _esperar_sin_blockui(page, 3000)
+        return True
+    except Exception:
+        return False
+
+
 def _ejecutar_flujo(ctx: ContextoScrape) -> None:
     def consultar(page: Page) -> None:
         for idx, doc in enumerate(ctx.docs):
-            # Entre documentos: recargar form para no arrastrar tipo/mensaje anterior.
-            if idx > 0:
+            # Entre documentos: reset barato por JS (si el form se ve raro, recarga).
+            if idx > 0 and not _resetear_form_consultar(page):
                 _cargar_iframe_consultar_registro(page)
                 _esperar_formulario_consultar(page, timeout_ms=10000)
             t0 = time.time()

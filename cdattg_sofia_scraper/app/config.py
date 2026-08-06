@@ -21,7 +21,7 @@ DIAG_DIR = os.getenv("SOFIA_DIAG_DIR", "storage/sofia_diagnostico")
 SOFIA_RAPIDO = os.getenv("SOFIA_RAPIDO", "true").lower() in ("1", "true", "yes")
 # Lotes Sofía: cuántos navegadores procesan documentos en paralelo (mismo patrón Betowa).
 # Cada worker abre su propio navegador con su propio login; calibrar contra bloqueos de Sofía.
-SOFIA_PARALLEL_WORKERS = max(1, int(os.getenv("SOFIA_PARALLEL_WORKERS", "3")))
+SOFIA_PARALLEL_WORKERS = max(1, int(os.getenv("SOFIA_PARALLEL_WORKERS", "5")))
 # Reutilizar la sesión JOSSO entre lotes: un perfil persistente por worker-slot
 # (cookies del navegador). Los lotes siguientes arrancan sin re-loguear.
 SOFIA_SESSION_PERSISTENTE = os.getenv("SOFIA_SESSION_PERSISTENTE", "true").lower() in ("1", "true", "yes")

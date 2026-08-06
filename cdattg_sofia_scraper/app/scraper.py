@@ -45,7 +45,7 @@ WAIT_LOGIN_MS = 8000 if SOFIA_RAPIDO else 12000
 WAIT_ROLES_MS = 8000 if SOFIA_RAPIDO else 12000
 POST_LOGIN_FAIL_FAST_MS = 8000 if SOFIA_RAPIDO else 10000
 PAGE_TIMEOUT_MS = max(TIMEOUT_SEGUNDOS, 60) * 1000
-POLL_MS = 100 if SOFIA_RAPIDO else 250
+POLL_MS = 60 if SOFIA_RAPIDO else 250
 
 
 def _pause(page: Page, ms: int) -> None:
@@ -463,7 +463,7 @@ def _recuperar_post_login(page: Page) -> bool:
     ):
         try:
             page.goto(_http_url(destino), wait_until="domcontentloaded", timeout=20000)
-            _pause(page, 2000)
+            _pause(page, 1000)
             if _pagina_error_sofia(page):
                 continue
             if _sesion_post_login_ok(page):
@@ -556,7 +556,7 @@ def _entrar_flujo_consultar(page: Page, cred: Credenciales) -> str | None:
             )
         return _navegar_consultar_registro(page)
 
-    _pause(page, 800)
+    _pause(page, 150)
     if _en_pagina_login(page):
         return _login_y_seleccionar_rol(page, cred)
     if _tiene_lista_roles(page) or _sesion_sofia_activa(page):
@@ -982,7 +982,7 @@ def _probar_destinos_post_login(page: Page, destinos: list[str]) -> str | None:
     for destino in destinos:
         try:
             page.goto(_http_url(destino), wait_until="domcontentloaded", timeout=25000)
-            _pause(page, 2000)
+            _pause(page, 1000)
             if _login_fallido(page):
                 return MSG_CRED_INVALIDAS
             if _pagina_error_sofia(page):
@@ -1189,7 +1189,7 @@ def _esperar_sesion_tras_submit(page: Page, err_req: str | None) -> str | None:
 def _completar_login(page: Page, cred: Credenciales) -> str | None:
     """Completa el formulario de login (Scrapling ya navegó a welcome.jsp → authpre)."""
     _dump(page, "01_login_cargado", solo_error=False)
-    _pause(page, 600)
+    _pause(page, 300)
 
     err = _llenar_campos_login(page, cred)
     if err:
@@ -1197,7 +1197,7 @@ def _completar_login(page: Page, cred: Credenciales) -> str | None:
         return err
 
     _dump(page, "02_login_lleno", solo_error=False)
-    _pause(page, 400)
+    _pause(page, 150)
 
     # Preferir POST por APIRequest: evita ERR_BLOCKED_BY_CLIENT al navegar authpre.
     err_req = _login_por_request(page)
@@ -1217,7 +1217,7 @@ def _completar_login(page: Page, cred: Credenciales) -> str | None:
         page.wait_for_load_state("domcontentloaded", timeout=30000)
     except Exception:
         pass
-    _pause(page, 2000)
+    _pause(page, 1000)
     _dump(page, "03_post_login", solo_error=False)
 
     if _hay_error_chrome(page):
@@ -1384,7 +1384,7 @@ def _cargar_iframe_consultar_registro(page: Page) -> bool:
         fr = page.frame(name="contenido")
         if fr is not None:
             fr.goto(abs_url, wait_until="domcontentloaded", timeout=30000)
-            _pause(page, 1200)
+            _pause(page, 300)
             if _en_formulario_consultar(page):
                 return True
     except Exception:
@@ -1400,7 +1400,7 @@ def _cargar_iframe_consultar_registro(page: Page) -> bool:
             }""",
             abs_url,
         )
-        _pause(page, 2000)
+        _pause(page, 1000)
         _esperar_sin_blockui(page, 15000)
         return _en_formulario_consultar(page)
     except Exception:
@@ -1767,7 +1767,7 @@ def _esperar_menu_tras_rol(page: Page, rol: str) -> bool:
 def _recuperar_home_tras_fallo_rol(page: Page) -> None:
     try:
         page.goto(SOFIA_HOME_URL, wait_until="domcontentloaded", timeout=25000)
-        _pause(page, 2000)
+        _pause(page, 1000)
         _esperar_sin_blockui(page, 15000)
     except Exception:
         pass
@@ -1798,7 +1798,7 @@ def _navegar_consultar_registro(page: Page) -> str | None:
 
     _esperar_sin_blockui(page, 10000)
     abierto = _abrir_menu_consultar_registro(page)
-    _pause(page, 800)
+    _pause(page, 150)
     _esperar_sin_blockui(page, 10000)
 
     if abierto and _esperar_formulario_consultar(page, timeout_ms=10000):
@@ -2239,7 +2239,7 @@ def _esperar_fin_carga(
         if _cargando_iframe_visible(page):
             continue
         if vio_cargando or (time.time() - t0) * 1000 >= 1500:
-            _pause(page, 250)
+            _pause(page, 150)
             return _clasificar_despues_ciclo(page, numero)
         page.wait_for_timeout(POLL_MS)
     if _extraer_registro_desde_dom(page, numero) is not None:
@@ -2386,13 +2386,17 @@ def _elegir_persona_en_select(page: Page, sel: Any) -> bool:
 
 
 def _seleccionar_tipo_usuario_persona(page: Page) -> bool:
-    """Elige Persona en formConsultarRegistro:tipoUsuarioSOL."""
+    """Elige Persona en formConsultarRegistro:tipoUsuarioSOL (sin re-disparar A4J si ya está)."""
     fr = _frame_consultar_registro(page)
     if fr is not None:
         try:
             sel = fr.locator(SEL_TIPO_USUARIO)
-            if sel.count() > 0 and _elegir_persona_en_select(page, sel.first):
-                return True
+            if sel.count() > 0:
+                if _texto_coincide(_label_select_actual(sel.first), "Persona"):
+                    # Ya está: evita el submit A4J onchange (~600 ms de round-trip por doc).
+                    return True
+                if _elegir_persona_en_select(page, sel.first):
+                    return True
         except Exception:
             pass
     sel = _buscar_select_con_opcion(page, "Persona")
@@ -2554,7 +2558,7 @@ def _click_consultar_en_frame(page: Page, frame: Frame | Page) -> bool:
             if btn.count() == 0:
                 continue
             btn.first.click(timeout=5000)
-            _pause(page, 400)
+            _pause(page, 150)
             return True
         except Exception:
             continue
@@ -2575,7 +2579,7 @@ def _click_consultar_en_frame(page: Page, frame: Frame | Page) -> bool:
             }"""
         )
         if submitted:
-            _pause(page, 400)
+            _pause(page, 150)
             return True
     except Exception:
         pass

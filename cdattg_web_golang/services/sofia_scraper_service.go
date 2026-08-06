@@ -31,11 +31,16 @@ type SofiaScraper struct {
 func NewSofiaScraper() *SofiaScraper {
 	timeout := time.Duration(config.AppConfig.Sofia.TimeoutSegundos) * time.Second
 	if timeout <= 0 {
-		timeout = 120 * time.Second
+		timeout = 10 * time.Minute
+	}
+	// Individual: login + rol + 1 consulta. Antes 150+90s cortaba a 4 min
+	// mientras el scraper seguía ocupado (lote o Sofía lento).
+	if timeout < 10*time.Minute {
+		timeout = 10 * time.Minute
 	}
 	return &SofiaScraper{
 		baseURL: strings.TrimRight(config.AppConfig.Sofia.ScraperURL, "/"),
-		client:  &http.Client{Timeout: timeout + 90*time.Second},
+		client:  &http.Client{Timeout: timeout},
 	}
 }
 
@@ -67,6 +72,9 @@ type scraperResultadoPayload struct {
 	Estado          string `json:"estado"`
 	TipoEncontrado  string `json:"tipo_encontrado"`
 	Nombre          string `json:"nombre"`
+	Nombres         string `json:"nombres"`
+	PrimerApellido  string `json:"primer_apellido"`
+	SegundoApellido string `json:"segundo_apellido"`
 	Detalle         string `json:"detalle"`
 	Mensaje         string `json:"mensaje"`
 }
@@ -88,6 +96,14 @@ func (s *SofiaScraper) postJSON(path string, payload any, out any) error {
 
 	resp, err := s.client.Do(req)
 	if err != nil {
+		msg := err.Error()
+		if strings.Contains(msg, "deadline exceeded") || strings.Contains(msg, "Timeout") {
+			return fmt.Errorf(
+				"el scraper Sofía no respondió a tiempo (%s). "+
+					"Si hay un lote en curso, espere a que termine e intente de nuevo. Detalle: %w",
+				s.baseURL, err,
+			)
+		}
 		return fmt.Errorf("no se pudo contactar el servicio de scraping (%s): %w", s.baseURL, err)
 	}
 	defer resp.Body.Close()
@@ -124,6 +140,9 @@ func mapResultado(r scraperResultadoPayload) dto.VerificarAspiranteResponse {
 		Estado:          r.Estado,
 		TipoEncontrado:  r.TipoEncontrado,
 		Nombre:          r.Nombre,
+		Nombres:         r.Nombres,
+		PrimerApellido:  r.PrimerApellido,
+		SegundoApellido: r.SegundoApellido,
 		Detalle:         r.Detalle,
 		Mensaje:         r.Mensaje,
 	}
@@ -161,8 +180,15 @@ func (s *SofiaScraper) VerificarLote(cred SofiaCredenciales, docs []dto.LoteDocu
 		}
 	}
 
+	// Lote: login + cambio de rol + N consultas (mín. 10 min, +45s por doc).
+	timeout := time.Duration(600+len(docs)*45) * time.Second
+	if timeout > 45*time.Minute {
+		timeout = 45 * time.Minute
+	}
+	loteClient := &SofiaScraper{baseURL: s.baseURL, client: &http.Client{Timeout: timeout}}
+
 	var res scraperVerificarLoteResponse
-	err := s.postJSON("/verificar-lote", scraperVerificarLotePayload{
+	err := loteClient.postJSON("/verificar-lote", scraperVerificarLotePayload{
 		Credenciales: mapCredenciales(cred),
 		Documentos:   payloadDocs,
 	}, &res)

@@ -124,6 +124,8 @@ func (s *ComplementariosService) VerificarAspirante(usuarioID uint, req dto.Veri
 			Mensaje:         err.Error(),
 		}
 	}
+	// Fase 1: siempre Encargado de ingreso (Consultar Registro / SGS).
+	cred.Rol = "Encargado de ingreso centro formación"
 
 	scraper := NewSofiaScraper()
 	return scraper.VerificarDocumento(cred, numero, req.TipoDocumento)
@@ -241,6 +243,8 @@ func (s *ComplementariosService) VerificarLote(usuarioID uint, contenido []byte)
 	if err != nil {
 		return dto.VerificarLoteResponse{}, err
 	}
+	// Fase 1: siempre Encargado de ingreso (Consultar Registro / SGS).
+	cred.Rol = "Encargado de ingreso centro formación"
 
 	scraper := NewSofiaScraper()
 	resultados := scraper.VerificarLote(cred, docs)

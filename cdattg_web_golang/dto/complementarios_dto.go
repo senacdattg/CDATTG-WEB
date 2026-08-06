@@ -54,9 +54,12 @@ type VerificarAspiranteResponse struct {
 	NumeroDocumento string `json:"numero_documento"`
 	Estado          string `json:"estado"`                    // REGISTRADO | NO_REGISTRADO | NO_VERIFICADO
 	TipoEncontrado  string `json:"tipo_encontrado,omitempty"` // tipo de identificación con el que apareció
-	Nombre          string `json:"nombre,omitempty"`          // nombre del aspirante si SofiaPlus lo muestra
-	Detalle         string `json:"detalle,omitempty"`         // texto adicional leído de la pantalla
-	Mensaje         string `json:"mensaje,omitempty"`         // mensaje para el usuario (ej. causa del NO_VERIFICADO)
+	Nombre          string `json:"nombre,omitempty"`          // nombre completo
+	Nombres         string `json:"nombres,omitempty"`
+	PrimerApellido  string `json:"primer_apellido,omitempty"`
+	SegundoApellido string `json:"segundo_apellido,omitempty"`
+	Detalle         string `json:"detalle,omitempty"` // texto adicional leído de la pantalla
+	Mensaje         string `json:"mensaje,omitempty"` // mensaje para el usuario (ej. causa del NO_VERIFICADO)
 }
 
 // ConsultarInscripcionesRequest consulta por documento + nombre de programa (Usuario SENA).

@@ -54,7 +54,7 @@ services:
       # SofiaPlus (módulo Complementarios): credenciales por operador + scraper autenticado.
       SOFIA_ENC_KEY: ${SOFIA_ENC_KEY:-}
       SOFIA_SCRAPER_URL: http://sofia-scraper:8090
-      SOFIA_TIMEOUT_SEGUNDOS: ${SOFIA_TIMEOUT_SEGUNDOS:-150}
+      SOFIA_TIMEOUT_SEGUNDOS: ${SOFIA_TIMEOUT_SEGUNDOS:-600}
     volumes:
       - backend_storage:/app/storage
     ports:
@@ -70,8 +70,10 @@ services:
       SOFIA_LOGIN_URL: ${SOFIA_LOGIN_URL:-http://senasofiaplus.edu.co/sofia/josso_login/}
       SOFIA_ROL: ${SOFIA_ROL:-Encargado de ingreso centro formación}
       SOFIA_HEADLESS: ${SOFIA_HEADLESS:-false}
-      SOFIA_TIMEOUT_SEGUNDOS: ${SOFIA_TIMEOUT_SEGUNDOS:-150}
-      SOFIA_DIAGNOSTICO: ${SOFIA_DIAGNOSTICO:-true}
+      SOFIA_TIMEOUT_SEGUNDOS: ${SOFIA_TIMEOUT_SEGUNDOS:-180}
+      SOFIA_DIAGNOSTICO: ${SOFIA_DIAGNOSTICO:-false}
+      SOFIA_DIAG_PNG: ${SOFIA_DIAG_PNG:-false}
+      SOFIA_RAPIDO: ${SOFIA_RAPIDO:-true}
       BETOWA_PARALLEL_WORKERS: ${BETOWA_PARALLEL_WORKERS:-4}
       BETOWA_DIAGNOSTICO: ${BETOWA_DIAGNOSTICO:-false}
       BETOWA_WAIT_SUBMIT_MS: ${BETOWA_WAIT_SUBMIT_MS:-3500}

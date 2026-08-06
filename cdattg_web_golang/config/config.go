@@ -165,7 +165,7 @@ func LoadConfig() {
 			Password:        getEnv("SOFIA_PASSWORD", ""),
 			Rol:             getEnv("SOFIA_ROL", "Encargado de ingreso centro formación"),
 			Headless:        getEnvAsBool("SOFIA_HEADLESS", true),
-			TimeoutSegundos: getEnvAsInt("SOFIA_TIMEOUT_SEGUNDOS", 120),
+			TimeoutSegundos: getEnvAsInt("SOFIA_TIMEOUT_SEGUNDOS", 600),
 			ChromePath:      getEnv("SOFIA_CHROME_PATH", ""),
 			Diagnostico:     getEnvAsBool("SOFIA_DIAGNOSTICO", true),
 			EncKey:          getEnv("SOFIA_ENC_KEY", ""),

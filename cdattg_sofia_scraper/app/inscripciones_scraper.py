@@ -1903,7 +1903,10 @@ def _consultar_inscripciones_lote_secuencial(
         return _resultados_error_lote(items, f"Error del scraper: {exc}")
 
     if err_global[0] and not resultados:
-        return _resultados_error_lote(items, err_global[0] or "Error de login")
+        errores = _resultados_error_lote(items, err_global[0] or "Error de login")
+        for item, r in zip(items, errores):
+            s.progreso.reportar(lote_id, item.numero_documento, r.estado)
+        return errores
     return resultados
 
 

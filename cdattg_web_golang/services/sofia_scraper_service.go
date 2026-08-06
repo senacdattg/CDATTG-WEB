@@ -327,6 +327,7 @@ type scraperConsultaInscripcionItem struct {
 type scraperConsultarInscripcionesLotePayload struct {
 	Credenciales scraperCredencialesPayload       `json:"credenciales"`
 	Consultas    []scraperConsultaInscripcionItem `json:"consultas"`
+	LoteID       string                           `json:"lote_id"`
 }
 
 type scraperConsultarInscripcionesLoteResponse struct {
@@ -334,7 +335,7 @@ type scraperConsultarInscripcionesLoteResponse struct {
 }
 
 // ConsultarInscripcionesLote un login + varias consultas documento/programa.
-func (s *SofiaScraper) ConsultarInscripcionesLote(cred SofiaCredenciales, filas []dto.LoteInscripcionFila) []dto.ConsultarInscripcionesResponse {
+func (s *SofiaScraper) ConsultarInscripcionesLote(cred SofiaCredenciales, filas []dto.LoteInscripcionFila, loteID string) []dto.ConsultarInscripcionesResponse {
 	consultas := make([]scraperConsultaInscripcionItem, len(filas))
 	for i, f := range filas {
 		consultas[i] = scraperConsultaInscripcionItem{
@@ -354,6 +355,7 @@ func (s *SofiaScraper) ConsultarInscripcionesLote(cred SofiaCredenciales, filas 
 	err := loteClient.postJSON("/consultar-inscripciones-lote", scraperConsultarInscripcionesLotePayload{
 		Credenciales: mapCredenciales(cred),
 		Consultas:    consultas,
+		LoteID:       loteID,
 	}, &res)
 	if err != nil {
 		out := make([]dto.ConsultarInscripcionesResponse, len(filas))

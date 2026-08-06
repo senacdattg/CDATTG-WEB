@@ -20,12 +20,100 @@ import type {
   ConsultarInscripcionesLoteResponse,
   ConsultarInscripcionesResponse,
   CredencialSofiaEstado,
+  LoteIniciadoResponse,
+  ProgresoLoteResponse,
 } from '../../types';
 import {
   leerHandoffFase1,
   limpiarHandoffFase1,
   type Fase1HandoffDoc,
 } from './fase1Handoff';
+
+/**
+ * Orquesta un lote con progreso en vivo: arranca el lote (devuelve lote_id al
+ * instante), hace polling cada 2 s a /progreso/:id y, al terminar, consulta
+ * /resultados/:id. Compartido por los paneles de carga masiva de Fase 2.
+ */
+function useLoteConProgreso<T>(
+  iniciar: () => Promise<LoteIniciadoResponse>,
+  consultarProgreso: (loteId: string) => Promise<ProgresoLoteResponse>,
+  consultarResultados: (loteId: string) => Promise<T>,
+) {
+  const [procesando, setProcesando] = useState(false);
+  const [progreso, setProgreso] = useState<ProgresoLoteResponse | null>(null);
+  const [error, setError] = useState('');
+  const [res, setRes] = useState<T | null>(null);
+  const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const detenerPolling = useCallback(() => {
+    if (pollingRef.current !== null) {
+      clearInterval(pollingRef.current);
+      pollingRef.current = null;
+    }
+  }, []);
+
+  // Limpieza al desmontar: nunca dejar un intervalo vivo.
+  useEffect(() => detenerPolling, [detenerPolling]);
+
+  const ejecutar = useCallback(async () => {
+    setProcesando(true);
+    setError('');
+    setRes(null);
+    setProgreso(null);
+    try {
+      const iniciado = await iniciar();
+      setProgreso({ lote_id: iniciado.lote_id, total: iniciado.total, procesados: 0, terminado: false });
+
+      pollingRef.current = setInterval(async () => {
+        try {
+          const p = await consultarProgreso(iniciado.lote_id);
+          setProgreso(p);
+          if (p.terminado) {
+            detenerPolling();
+            const r = await consultarResultados(iniciado.lote_id);
+            setRes(r);
+            setProcesando(false);
+            setProgreso(null);
+          }
+        } catch (err: unknown) {
+          detenerPolling();
+          setProcesando(false);
+          setProgreso(null);
+          setError(axiosErrorMessage(err, 'No se pudo consultar el avance del escaneo.'));
+        }
+      }, 2000);
+    } catch (err: unknown) {
+      setProcesando(false);
+      setError(axiosErrorMessage(err, 'No se pudo procesar el archivo.'));
+    }
+  }, [iniciar, consultarProgreso, consultarResultados, detenerPolling]);
+
+  return { procesando, progreso, error, res, ejecutar, setError, setRes };
+}
+
+/** Barra de avance + documento en curso (visible mientras procesa un lote). */
+function ProgresoLoteBar({ progreso }: { progreso: ProgresoLoteResponse | null }) {
+  if (!progreso) return null;
+  return (
+    <div className="space-y-1">
+      <div className="h-2 w-full overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700">
+        <div
+          className="h-full rounded-full bg-emerald-600 transition-all duration-500"
+          style={{
+            width:
+              progreso.total > 0 ? `${Math.round((progreso.procesados / progreso.total) * 100)}%` : '0%',
+          }}
+        />
+      </div>
+      {progreso.actual_doc && (
+        <p className="text-xs text-gray-500">
+          Consultando {progreso.actual_doc}
+          {progreso.estado_actual ? ` · ${progreso.estado_actual}` : ''}…
+        </p>
+      )}
+    </div>
+  );
+}
 
 /** Evita FormEvent deprecado en tipados React recientes (Sonar S1874). */
 type FormSubmitEvent = { preventDefault: () => void };
@@ -162,20 +250,12 @@ const ContinuacionFase1Panel = ({
   onDescartar: () => void;
 }) => {
   const [programa, setPrograma] = useState('');
-  const [procesando, setProcesando] = useState(false);
-  const [error, setError] = useState('');
-  const [res, setRes] = useState<ConsultarInscripcionesLoteResponse | null>(null);
-
-  const procesar = async () => {
-    const p = programa.trim();
-    if (!p) {
-      setError('Indique el nombre del programa de formación.');
-      return;
-    }
-    setProcesando(true);
-    setError('');
-    setRes(null);
-    try {
+  const { procesando, progreso, error, res, ejecutar } = useLoteConProgreso<ConsultarInscripcionesLoteResponse>(
+    async () => {
+      const p = programa.trim();
+      if (!p) {
+        throw new Error('Indique el nombre del programa de formación.');
+      }
       const wb = new ExcelJS.Workbook();
       const ws = wb.addWorksheet('lote');
       ws.addRow(['numero_documento', 'programa', 'tipo_documento']);
@@ -186,14 +266,13 @@ const ContinuacionFase1Panel = ({
       const file = new File([buffer], 'fase1_continuacion.xlsx', {
         type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
       });
-      const r = await apiService.consultarInscripcionesLoteSofia(file);
-      setRes(r);
-    } catch (err: unknown) {
-      setError(axiosErrorMessage(err, 'No se pudo consultar el lote de Fase 1.'));
-    } finally {
-      setProcesando(false);
-    }
-  };
+      return apiService.consultarInscripcionesLoteSofia(file);
+    },
+    (loteId) => apiService.progresoInscripcionesLote(loteId),
+    (loteId) => apiService.resultadosInscripcionesLote(loteId),
+  );
+
+  const procesar = () => void ejecutar();
 
   return (
     <div className="card space-y-4 border border-emerald-300 dark:border-emerald-700 bg-emerald-50/50 dark:bg-emerald-950/30">
@@ -245,7 +324,8 @@ const ContinuacionFase1Panel = ({
         <button type="button" className="btn-primary inline-flex items-center gap-2" onClick={procesar} disabled={procesando}>
           {procesando ? (
             <>
-              <ArrowPathIcon className="w-5 h-5 animate-spin" aria-hidden /> Consultando programas…
+              <ArrowPathIcon className="w-5 h-5 animate-spin" aria-hidden /> Consultando programas…{' '}
+              {progreso ? `${progreso.procesados}/${progreso.total}` : ''}
             </>
           ) : (
             <>
@@ -257,6 +337,7 @@ const ContinuacionFase1Panel = ({
           Descartar lista Fase 1
         </button>
       </div>
+      <ProgresoLoteBar progreso={progreso} />
       {res && (
         <div className="space-y-3 text-sm">
           {pillsResumen(res)}
@@ -664,11 +745,19 @@ const ConsultaPanel = ({ prefijoFase1 }: { prefijoFase1: Fase1HandoffDoc | null 
 
 const CargaMasivaPanel = () => {
   const [file, setFile] = useState<File | null>(null);
-  const [procesando, setProcesando] = useState(false);
   const [descargando, setDescargando] = useState(false);
-  const [error, setError] = useState('');
-  const [res, setRes] = useState<ConsultarInscripcionesLoteResponse | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const { procesando, progreso, error, res, ejecutar, setError, setRes } =
+    useLoteConProgreso<ConsultarInscripcionesLoteResponse>(
+      async () => {
+        if (!file) {
+          throw new Error('Seleccione el Excel con documento y programa de formación.');
+        }
+        return apiService.consultarInscripcionesLoteSofia(file);
+      },
+      (loteId) => apiService.progresoInscripcionesLote(loteId),
+      (loteId) => apiService.resultadosInscripcionesLote(loteId),
+    );
 
   const handleDescargarPlantilla = async () => {
     setDescargando(true);
@@ -689,23 +778,7 @@ const CargaMasivaPanel = () => {
     setRes(null);
   };
 
-  const handleProcesar = async () => {
-    if (!file) {
-      setError('Seleccione el Excel con documento y programa de formación.');
-      return;
-    }
-    setProcesando(true);
-    setError('');
-    setRes(null);
-    try {
-      const r = await apiService.consultarInscripcionesLoteSofia(file);
-      setRes(r);
-    } catch (err: unknown) {
-      setError(axiosErrorMessage(err, 'No se pudo procesar el archivo.'));
-    } finally {
-      setProcesando(false);
-    }
-  };
+  const handleProcesar = () => void ejecutar();
 
   const handleExportarCSV = () => {
     if (!res) return;
@@ -784,7 +857,8 @@ const CargaMasivaPanel = () => {
       >
         {procesando ? (
           <>
-            <ArrowPathIcon className="w-5 h-5 animate-spin" aria-hidden /> Consultando lote en Sofía…
+            <ArrowPathIcon className="w-5 h-5 animate-spin" aria-hidden /> Consultando lote en Sofía…{' '}
+            {progreso ? `${progreso.procesados}/${progreso.total}` : ''}
           </>
         ) : (
           <>
@@ -792,6 +866,7 @@ const CargaMasivaPanel = () => {
           </>
         )}
       </button>
+      <ProgresoLoteBar progreso={progreso} />
 
       {res && (
         <div className="space-y-3">

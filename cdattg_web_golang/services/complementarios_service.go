@@ -31,7 +31,7 @@ type loteJob struct {
 	LoteID     string
 	Fase       string
 	Total      int
-	Resultados []dto.VerificarAspiranteResponse
+	Resultados any // []dto.VerificarAspiranteResponse (verificar) o []dto.ConsultarInscripcionesResponse (inscripciones)
 	Done       chan struct{}
 	Creado     time.Time
 }
@@ -240,6 +240,7 @@ func (s *ComplementariosService) PlantillaInscripciones() ([]byte, error) {
 }
 
 // ConsultarInscripcionesLote procesa Excel (numero_documento, programa) con un solo login SENA.
+// (síncrono; se mantiene por compatibilidad, el handler usa ConsultarInscripcionesLoteAsync)
 func (s *ComplementariosService) ConsultarInscripcionesLote(usuarioID uint, contenido []byte) (dto.ConsultarInscripcionesLoteResponse, error) {
 	filas, err := ParsearLoteInscripcionesExcel(contenido)
 	if err != nil {
@@ -256,7 +257,65 @@ func (s *ComplementariosService) ConsultarInscripcionesLote(usuarioID uint, cont
 	cred.Rol = "Usuario SENA"
 
 	scraper := NewSofiaScraper()
-	resultados := scraper.ConsultarInscripcionesLote(cred, filas)
+	resultados := scraper.ConsultarInscripcionesLote(cred, filas, "")
+
+	out := dto.ConsultarInscripcionesLoteResponse{Total: len(resultados), Resultados: resultados}
+	for _, r := range resultados {
+		switch r.Estado {
+		case dto.InscripcionEncontrado:
+			out.Encontrados++
+		case dto.InscripcionNoEncontrado:
+			out.NoEncontrados++
+		default:
+			out.NoVerificados++
+		}
+	}
+	return out, nil
+}
+
+// ConsultarInscripcionesLoteAsync valida el Excel, arranca el lote de
+// inscripciones en segundo plano y devuelve el lote_id de inmediato.
+func (s *ComplementariosService) ConsultarInscripcionesLoteAsync(usuarioID uint, contenido []byte) (dto.LoteIniciadoResponse, error) {
+	filas, err := ParsearLoteInscripcionesExcel(contenido)
+	if err != nil {
+		return dto.LoteIniciadoResponse{}, err
+	}
+	if len(filas) == 0 {
+		return dto.LoteIniciadoResponse{}, errors.New("el Excel no tiene filas válidas (numero_documento y programa de formación)")
+	}
+
+	cred, err := s.credencialesDeUsuario(usuarioID)
+	if err != nil {
+		return dto.LoteIniciadoResponse{}, err
+	}
+	cred.Rol = "Usuario SENA"
+
+	job := registrarLote("inscripciones", len(filas))
+	go func() {
+		defer close(job.Done)
+		scraper := NewSofiaScraper()
+		job.Resultados = scraper.ConsultarInscripcionesLote(cred, filas, job.LoteID)
+	}()
+
+	return dto.LoteIniciadoResponse{LoteID: job.LoteID, Total: len(filas)}, nil
+}
+
+// ResultadosLoteInscripciones devuelve el resultado final de un lote de
+// inscripciones cuando ya terminó.
+func (s *ComplementariosService) ResultadosLoteInscripciones(loteID string) (dto.ConsultarInscripcionesLoteResponse, error) {
+	lotesMu.Lock()
+	job, ok := lotes[loteID]
+	lotesMu.Unlock()
+	if !ok {
+		return dto.ConsultarInscripcionesLoteResponse{}, errors.New("lote no encontrado o expirado")
+	}
+	if !jobTerminado(job) {
+		return dto.ConsultarInscripcionesLoteResponse{}, errors.New("el lote aún está en curso")
+	}
+	resultados, ok := job.Resultados.([]dto.ConsultarInscripcionesResponse)
+	if !ok {
+		return dto.ConsultarInscripcionesLoteResponse{}, errors.New("el lote no es de inscripciones")
+	}
 
 	out := dto.ConsultarInscripcionesLoteResponse{Total: len(resultados), Resultados: resultados}
 	for _, r := range resultados {
@@ -398,8 +457,8 @@ func (s *ComplementariosService) ResultadosLote(loteID string) (dto.VerificarLot
 		return dto.VerificarLoteResponse{}, errors.New("el lote aún está en curso")
 	}
 
-	out := dto.VerificarLoteResponse{Total: len(job.Resultados), Resultados: job.Resultados}
-	for _, r := range job.Resultados {
+	out := dto.VerificarLoteResponse{Total: len(job.Resultados.([]dto.VerificarAspiranteResponse)), Resultados: job.Resultados.([]dto.VerificarAspiranteResponse)}
+	for _, r := range out.Resultados {
 		switch r.Estado {
 		case dto.VerificacionRegistrado:
 			out.Registrados++

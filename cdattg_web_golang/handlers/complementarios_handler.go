@@ -202,6 +202,8 @@ func (h *ComplementariosHandler) DescargarPlantillaInscripciones(c *gin.Context)
 }
 
 // ConsultarInscripcionesLote POST /complementarios/inscripciones/consultar-lote
+// Devuelve lote_id al instante; el escaneo corre en segundo plano y el avance
+// se consulta con GET /complementarios/inscripciones/consultar-lote/progreso/:lote_id.
 func (h *ComplementariosHandler) ConsultarInscripcionesLote(c *gin.Context) {
 	userID, ok := requireUsuarioComplementarios(c)
 	if !ok {
@@ -211,7 +213,20 @@ func (h *ComplementariosHandler) ConsultarInscripcionesLote(c *gin.Context) {
 	if !ok {
 		return
 	}
-	res, err := h.svc.ConsultarInscripcionesLote(userID, contenido)
+	res, err := h.svc.ConsultarInscripcionesLoteAsync(userID, contenido)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"data": res})
+}
+
+// ResultadosLoteInscripciones GET /complementarios/inscripciones/consultar-lote/resultados/:lote_id
+func (h *ComplementariosHandler) ResultadosLoteInscripciones(c *gin.Context) {
+	if _, ok := requireUsuarioComplementarios(c); !ok {
+		return
+	}
+	res, err := h.svc.ResultadosLoteInscripciones(c.Param("lote_id"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return

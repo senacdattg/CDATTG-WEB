@@ -1271,16 +1271,33 @@ class ApiService {
     return response.data as Blob;
   }
 
-  async consultarInscripcionesLoteSofia(file: File): Promise<ConsultarInscripcionesLoteResponse> {
+  async consultarInscripcionesLoteSofia(file: File): Promise<LoteIniciadoResponse> {
     const formData = new FormData();
     formData.append('file', file);
-    const response = await this.api.post<{ data: ConsultarInscripcionesLoteResponse }>(
+    const response = await this.api.post<{ data: LoteIniciadoResponse }>(
       '/complementarios/inscripciones/consultar-lote',
       formData,
       {
         headers: { 'Content-Type': 'multipart/form-data' },
-        timeout: 2700000,
+        // El POST solo valida el Excel y arranca el lote; el escaneo corre en segundo plano.
+        timeout: 60000,
       },
+    );
+    return response.data.data;
+  }
+
+  async progresoInscripcionesLote(loteId: string): Promise<ProgresoLoteResponse> {
+    const response = await this.api.get<{ data: ProgresoLoteResponse }>(
+      `/complementarios/inscripciones/consultar-lote/progreso/${loteId}`,
+      { timeout: 15000 },
+    );
+    return response.data.data;
+  }
+
+  async resultadosInscripcionesLote(loteId: string): Promise<ConsultarInscripcionesLoteResponse> {
+    const response = await this.api.get<{ data: ConsultarInscripcionesLoteResponse }>(
+      `/complementarios/inscripciones/consultar-lote/resultados/${loteId}`,
+      { timeout: 15000 },
     );
     return response.data.data;
   }

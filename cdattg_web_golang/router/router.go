@@ -281,6 +281,8 @@ func SetupRouter() *gin.Engine {
 				complementarios.POST("/consultar-inscripciones", complementariosHandler.ConsultarInscripciones)
 				complementarios.GET("/inscripciones/plantilla", complementariosHandler.DescargarPlantillaInscripciones)
 				complementarios.POST("/inscripciones/consultar-lote", complementariosHandler.ConsultarInscripcionesLote)
+				complementarios.GET("/inscripciones/consultar-lote/progreso/:lote_id", complementariosHandler.ProgresoLote)
+				complementarios.GET("/inscripciones/consultar-lote/resultados/:lote_id", complementariosHandler.ResultadosLoteInscripciones)
 				complementarios.GET("/plantilla", complementariosHandler.DescargarPlantilla)
 				complementarios.POST("/verificar-lote", complementariosHandler.VerificarLote)
 				complementarios.GET("/verificar-lote/progreso/:lote_id", complementariosHandler.ProgresoLote)

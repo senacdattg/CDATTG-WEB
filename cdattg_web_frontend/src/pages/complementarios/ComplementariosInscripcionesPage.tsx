@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ChangeEvent } from 'react';
+import ExcelJS from 'exceljs';
 import {
   AcademicCapIcon,
   ArrowDownTrayIcon,
@@ -20,6 +21,11 @@ import type {
   ConsultarInscripcionesResponse,
   CredencialSofiaEstado,
 } from '../../types';
+import {
+  leerHandoffFase1,
+  limpiarHandoffFase1,
+  type Fase1HandoffDoc,
+} from './fase1Handoff';
 
 /** Evita FormEvent deprecado en tipados React recientes (Sonar S1874). */
 type FormSubmitEvent = { preventDefault: () => void };
@@ -41,6 +47,40 @@ const ESTADO_LABEL: Record<string, string> = {
   NO_VERIFICADO: 'No verificado',
 };
 
+const ESTADO_BADGE: Record<string, string> = {
+  ENCONTRADO:
+    'inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-200',
+  NO_ENCONTRADO:
+    'inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold bg-amber-100 text-amber-900 dark:bg-amber-900/50 dark:text-amber-200',
+  NO_VERIFICADO:
+    'inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold bg-rose-100 text-rose-800 dark:bg-rose-900/50 dark:text-rose-200',
+};
+
+function pillTotal(n: number) {
+  return (
+    <span className="rounded-full bg-slate-200 px-3 py-1 text-slate-900 dark:bg-slate-700 dark:text-slate-100">
+      Total: {n}
+    </span>
+  );
+}
+
+function pillsResumen(res: { total: number; encontrados: number; no_encontrados: number; no_verificados: number }) {
+  return (
+    <div className="flex flex-wrap gap-2 text-sm">
+      {pillTotal(res.total)}
+      <span className="rounded-full bg-emerald-100 px-3 py-1 font-medium text-emerald-900 dark:bg-emerald-900/40 dark:text-emerald-200">
+        Encontrados: {res.encontrados}
+      </span>
+      <span className="rounded-full bg-amber-100 px-3 py-1 font-medium text-amber-950 dark:bg-amber-900/40 dark:text-amber-200">
+        No encontrados: {res.no_encontrados}
+      </span>
+      <span className="rounded-full bg-rose-100 px-3 py-1 font-medium text-rose-900 dark:bg-rose-900/40 dark:text-rose-200">
+        No verificados: {res.no_verificados}
+      </span>
+    </div>
+  );
+}
+
 function descargarBlob(blob: Blob, nombre: string) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -59,22 +99,33 @@ function soloDigitos(v: string) {
 }
 
 export const ComplementariosInscripcionesPage = () => {
+  const [docsFase1, setDocsFase1] = useState<Fase1HandoffDoc[]>(() => leerHandoffFase1()?.documentos ?? []);
+
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
-          <AcademicCapIcon className="w-7 h-7" aria-hidden /> Complementarios · Programas de formación
+          <AcademicCapIcon className="w-7 h-7" aria-hidden /> Sofía · Fase 2 · Programas de formación
         </h1>
         <p className="text-gray-600 dark:text-gray-400 mt-1">
-          Consulta en SENA Sofía Plus las inscripciones de un aprendiz y filtra por nombre del programa de formación
-          (ficha y estado). Las credenciales de Sofía son independientes del login de este sistema.
+          Consulta en SENA Sofía Plus las inscripciones y filtra por nombre del programa. Si viene de Fase 1, el tipo de
+          documento ya está detectado (no se vuelve a probar).
         </p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
+          {docsFase1.length > 0 && (
+            <ContinuacionFase1Panel
+              documentos={docsFase1}
+              onDescartar={() => {
+                limpiarHandoffFase1();
+                setDocsFase1([]);
+              }}
+            />
+          )}
           <CredencialesPanel />
-          <ConsultaPanel />
+          <ConsultaPanel prefijoFase1={docsFase1.length === 1 ? docsFase1[0] : null} />
           <CargaMasivaPanel />
         </div>
         <aside className="space-y-4">
@@ -88,6 +139,9 @@ export const ComplementariosInscripcionesPage = () => {
                 El bot inicia sesión, elige <strong>Usuario SENA</strong> y abre Consultar Inscripciones.
               </li>
               <li>Recorre páginas con <strong>Siguiente</strong> y filtra por programa de formación.</li>
+              <li>
+                Si llegó desde Fase 1, usa el <strong>tipo ya detectado</strong> (sin re-escaneo de tipos).
+              </li>
             </ol>
             <p className="text-amber-600 dark:text-amber-400 flex items-start gap-1">
               <ExclamationTriangleIcon className="w-4 h-4 mt-0.5 shrink-0" aria-hidden />
@@ -96,6 +150,149 @@ export const ComplementariosInscripcionesPage = () => {
           </div>
         </aside>
       </div>
+    </div>
+  );
+};
+
+const ContinuacionFase1Panel = ({
+  documentos,
+  onDescartar,
+}: {
+  documentos: Fase1HandoffDoc[];
+  onDescartar: () => void;
+}) => {
+  const [programa, setPrograma] = useState('');
+  const [procesando, setProcesando] = useState(false);
+  const [error, setError] = useState('');
+  const [res, setRes] = useState<ConsultarInscripcionesLoteResponse | null>(null);
+
+  const procesar = async () => {
+    const p = programa.trim();
+    if (!p) {
+      setError('Indique el nombre del programa de formación.');
+      return;
+    }
+    setProcesando(true);
+    setError('');
+    setRes(null);
+    try {
+      const wb = new ExcelJS.Workbook();
+      const ws = wb.addWorksheet('lote');
+      ws.addRow(['numero_documento', 'programa', 'tipo_documento']);
+      for (const d of documentos) {
+        ws.addRow([d.numero_documento, p, d.tipo_documento]);
+      }
+      const buffer = await wb.xlsx.writeBuffer();
+      const file = new File([buffer], 'fase1_continuacion.xlsx', {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      });
+      const r = await apiService.consultarInscripcionesLoteSofia(file);
+      setRes(r);
+    } catch (err: unknown) {
+      setError(axiosErrorMessage(err, 'No se pudo consultar el lote de Fase 1.'));
+    } finally {
+      setProcesando(false);
+    }
+  };
+
+  return (
+    <div className="card space-y-4 border border-emerald-300 dark:border-emerald-700 bg-emerald-50/50 dark:bg-emerald-950/30">
+      <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Continuar desde Fase 1</h2>
+      <p className="text-sm text-gray-700 dark:text-gray-300">
+        {documentos.length} persona(s) registrada(s) en Sofía con tipo ya detectado. Indique el programa y consulte sin
+        volver a probar tipos de documento.
+      </p>
+      <div className="overflow-x-auto max-h-40">
+        <table className="min-w-full text-sm">
+          <thead>
+            <tr className="text-left text-gray-600 dark:text-gray-300 border-b border-gray-200 dark:border-gray-600">
+              <th className="py-1 pr-3">Tipo</th>
+              <th className="py-1 pr-3">Documento</th>
+              <th className="py-1">Nombre</th>
+            </tr>
+          </thead>
+          <tbody>
+            {documentos.map((d) => (
+              <tr
+                key={`${d.tipo_documento}-${d.numero_documento}`}
+                className="border-b border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100"
+              >
+                <td className="py-1 pr-3 font-medium text-emerald-800 dark:text-emerald-300">{d.tipo_documento}</td>
+                <td className="py-1 pr-3 font-medium">{d.numero_documento}</td>
+                <td className="py-1 text-gray-800 dark:text-gray-200">
+                  {d.nombre || [d.nombres, d.primer_apellido, d.segundo_apellido].filter(Boolean).join(' ') || '—'}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <div>
+        <label htmlFor="programa-fase1" className="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">
+          Programa de formación *
+        </label>
+        <input
+          id="programa-fase1"
+          className="input-field"
+          value={programa}
+          onChange={(e) => setPrograma(e.target.value)}
+          placeholder="Nombre exacto o parcial del programa en Sofía"
+          disabled={procesando}
+        />
+      </div>
+      {error && <p className="text-sm text-rose-700 dark:text-rose-300">{error}</p>}
+      <div className="flex flex-wrap gap-2">
+        <button type="button" className="btn-primary inline-flex items-center gap-2" onClick={procesar} disabled={procesando}>
+          {procesando ? (
+            <>
+              <ArrowPathIcon className="w-5 h-5 animate-spin" aria-hidden /> Consultando programas…
+            </>
+          ) : (
+            <>
+              <MagnifyingGlassIcon className="w-5 h-5" aria-hidden /> Consultar programa (Fase 2)
+            </>
+          )}
+        </button>
+        <button type="button" className="btn-secondary" onClick={onDescartar} disabled={procesando}>
+          Descartar lista Fase 1
+        </button>
+      </div>
+      {res && (
+        <div className="space-y-3 text-sm">
+          {pillsResumen(res)}
+          <div className="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-600">
+            <table className="min-w-full text-sm">
+              <thead>
+                <tr className="text-left text-gray-700 dark:text-gray-200 bg-gray-50 dark:bg-gray-800/80 border-b border-gray-200 dark:border-gray-600">
+                  <th className="py-2 px-3">Documento</th>
+                  <th className="py-2 px-3">Resultado</th>
+                  <th className="py-2 px-3">Detalle</th>
+                </tr>
+              </thead>
+              <tbody>
+                {res.resultados.map((r) => (
+                  <tr
+                    key={`${r.numero_documento}-${r.programa_consultado}`}
+                    className="border-b border-gray-200 dark:border-gray-700 last:border-0"
+                  >
+                    <td className="py-2.5 px-3 font-medium text-gray-900 dark:text-white">{r.numero_documento}</td>
+                    <td className="py-2.5 px-3">
+                      <span className={ESTADO_BADGE[r.estado] ?? ESTADO_BADGE.NO_VERIFICADO}>
+                        {ESTADO_LABEL[r.estado] ?? r.estado}
+                      </span>
+                    </td>
+                    <td className="py-2.5 px-3 text-gray-800 dark:text-gray-200 leading-snug">
+                      {r.registros?.length
+                        ? r.registros.map((x) => `${x.ficha} · ${x.programa} (${x.estado})`).join(' · ')
+                        : r.mensaje ?? '—'}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
@@ -340,14 +537,23 @@ const CredencialesPanel = () => {
   );
 };
 
-const ConsultaPanel = () => {
+const ConsultaPanel = ({ prefijoFase1 }: { prefijoFase1: Fase1HandoffDoc | null }) => {
   const [programa, setPrograma] = useState('');
-  const [numero, setNumero] = useState('');
-  const [tipo, setTipo] = useState('CC');
-  const [autoTipo, setAutoTipo] = useState(false);
+  const [numero, setNumero] = useState(prefijoFase1?.numero_documento ?? '');
+  const [tipo, setTipo] = useState(prefijoFase1?.tipo_documento || 'CC');
+  const [autoTipo, setAutoTipo] = useState(!prefijoFase1?.tipo_documento);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [resultado, setResultado] = useState<ConsultarInscripcionesResponse | null>(null);
+
+  useEffect(() => {
+    if (!prefijoFase1) return;
+    setNumero(prefijoFase1.numero_documento);
+    if (prefijoFase1.tipo_documento) {
+      setTipo(prefijoFase1.tipo_documento);
+      setAutoTipo(false);
+    }
+  }, [prefijoFase1]);
 
   const consultar = async (e: FormSubmitEvent) => {
     e.preventDefault();
@@ -589,43 +795,36 @@ const CargaMasivaPanel = () => {
 
       {res && (
         <div className="space-y-3">
-          <div className="flex flex-wrap gap-3 text-sm">
-            <span className="rounded-full bg-gray-100 px-3 py-1 dark:bg-gray-700">Total: {res.total}</span>
-            <span className="rounded-full bg-green-100 px-3 py-1 text-green-800 dark:bg-green-900/40 dark:text-green-300">
-              Encontrados: {res.encontrados}
-            </span>
-            <span className="rounded-full bg-amber-100 px-3 py-1 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300">
-              No encontrados: {res.no_encontrados}
-            </span>
-            <span className="rounded-full bg-red-100 px-3 py-1 text-red-800 dark:bg-red-900/40 dark:text-red-300">
-              No verificados: {res.no_verificados}
-            </span>
-          </div>
+          {pillsResumen(res)}
           <div className="flex justify-end">
             <button type="button" className="btn-secondary flex items-center gap-1" onClick={handleExportarCSV}>
               <ArrowDownTrayIcon className="w-4 h-4" aria-hidden /> Descargar resultados (CSV)
             </button>
           </div>
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-600">
             <table className="min-w-full text-sm">
               <thead>
-                <tr className="text-left text-gray-500 dark:text-gray-400 border-b border-gray-200 dark:border-gray-700">
-                  <th className="py-2 pr-4">Documento</th>
-                  <th className="py-2 pr-4">Programa consultado</th>
-                  <th className="py-2 pr-4">Resultado</th>
-                  <th className="py-2">Detalle</th>
+                <tr className="text-left text-gray-700 dark:text-gray-200 bg-gray-50 dark:bg-gray-800/80 border-b border-gray-200 dark:border-gray-600">
+                  <th className="py-2 px-3">Documento</th>
+                  <th className="py-2 px-3">Programa consultado</th>
+                  <th className="py-2 px-3">Resultado</th>
+                  <th className="py-2 px-3">Detalle</th>
                 </tr>
               </thead>
               <tbody>
                 {res.resultados.map((r) => (
                   <tr
                     key={`${r.numero_documento}-${r.programa_consultado}`}
-                    className="border-b border-gray-100 dark:border-gray-800"
+                    className="border-b border-gray-200 dark:border-gray-700 last:border-0"
                   >
-                    <td className="py-2 pr-4 font-medium text-gray-900 dark:text-white">{r.numero_documento}</td>
-                    <td className="py-2 pr-4 text-gray-900 dark:text-white">{r.programa_consultado}</td>
-                    <td className="py-2 pr-4">{ESTADO_LABEL[r.estado] ?? r.estado}</td>
-                    <td className="py-2 text-gray-500 dark:text-gray-400">
+                    <td className="py-2.5 px-3 font-medium text-gray-900 dark:text-white">{r.numero_documento}</td>
+                    <td className="py-2.5 px-3 text-gray-900 dark:text-gray-100">{r.programa_consultado}</td>
+                    <td className="py-2.5 px-3">
+                      <span className={ESTADO_BADGE[r.estado] ?? ESTADO_BADGE.NO_VERIFICADO}>
+                        {ESTADO_LABEL[r.estado] ?? r.estado}
+                      </span>
+                    </td>
+                    <td className="py-2.5 px-3 text-gray-800 dark:text-gray-200 leading-snug">
                       {r.registros?.length
                         ? r.registros.map((x) => `${x.ficha} · ${x.programa} (${x.estado})`).join(' · ')
                         : r.mensaje ?? '—'}

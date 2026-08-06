@@ -1041,6 +1041,9 @@ export interface VerificarAspiranteResponse {
   estado: VerificacionEstado;
   tipo_encontrado?: string;
   nombre?: string;
+  nombres?: string;
+  primer_apellido?: string;
+  segundo_apellido?: string;
   detalle?: string;
   mensaje?: string;
 }

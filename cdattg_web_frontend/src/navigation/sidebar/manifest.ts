@@ -155,8 +155,16 @@ export const SIDEBAR_MANIFEST: SidebarManifestItem[] = [
   },
   {
     section: 'FPI',
+    path: complementariosPaths.consultarRegistro,
+    label: 'Sofía · Fase 1 · Consultar Registro',
+    permission: null,
+    rolesRequired: ['SUPER ADMINISTRADOR', 'ADMINISTRADOR', 'COORDINADOR'],
+    iconKey: 'complementarios',
+  },
+  {
+    section: 'FPI',
     path: complementariosPaths.inscripciones,
-    label: 'Sofía · Programas de formación',
+    label: 'Sofía · Fase 2 · Programas',
     permission: null,
     rolesRequired: ['SUPER ADMINISTRADOR', 'ADMINISTRADOR', 'COORDINADOR'],
     iconKey: 'complementarios',

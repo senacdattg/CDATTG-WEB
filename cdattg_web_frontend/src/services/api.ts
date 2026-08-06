@@ -1230,7 +1230,7 @@ class ApiService {
     const response = await this.api.post<{ data: VerificarAspiranteResponse }>(
       '/complementarios/verificar-aspirante',
       data,
-      { timeout: 300000 },
+      { timeout: 900000 },
     );
     return response.data.data;
   }
@@ -1257,7 +1257,7 @@ class ApiService {
     const response = await this.api.post<{ data: ConsultarInscripcionesResponse }>(
       '/complementarios/consultar-inscripciones',
       data,
-      { timeout: 300000 },
+      { timeout: 900000 },
     );
     return response.data.data;
   }
@@ -1294,7 +1294,8 @@ class ApiService {
     formData.append('file', file);
     const response = await this.api.post<{ data: VerificarLoteResponse }>('/complementarios/verificar-lote', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
-      timeout: 900000, // el lote abre un navegador por cada documento: puede tardar
+      // Lote Sofía: login + N consultas en un solo navegador (hasta ~45 min).
+      timeout: 2700000,
     });
     return response.data.data;
   }

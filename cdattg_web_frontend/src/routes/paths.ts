@@ -111,5 +111,6 @@ export const eleccionAprendizPaths = {
 export const complementariosPaths = {
   index: '/complementarios',
   betowa: '/complementarios/betowa',
+  consultarRegistro: '/complementarios/consultar-registro',
   inscripciones: '/complementarios/inscripciones',
 } as const;

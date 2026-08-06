@@ -10,7 +10,7 @@ export const complementariosRoutes: RouteObject = {
   children: [
     {
       index: true,
-      element: createElement(Navigate, { to: complementariosPaths.betowa, replace: true }),
+      element: createElement(Navigate, { to: complementariosPaths.consultarRegistro, replace: true }),
     },
     {
       path: 'betowa',
@@ -23,8 +23,18 @@ export const complementariosRoutes: RouteObject = {
       },
     },
     {
+      path: 'consultar-registro',
+      handle: { breadcrumb: { label: 'Fase 1 · Consultar Registro' } },
+      lazy: async () => {
+        const { ComplementariosConsultarRegistroPage } = await import(
+          '../../pages/complementarios/ComplementariosConsultarRegistroPage'
+        );
+        return { Component: ComplementariosConsultarRegistroPage };
+      },
+    },
+    {
       path: 'inscripciones',
-      handle: { breadcrumb: { label: 'Programas de formación' } },
+      handle: { breadcrumb: { label: 'Fase 2 · Programas de formación' } },
       lazy: async () => {
         const { ComplementariosInscripcionesPage } = await import(
           '../../pages/complementarios/ComplementariosInscripcionesPage'

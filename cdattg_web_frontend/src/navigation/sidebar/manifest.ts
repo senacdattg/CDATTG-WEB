@@ -260,7 +260,7 @@ export const SIDEBAR_MANIFEST: SidebarManifestItem[] = [
     path: vigilanciaPaths.ambientes,
     label: 'Ambientes en uso',
     permission: null,
-    rolesRequired: ['SUPER ADMINISTRADOR'],
+    rolesRequired: ['VIGILANTE', 'SUPER ADMINISTRADOR', 'ADMINISTRADOR', 'COORDINADOR'],
     iconKey: 'vigilancia/ambientes',
   },
 

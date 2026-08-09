@@ -233,6 +233,7 @@ func RequirePermission(obj, act string) gin.HandlerFunc {
 // RequirePermissionCatalogosFicha permite GET a catálogos del formulario de ficha (sedes, días, etc.)
 // si el usuario tiene cualquier permiso relevante sobre fichas. Así quien solo tiene EDITAR/CREAR FICHA
 // (sin VER FICHAS) puede cargar los días de formación y guardarlos.
+// También permite acceso con permisos de vigilancia (portería necesita regionales/sedes).
 func RequirePermissionCatalogosFicha() gin.HandlerFunc {
 	acts := authz.PermisosFicha
 	return func(c *gin.Context) {
@@ -254,6 +255,12 @@ func RequirePermissionCatalogosFicha() gin.HandlerFunc {
 		if allowed, errEnf := authz.Enforce(e, sub, authz.ObjAsistencia, actVerAsistencia); errEnf == nil && allowed {
 			c.Next()
 			return
+		}
+		for _, act := range authz.PermisosVigilancia {
+			if allowed, errEnf := authz.Enforce(e, sub, authz.ObjVigilancia, act); errEnf == nil && allowed {
+				c.Next()
+				return
+			}
 		}
 		c.JSON(http.StatusForbidden, gin.H{"error": "No tiene permiso para acceder a catálogos de fichas"})
 		c.Abort()

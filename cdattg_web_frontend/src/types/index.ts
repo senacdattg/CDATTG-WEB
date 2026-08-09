@@ -642,6 +642,8 @@ export interface AsistenciaDashboardFichaSinSesion {
   programa_nombre?: string;
   jornada_nombre?: string;
   sede_nombre?: string;
+  tipo_formacion?: string;
+  tipo_formacion_label?: string;
   instructor_nombre?: string;
   instructor_id?: number;
   total_aprendices: number;
@@ -957,6 +959,8 @@ export interface AsistenciaDashboardPorFicha {
   programa_nombre: string;
   sede_nombre: string;
   jornada_nombre?: string;
+  tipo_formacion?: string;
+  tipo_formacion_label?: string;
   cantidad_vinieron: number;
   /** Aprendices con ingreso y sin salida registrada (en formación ahora) */
   cantidad_en_formacion?: number;

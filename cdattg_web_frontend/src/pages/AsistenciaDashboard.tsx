@@ -19,6 +19,8 @@ import type {
   AsistenciaDashboardFichaSinSesion,
   AsistenciaDashboardPorFicha,
   AsistenciaDashboardResponse,
+  RegionalItem,
+  SedeItem,
 } from '../types';
 import { asistenciaPaths, bienestarPaths } from '../routes/paths';
 import { canViewAsistenciaDashboardGlobal } from './bienestar/casos/casosBienestarPermissions';
@@ -29,10 +31,21 @@ import {
   jornadaInicialDesdeApi,
   useJornadasDisponibles,
 } from './dashboard/dashboardFichaFilters';
+import { ReporteAsistenciaGraficos } from '../components/dashboard/ReporteAsistenciaGraficos';
 
 const DASH_SEARCH_ID = 'asistencia-dashboard-buscar-ficha';
 const DASH_JORNADA_ID = 'asistencia-dashboard-filtro-jornada';
 const PAGE_SIZE = 20;
+/** Último día hábil con sesiones en la BD local (para revisar el reporte en fin de semana). */
+const FECHA_EJEMPLO_CON_DATOS = '2026-08-04';
+
+function fechaHoyLocal(): string {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
 
 function textoResumenCasosBienestar(count: number): string {
   if (count === 0) return 'Sin aprendices que cumplan el umbral configurado (≥3 inasistencias / 30 días).';
@@ -138,6 +151,8 @@ function PaginacionTabla({ page, totalPages, totalFilas, setPage }: PaginacionTa
   );
 }
 
+type VistaReporte = 'registradas' | 'pendientes' | 'graficos';
+
 type AsistenciaDashboardDataViewProps = Readonly<{
   data: AsistenciaDashboardResponse;
   casosBienestarCount: number | null;
@@ -146,6 +161,18 @@ type AsistenciaDashboardDataViewProps = Readonly<{
   jornadaFilter: string;
   onJornadaFilterChange: (value: string) => void;
   jornadasDisponibles: string[];
+  tipoFormacion: string;
+  onTipoFormacionChange: (value: string) => void;
+  regionalId: string;
+  onRegionalIdChange: (value: string) => void;
+  sedeId: string;
+  onSedeIdChange: (value: string) => void;
+  fecha: string;
+  onFechaChange: (value: string) => void;
+  regionales: RegionalItem[];
+  sedes: SedeItem[];
+  vista: VistaReporte;
+  onVistaChange: (value: VistaReporte) => void;
   fichasConSesionFiltradas: AsistenciaDashboardPorFicha[];
   paginatedConSesion: AsistenciaDashboardPorFicha[];
   totalPagesConSesion: number;
@@ -166,6 +193,18 @@ function AsistenciaDashboardDataView({
   jornadaFilter,
   onJornadaFilterChange,
   jornadasDisponibles,
+  tipoFormacion,
+  onTipoFormacionChange,
+  regionalId,
+  onRegionalIdChange,
+  sedeId,
+  onSedeIdChange,
+  fecha,
+  onFechaChange,
+  regionales,
+  sedes,
+  vista,
+  onVistaChange,
   fichasConSesionFiltradas,
   paginatedConSesion,
   totalPagesConSesion,
@@ -181,7 +220,6 @@ function AsistenciaDashboardDataView({
   const vinieron = metricas.vinieron;
   const enFormacion = metricas.enFormacion;
   const totalConSesion = metricas.totalConSesion;
-  const totalEsperado = metricas.totalEsperado;
   const jornadasTexto = metricas.jornadasTexto;
   const fichasConSesion = metricas.fichasConSesion;
   const fichasSinSesion = metricas.fichasSinSesion;
@@ -189,6 +227,8 @@ function AsistenciaDashboardDataView({
   const scopeJornadaLabel = jornadaFilter || jornadasTexto || 'todas las jornadas programadas';
 
   const totalesConSesion = agregarTotalesConSesion(fichasConSesionFiltradas);
+  const sinDatosFormacion = fichasConSesion === 0 && fichasSinSesion === 0;
+  const esFechaHoy = fecha === fechaHoyLocal();
 
   return (
     <>
@@ -198,22 +238,60 @@ function AsistenciaDashboardDataView({
         jornadaFilter={jornadaFilter}
         onJornadaFilterChange={onJornadaFilterChange}
         jornadasDisponibles={jornadasDisponibles}
+        tipoFormacion={tipoFormacion}
+        onTipoFormacionChange={onTipoFormacionChange}
+        fecha={fecha}
+        onFechaChange={onFechaChange}
+        regionalId={regionalId}
+        onRegionalIdChange={onRegionalIdChange}
+        sedeId={sedeId}
+        onSedeIdChange={onSedeIdChange}
+        regionales={regionales}
+        sedes={sedes}
         searchId={DASH_SEARCH_ID}
         jornadaId={DASH_JORNADA_ID}
         className="mb-4"
       />
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      {sinDatosFormacion && (
+        <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 p-4 dark:border-amber-800 dark:bg-amber-900/20">
+          <p className="text-sm font-semibold text-amber-900 dark:text-amber-100">
+            Sin fichas con formación el {data.fecha}
+          </p>
+          <p className="mt-1 text-sm text-amber-800 dark:text-amber-200">
+            {esFechaHoy
+              ? 'No está mal el reporte: si hoy no hay día de formación programado (p. ej. sábado/domingo/festivo), las listas y gráficos salen en cero. Cambia la fecha de corte para revisar un día hábil con datos.'
+              : 'En esa fecha no hay fichas con formación según calendario, o los filtros (jornada/tipo/sede) las dejaron fuera.'}
+          </p>
+          {esFechaHoy && (
+            <button
+              type="button"
+              onClick={() => onFechaChange(FECHA_EJEMPLO_CON_DATOS)}
+              className="btn-primary mt-3 text-sm"
+            >
+              Ver {FECHA_EJEMPLO_CON_DATOS} (último día con sesiones en BD)
+            </button>
+          )}
+        </div>
+      )}
+
+      <p className="mb-2 text-xs text-gray-500 dark:text-gray-400">
+        <strong>Sesión registrada</strong> = el instructor abrió «Tomar asistencia» el {data.fecha} (existe registro de
+        sesión). No implica que ya haya marcas de aprendices. <strong>Pendiente</strong> = ficha con formación ese día
+        sin esa apertura.
+      </p>
+
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
         <div className="card">
           <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Fecha de corte</p>
-          <p className="text-xl font-bold text-gray-900 dark:text-white mt-1">{data.fecha}</p>
+          <p className="mt-1 text-xl font-bold text-gray-900 dark:text-white">{data.fecha}</p>
         </div>
 
         <div className="card">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Asistencia efectiva</p>
-              <p className="text-3xl font-bold text-primary-600 dark:text-primary-400 mt-1 tabular-nums">
+              <p className="mt-1 text-3xl font-bold tabular-nums text-primary-600 dark:text-primary-400">
                 {totalConSesion > 0 ? (
                   <>
                     {formatNumero(vinieron)}
@@ -226,29 +304,17 @@ function AsistenciaDashboardDataView({
                   formatNumero(vinieron)
                 )}
               </p>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                {totalConSesion > 0 ? (
-                  <>
-                    Ratio sobre matrícula activa en fichas con sesión abierta
-                    {porcentajeVinieron != null && ` (${porcentajeVinieron}%)`}
-                    {scopeJornadaLabel ? ` · ámbito: ${scopeJornadaLabel}` : ''}
-                    {enFormacion !== vinieron && (
-                      <> · {formatNumero(enFormacion)} con ingreso sin salida</>
-                    )}
-                  </>
-                ) : (
-                  `Sin sesiones abiertas en el ámbito: ${scopeJornadaLabel}`
+              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                Aprendices con ingreso en fichas que ya abrieron sesión
+                {porcentajeVinieron != null && ` (${porcentajeVinieron}%)`}
+                {scopeJornadaLabel ? ` · ${scopeJornadaLabel}` : ''}
+                {enFormacion !== vinieron && (
+                  <> · {formatNumero(enFormacion)} aún sin salida</>
                 )}
               </p>
-              {fichasSinSesion > 0 && totalEsperado > totalConSesion && (
-                <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
-                  Matrícula activa proyectada: {formatNumero(totalEsperado)} aprendices
-                  ({fichasSinSesion} ficha{fichasSinSesion === 1 ? '' : 's'} sin apertura de sesión)
-                </p>
-              )}
             </div>
-            <div className="w-14 h-14 bg-primary-100 dark:bg-primary-900/50 rounded-lg flex items-center justify-center">
-              <UserGroupIcon className="w-7 h-7 text-primary-600 dark:text-primary-400" aria-hidden />
+            <div className="flex h-14 w-14 items-center justify-center rounded-lg bg-primary-100 dark:bg-primary-900/50">
+              <UserGroupIcon className="h-7 w-7 text-primary-600 dark:text-primary-400" aria-hidden />
             </div>
           </div>
         </div>
@@ -256,11 +322,12 @@ function AsistenciaDashboardDataView({
         <div className="card">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Fichas con sesión abierta</p>
-              <p className="text-3xl font-bold text-green-600 dark:text-green-400 mt-1 tabular-nums">{fichasConSesion}</p>
+              <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Con sesión registrada</p>
+              <p className="mt-1 text-3xl font-bold tabular-nums text-green-600 dark:text-green-400">{fichasConSesion}</p>
+              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Apertura de toma de asistencia ese día</p>
             </div>
-            <div className="w-14 h-14 bg-green-100 dark:bg-green-900/50 rounded-lg flex items-center justify-center">
-              <ClipboardDocumentCheckIcon className="w-7 h-7 text-green-600 dark:text-green-400" aria-hidden />
+            <div className="flex h-14 w-14 items-center justify-center rounded-lg bg-green-100 dark:bg-green-900/50">
+              <ClipboardDocumentCheckIcon className="h-7 w-7 text-green-600 dark:text-green-400" aria-hidden />
             </div>
           </div>
         </div>
@@ -268,11 +335,12 @@ function AsistenciaDashboardDataView({
         <div className="card">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Fichas sin apertura de sesión</p>
-              <p className="text-3xl font-bold text-amber-600 dark:text-amber-400 mt-1 tabular-nums">{fichasSinSesion}</p>
+              <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Pendientes de sesión</p>
+              <p className="mt-1 text-3xl font-bold tabular-nums text-amber-600 dark:text-amber-400">{fichasSinSesion}</p>
+              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Aún no abrieron tomar asistencia</p>
             </div>
-            <div className="w-14 h-14 bg-amber-100 dark:bg-amber-900/50 rounded-lg flex items-center justify-center">
-              <ClockIcon className="w-7 h-7 text-amber-600 dark:text-amber-400" aria-hidden />
+            <div className="flex h-14 w-14 items-center justify-center rounded-lg bg-amber-100 dark:bg-amber-900/50">
+              <ClockIcon className="h-7 w-7 text-amber-600 dark:text-amber-400" aria-hidden />
             </div>
           </div>
         </div>
@@ -280,30 +348,67 @@ function AsistenciaDashboardDataView({
 
       <div className="card py-3 px-4">
         <p className="text-sm text-gray-700 dark:text-gray-300">
-          <span className="font-medium">Cobertura operativa ({scopeJornadaLabel}):</span>{' '}
-          <span className="tabular-nums">{data.total_fichas_registradas ?? '—'}</span> fichas activas en sistema ·{' '}
-          <span className="tabular-nums text-green-700 dark:text-green-400">{fichasConSesion}</span> con sesión registrada ·{' '}
-          <span className="tabular-nums text-amber-700 dark:text-amber-300">{fichasSinSesion}</span> sin apertura ·{' '}
+          <span className="font-medium">Cobertura ({scopeJornadaLabel}):</span>{' '}
+          <span className="tabular-nums text-green-700 dark:text-green-400">{fichasConSesion}</span> con sesión ·{' '}
+          <span className="tabular-nums text-amber-700 dark:text-amber-300">{fichasSinSesion}</span> pendientes ·{' '}
           <span className="tabular-nums text-amber-600 dark:text-amber-400">{data.pendientes_revision ?? 0}</span>{' '}
-          marcaciones pendientes de revisión
+          marcaciones por revisar
         </p>
       </div>
 
-      <div className="card border-amber-200 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-900/10">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div className="flex flex-wrap gap-2 border-b border-gray-200 pb-1 dark:border-gray-700">
+        <button
+          type="button"
+          onClick={() => onVistaChange('registradas')}
+          className={`rounded-t-lg px-4 py-2 text-sm font-medium transition ${
+            vista === 'registradas'
+              ? 'bg-primary-50 text-primary-800 ring-1 ring-primary-200 dark:bg-primary-900/40 dark:text-primary-200'
+              : 'text-gray-600 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800'
+          }`}
+        >
+          Sesión registrada ({fichasConSesionFiltradas.length})
+        </button>
+        <button
+          type="button"
+          onClick={() => onVistaChange('pendientes')}
+          className={`rounded-t-lg px-4 py-2 text-sm font-medium transition ${
+            vista === 'pendientes'
+              ? 'bg-amber-50 text-amber-900 ring-1 ring-amber-200 dark:bg-amber-900/30 dark:text-amber-200'
+              : 'text-gray-600 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800'
+          }`}
+        >
+          Pendientes de sesión ({fichasSinSesionFiltradas.length})
+        </button>
+        <button
+          type="button"
+          onClick={() => onVistaChange('graficos')}
+          className={`inline-flex items-center gap-1.5 rounded-t-lg px-4 py-2 text-sm font-medium transition ${
+            vista === 'graficos'
+              ? 'bg-sky-50 text-sky-900 ring-1 ring-sky-200 dark:bg-sky-900/40 dark:text-sky-200'
+              : 'text-gray-600 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800'
+          }`}
+        >
+          <ChartBarIcon className="h-4 w-4" aria-hidden />
+          Gráficos
+        </button>
+      </div>
+
+      {vista !== 'graficos' && (
+      <div className="card border-amber-200 bg-amber-50/50 dark:border-amber-800 dark:bg-amber-900/10">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-4">
-            <div className="w-14 h-14 rounded-xl bg-amber-100 dark:bg-amber-900/50 flex items-center justify-center">
-              <ExclamationTriangleIcon className="w-8 h-8 text-amber-600 dark:text-amber-400" aria-hidden />
+            <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-amber-100 dark:bg-amber-900/50">
+              <ExclamationTriangleIcon className="h-8 w-8 text-amber-600 dark:text-amber-400" aria-hidden />
             </div>
             <div>
               <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
                 Seguimiento de riesgo — Bienestar al Aprendiz
               </h2>
-              <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+              <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
                 Aprendices con ≥3 inasistencias efectivas en ventana móvil de 30 días (criterio de alerta temprana).
               </p>
               {casosBienestarCount !== null && (
-                <p className="text-sm font-medium text-amber-700 dark:text-amber-300 mt-2">
+                <p className="mt-2 text-sm font-medium text-amber-700 dark:text-amber-300">
                   {textoResumenCasosBienestar(casosBienestarCount)}
                 </p>
               )}
@@ -311,67 +416,78 @@ function AsistenciaDashboardDataView({
           </div>
           <Link
             to={bienestarPaths.casos.index}
-            className="btn-primary inline-flex items-center justify-center gap-2 shrink-0"
+            className="btn-primary inline-flex shrink-0 items-center justify-center gap-2"
           >
-            <ExclamationTriangleIcon className="w-5 h-5" aria-hidden />
+            <ExclamationTriangleIcon className="h-5 w-5" aria-hidden />
             Ver módulo de casos
           </Link>
         </div>
       </div>
+      )}
 
+      {vista === 'graficos' && (
+        <ReporteAsistenciaGraficos
+          fecha={data.fecha}
+          conSesion={fichasConSesionFiltradas}
+          pendientes={fichasSinSesionFiltradas}
+          scopeLabel={scopeJornadaLabel}
+        />
+      )}
+
+      {vista === 'registradas' && (
       <div className="card">
-        <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">
+        <h2 className="mb-1 text-lg font-semibold text-gray-900 dark:text-white">
           Fichas con sesión registrada
         </h2>
-        <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-          Fichas con formación programada el {data.fecha} y al menos una sesión de asistencia abierta
+        <p className="mb-4 text-sm text-gray-600 dark:text-gray-400">
+          El instructor ya abrió la toma de asistencia el {data.fecha}. Si «Asist.» es 0, la sesión existe pero aún no
+          hay marcas de aprendices
           {jornadaFilter ? ` · jornada ${jornadaFilter}` : ''}.
         </p>
 
         {fichasConSesionFiltradas.length === 0 ? (
           <p className="text-gray-500 dark:text-gray-400">
-            Ningún registro coincide con los criterios de búsqueda o jornada seleccionados.
+            Ningún registro coincide con los filtros seleccionados.
           </p>
         ) : (
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-600">
-              <caption className="sr-only">Fichas con sesión de asistencia registrada en el ámbito filtrado</caption>
+              <caption className="sr-only">Fichas con sesión de asistencia registrada</caption>
               <thead className="bg-gray-50 dark:bg-gray-700/50">
                 <tr>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
-                    Ficha
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
-                    Programa
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
-                    Jornada
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
-                    Sede
-                  </th>
-                  <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
-                    Asist. / Matrícula
-                  </th>
-                  <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase w-28">
-                    Acción
-                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">Ficha</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">Tipo</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">Programa</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">Jornada</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">Sede</th>
+                  <th className="px-4 py-3 text-right text-xs font-medium uppercase text-gray-500 dark:text-gray-400">Asist. / Matrícula</th>
+                  <th className="w-28 px-4 py-3 text-right text-xs font-medium uppercase text-gray-500 dark:text-gray-400">Acción</th>
                 </tr>
               </thead>
-              <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-600">
+              <tbody className="divide-y divide-gray-200 bg-white dark:divide-gray-600 dark:bg-gray-800">
                 {paginatedConSesion.map((row) => (
                   <tr key={row.ficha_id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
-                    <td className="px-4 py-3 text-sm font-medium text-gray-900 dark:text-white">{row.ficha_numero}</td>
+                    <td className="px-4 py-3 text-sm font-medium text-gray-900 dark:text-white">
+                      {row.ficha_numero}
+                      {(row.cantidad_vinieron ?? 0) === 0 ? (
+                        <span className="ml-2 inline-flex rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-800 dark:bg-amber-900/50 dark:text-amber-200">
+                          Sin marcas
+                        </span>
+                      ) : null}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">
+                      {row.tipo_formacion_label || '—'}
+                    </td>
                     <td className="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">{row.programa_nombre || '—'}</td>
                     <td className="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">{row.jornada_nombre || '—'}</td>
                     <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">{row.sede_nombre || '—'}</td>
-                    <td className="px-4 py-3 text-sm text-right font-semibold text-primary-600 dark:text-primary-400 tabular-nums">
+                    <td className="px-4 py-3 text-right text-sm font-semibold tabular-nums text-primary-600 dark:text-primary-400">
                       {row.cantidad_vinieron} / {row.total_aprendices ?? 0}
                     </td>
                     <td className="px-4 py-3 text-right">
                       <Link
                         to={asistenciaPaths.historial.ficha(row.ficha_id)}
-                        className="text-primary-600 dark:text-primary-400 hover:underline text-xs font-medium"
+                        className="text-xs font-medium text-primary-600 hover:underline dark:text-primary-400"
                       >
                         Historial
                       </Link>
@@ -379,15 +495,13 @@ function AsistenciaDashboardDataView({
                   </tr>
                 ))}
               </tbody>
-              <tfoot className="bg-gray-50 dark:bg-gray-700/50 border-t-2 border-gray-200 dark:border-gray-600">
+              <tfoot className="border-t-2 border-gray-200 bg-gray-50 dark:border-gray-600 dark:bg-gray-700/50">
                 <tr>
-                  <td colSpan={4} className="px-4 py-3 text-sm font-medium text-gray-700 dark:text-gray-300">
-                    Total sesión abierta
-                    {jornadaFilter ? ` · ${jornadaFilter}` : ''}
+                  <td colSpan={5} className="px-4 py-3 text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Total con sesión
                   </td>
-                  <td className="px-4 py-3 text-sm text-right font-semibold text-gray-900 dark:text-white tabular-nums">
-                    {formatNumero(totalesConSesion.vinieron)} /{' '}
-                    {formatNumero(totalesConSesion.totalAprendices)}
+                  <td className="px-4 py-3 text-right text-sm font-semibold tabular-nums text-gray-900 dark:text-white">
+                    {formatNumero(totalesConSesion.vinieron)} / {formatNumero(totalesConSesion.totalAprendices)}
                   </td>
                   <td />
                 </tr>
@@ -402,64 +516,58 @@ function AsistenciaDashboardDataView({
           setPage={setPageConSesion}
         />
       </div>
+      )}
 
+      {vista === 'pendientes' && (
       <div className="card border-amber-200 dark:border-amber-800">
-        <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">
-          Fichas pendientes de apertura de sesión
+        <h2 className="mb-1 text-lg font-semibold text-gray-900 dark:text-white">
+          Fichas pendientes de sesión
         </h2>
-        <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-          Fichas con formación programada el {data.fecha} sin registro de sesión de asistencia
+        <p className="mb-4 text-sm text-gray-600 dark:text-gray-400">
+          Formación programada el {data.fecha} sin apertura de «Tomar asistencia»
           {jornadaFilter ? ` · jornada ${jornadaFilter}` : ''}.
         </p>
 
         {fichasSinSesionFiltradas.length === 0 ? (
           <p className="text-gray-500 dark:text-gray-400">
-            Cobertura completa en el ámbito filtrado, o sin coincidencias en la búsqueda.
+            Cobertura completa en el ámbito filtrado, o sin coincidencias.
           </p>
         ) : (
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-600">
-              <caption className="sr-only">Fichas sin apertura de sesión de asistencia en el ámbito filtrado</caption>
+              <caption className="sr-only">Fichas pendientes de apertura de sesión</caption>
               <thead className="bg-gray-50 dark:bg-gray-700/50">
                 <tr>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
-                    Ficha
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
-                    Programa
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
-                    Jornada
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
-                    Sede
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
-                    Instructor
-                  </th>
-                  <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
-                    Matrícula activa
-                  </th>
-                  <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase w-36">
-                    Acción
-                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">Ficha</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">Tipo</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">Programa</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">Jornada</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">Sede</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">Instructor</th>
+                  <th className="px-4 py-3 text-right text-xs font-medium uppercase text-gray-500 dark:text-gray-400">Matrícula</th>
+                  <th className="w-36 px-4 py-3 text-right text-xs font-medium uppercase text-gray-500 dark:text-gray-400">Acción</th>
                 </tr>
               </thead>
-              <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-600">
+              <tbody className="divide-y divide-gray-200 bg-white dark:divide-gray-600 dark:bg-gray-800">
                 {paginatedSinSesion.map((row) => (
                   <tr key={row.ficha_id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
                     <td className="px-4 py-3 text-sm font-medium text-gray-900 dark:text-white">{row.ficha_numero}</td>
+                    <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">
+                      {row.tipo_formacion_label || '—'}
+                    </td>
                     <td className="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">{row.programa_nombre || '—'}</td>
                     <td className="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">{row.jornada_nombre || '—'}</td>
                     <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">{row.sede_nombre || '—'}</td>
-                    <td className="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">{row.instructor_nombre ?? 'Sin asignar'}</td>
-                    <td className="px-4 py-3 text-sm text-right text-gray-700 dark:text-gray-300 tabular-nums">
+                    <td className="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">
+                      {row.instructor_nombre ?? 'Sin asignar'}
+                    </td>
+                    <td className="px-4 py-3 text-right text-sm tabular-nums text-gray-700 dark:text-gray-300">
                       {row.total_aprendices}
                     </td>
                     <td className="px-4 py-3 text-right">
                       <Link
                         to={asistenciaPaths.sesion(row.ficha_id)}
-                        className="text-primary-600 dark:text-primary-400 hover:underline text-xs font-medium"
+                        className="text-xs font-medium text-primary-600 hover:underline dark:text-primary-400"
                       >
                         Registrar asistencia
                       </Link>
@@ -477,15 +585,16 @@ function AsistenciaDashboardDataView({
           setPage={setPageSinSesion}
         />
       </div>
+      )}
 
       {(data.pendientes_revision ?? 0) > 0 && (
         <div className="card flex items-center gap-4">
-          <div className="w-14 h-14 bg-amber-100 dark:bg-amber-900/50 rounded-lg flex items-center justify-center">
-            <DocumentMagnifyingGlassIcon className="w-7 h-7 text-amber-600 dark:text-amber-400" aria-hidden />
+          <div className="flex h-14 w-14 items-center justify-center rounded-lg bg-amber-100 dark:bg-amber-900/50">
+            <DocumentMagnifyingGlassIcon className="h-7 w-7 text-amber-600 dark:text-amber-400" aria-hidden />
           </div>
           <div>
             <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Marcaciones pendientes de revisión</p>
-            <p className="text-2xl font-bold text-amber-600 dark:text-amber-400 tabular-nums">
+            <p className="text-2xl font-bold tabular-nums text-amber-600 dark:text-amber-400">
               {data.pendientes_revision}
             </p>
           </div>
@@ -503,7 +612,14 @@ export const AsistenciaDashboard = () => {
   const [wsConnected, setWsConnected] = useState(false);
   const [casosBienestarCount, setCasosBienestarCount] = useState<number | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [fecha, setFecha] = useState(fechaHoyLocal);
   const [jornadaFilter, setJornadaFilter] = useState('');
+  const [tipoFormacion, setTipoFormacion] = useState('');
+  const [regionalId, setRegionalId] = useState('');
+  const [sedeId, setSedeId] = useState('');
+  const [regionales, setRegionales] = useState<RegionalItem[]>([]);
+  const [sedes, setSedes] = useState<SedeItem[]>([]);
+  const [vista, setVista] = useState<VistaReporte>('registradas');
   const jornadaInicializadaRef = useRef(false);
   const [pageConSesion, setPageConSesion] = useState(1);
   const [pageSinSesion, setPageSinSesion] = useState(1);
@@ -512,11 +628,25 @@ export const AsistenciaDashboard = () => {
 
   const canViewBienestar = canViewAsistenciaDashboardGlobal(roles);
 
+  const handleFechaChange = useCallback((value: string) => {
+    const next = value || fechaHoyLocal();
+    setFecha(next);
+    setJornadaFilter('');
+    jornadaInicializadaRef.current = false;
+    setPageConSesion(1);
+    setPageSinSesion(1);
+  }, []);
+
   const fetchDashboard = useCallback(async () => {
     try {
       setError('');
       const [res, casosRes] = await Promise.all([
-        apiService.getAsistenciaDashboard(),
+        apiService.getAsistenciaDashboard({
+          fecha,
+          sede_id: sedeId ? Number(sedeId) : undefined,
+          tipo_formacion: tipoFormacion || undefined,
+          jornada: jornadaFilter || undefined,
+        }),
         apiService.getCasosBienestar({ dias: 30, min_fallas: 3 }).catch(() => ({ casos: [] })),
       ]);
       setData(res);
@@ -535,9 +665,39 @@ export const AsistenciaDashboard = () => {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [fecha, sedeId, tipoFormacion, jornadaFilter]);
 
   useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const [regs, sds] = await Promise.all([
+          apiService.getCatalogosRegionales(),
+          apiService.getCatalogosSedes(),
+        ]);
+        if (!cancelled) {
+          setRegionales(regs ?? []);
+          setSedes(sds ?? []);
+        }
+      } catch {
+        if (!cancelled) {
+          setRegionales([]);
+          setSedes([]);
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const sedesFiltradas = useMemo(
+    () => sedes.filter((s) => !regionalId || String(s.regional_id ?? '') === regionalId),
+    [sedes, regionalId],
+  );
+
+  useEffect(() => {
+    setLoading(true);
     fetchDashboard();
   }, [fetchDashboard]);
 
@@ -580,20 +740,20 @@ export const AsistenciaDashboard = () => {
   useEffect(() => {
     setPageConSesion(1);
     setPageSinSesion(1);
-  }, [searchQuery, jornadaFilter]);
+  }, [searchQuery, jornadaFilter, tipoFormacion, sedeId, regionalId, vista]);
 
   const porFicha = data?.por_ficha ?? [];
   const sinSesion = data?.fichas_sin_asistencia_hoy ?? [];
   const jornadasDisponibles = useJornadasDisponibles(data?.jornadas_disponibles, porFicha, sinSesion);
 
   const fichasConSesionFiltradas = useMemo(
-    () => filtrarFilasFicha(porFicha, searchQuery, jornadaFilter),
-    [porFicha, searchQuery, jornadaFilter],
+    () => filtrarFilasFicha(porFicha, searchQuery, '', tipoFormacion),
+    [porFicha, searchQuery, tipoFormacion],
   );
 
   const fichasSinSesionFiltradas = useMemo(
-    () => filtrarFilasFicha(sinSesion, searchQuery, jornadaFilter),
-    [sinSesion, searchQuery, jornadaFilter],
+    () => filtrarFilasFicha(sinSesion, searchQuery, '', tipoFormacion),
+    [sinSesion, searchQuery, tipoFormacion],
   );
 
   const totalPagesConSesion = Math.ceil(fichasConSesionFiltradas.length / PAGE_SIZE);
@@ -613,12 +773,13 @@ export const AsistenciaDashboard = () => {
     <div className="space-y-6">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
-            <ChartBarIcon className="w-8 h-8 text-primary-600" aria-hidden />
-            Dashboard de Asistencia
+          <h1 className="flex items-center gap-2 text-3xl font-bold text-gray-900 dark:text-white">
+            <ChartBarIcon className="h-8 w-8 text-primary-600" aria-hidden />
+            Reporte de asistencia
           </h1>
           <p className="mt-2 text-gray-600 dark:text-gray-400">
-            Indicadores de cobertura de asistencia por jornada de formación. Los totales responden al filtro de jornada seleccionado.
+            Cobertura del día: fichas que ya abrieron sesión vs pendientes. Filtra por tipo de formación, jornada,
+            regional y sede.
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -658,6 +819,18 @@ export const AsistenciaDashboard = () => {
           jornadaFilter={jornadaFilter}
           onJornadaFilterChange={setJornadaFilter}
           jornadasDisponibles={jornadasDisponibles}
+          tipoFormacion={tipoFormacion}
+          onTipoFormacionChange={setTipoFormacion}
+          regionalId={regionalId}
+          onRegionalIdChange={setRegionalId}
+          sedeId={sedeId}
+          onSedeIdChange={setSedeId}
+          fecha={fecha}
+          onFechaChange={handleFechaChange}
+          regionales={regionales}
+          sedes={sedesFiltradas}
+          vista={vista}
+          onVistaChange={setVista}
           fichasConSesionFiltradas={fichasConSesionFiltradas}
           paginatedConSesion={paginatedConSesion}
           totalPagesConSesion={totalPagesConSesion}

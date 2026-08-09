@@ -876,7 +876,12 @@ class ApiService {
   }
 
   /** Dashboard de asistencia detallado. Params opcionales: sede_id, fecha (YYYY-MM-DD). */
-  async getAsistenciaDashboard(params?: { sede_id?: number; fecha?: string }): Promise<AsistenciaDashboardResponse> {
+  async getAsistenciaDashboard(params?: {
+    sede_id?: number;
+    fecha?: string;
+    tipo_formacion?: string;
+    jornada?: string;
+  }): Promise<AsistenciaDashboardResponse> {
     const response = await this.api.get<AsistenciaDashboardResponse>('/asistencias/dashboard', { params });
     return response.data;
   }

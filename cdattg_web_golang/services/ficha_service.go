@@ -22,7 +22,7 @@ const (
 )
 
 type FichaService interface {
-	FindAll(page, pageSize int, programaID *uint, instructorID *uint, search string) ([]dto.FichaCaracterizacionResponse, int64, error)
+	FindAll(page, pageSize int, programaID *uint, instructorID *uint, search string, tipoFormacion string) ([]dto.FichaCaracterizacionResponse, int64, error)
 	FindByID(id uint) (*dto.FichaCaracterizacionResponse, error)
 	FindByIDWithDetail(id uint) (*dto.FichaCaracterizacionResponse, error)
 	GetCodigo(id uint) (string, error)
@@ -142,8 +142,46 @@ func aplicarDiasFormacionARespuesta(r *dto.FichaCaracterizacionResponse, diaIDsB
 	}
 }
 
-func (s *fichaService) FindAll(page, pageSize int, programaID *uint, instructorID *uint, search string) ([]dto.FichaCaracterizacionResponse, int64, error) {
-	list, total, err := s.fichaRepo.FindAll(page, pageSize, programaID, instructorID, search)
+func normalizeTipoFormacion(v string) (string, error) {
+	t := strings.TrimSpace(strings.ToUpper(v))
+	if t == "" {
+		return models.TipoFormacionRegular, nil
+	}
+	switch t {
+	case models.TipoFormacionRegular, models.TipoFormacionMediaTecnica, models.TipoFormacionComplementaria:
+		return t, nil
+	default:
+		return "", errors.New("tipo de formación no válido; use FORMACION_REGULAR, MEDIA_TECNICA o FORMACION_COMPLEMENTARIA")
+	}
+}
+
+// normalizeTipoFormacionFilter valida un filtro opcional; vacío = sin filtrar.
+func normalizeTipoFormacionFilter(v string) (string, error) {
+	t := strings.TrimSpace(strings.ToUpper(v))
+	if t == "" {
+		return "", nil
+	}
+	return normalizeTipoFormacion(t)
+}
+
+func tipoFormacionEfectivo(v string) string {
+	t := strings.TrimSpace(v)
+	if t == "" {
+		return models.TipoFormacionRegular
+	}
+	return t
+}
+
+func (s *fichaService) FindAll(page, pageSize int, programaID *uint, instructorID *uint, search string, tipoFormacion string) ([]dto.FichaCaracterizacionResponse, int64, error) {
+	tipo := strings.TrimSpace(tipoFormacion)
+	if tipo != "" {
+		norm, err := normalizeTipoFormacion(tipo)
+		if err != nil {
+			return nil, 0, err
+		}
+		tipo = norm
+	}
+	list, total, err := s.fichaRepo.FindAll(page, pageSize, programaID, instructorID, search, tipo)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -205,16 +243,40 @@ func (s *fichaService) GetCodigo(id uint) (string, error) {
 	return f.Ficha, nil
 }
 
-func (s *fichaService) Create(req dto.FichaCaracterizacionRequest) (*dto.FichaCaracterizacionResponse, error) {
+func (s *fichaService) applyProgramaONombre(req *dto.FichaCaracterizacionRequest) error {
+	if models.TipoFormacionSinPrograma(req.TipoFormacion) {
+		nombre := strings.TrimSpace(req.Nombre)
+		if nombre == "" {
+			return errors.New("el nombre es obligatorio para Media Técnica y Formación Complementaria")
+		}
+		req.Nombre = nombre
+		req.ProgramaFormacionID = nil
+		return nil
+	}
+	if req.ProgramaFormacionID == nil || *req.ProgramaFormacionID == 0 {
+		return errors.New("programa de formación es obligatorio")
+	}
+	if _, err := s.progRepo.FindByID(*req.ProgramaFormacionID); err != nil {
+		return errors.New("programa de formación no encontrado")
+	}
+	req.Nombre = ""
+	return nil
+}
+
+func (s *fichaService) buildNewFichaFromRequest(req dto.FichaCaracterizacionRequest) (models.FichaCaracterizacion, error) {
 	if s.fichaRepo.ExistsByFicha(req.Ficha) {
-		return nil, errors.New("ya existe una ficha con ese número")
+		return models.FichaCaracterizacion{}, errors.New("ya existe una ficha con ese número")
 	}
-	if _, err := s.progRepo.FindByID(req.ProgramaFormacionID); err != nil {
-		return nil, errors.New("programa de formación no encontrado")
+	tipo, err := normalizeTipoFormacion(req.TipoFormacion)
+	if err != nil {
+		return models.FichaCaracterizacion{}, err
 	}
-	// Regla: instructor líder obligatorio
+	req.TipoFormacion = tipo
+	if err := s.applyProgramaONombre(&req); err != nil {
+		return models.FichaCaracterizacion{}, err
+	}
 	if req.InstructorID == nil || *req.InstructorID == 0 {
-		return nil, errors.New(msgInstructorLiderObligatorio)
+		return models.FichaCaracterizacion{}, errors.New(msgInstructorLiderObligatorio)
 	}
 	f := s.fichaRequestToModel(req)
 	if req.Status != nil {
@@ -222,26 +284,45 @@ func (s *fichaService) Create(req dto.FichaCaracterizacionRequest) (*dto.FichaCa
 	} else {
 		f.Status = true
 	}
-	if err := s.fichaRepo.Create(&f); err != nil {
-		return nil, fmt.Errorf("error al crear ficha: %w", err)
+	return f, nil
+}
+
+func (s *fichaService) applyHorariosIfPresent(f *models.FichaCaracterizacion, req dto.FichaCaracterizacionRequest) error {
+	if req.Horarios == nil && req.DiasFormacionIDs == nil && req.DiasFormacion == nil {
+		return nil
 	}
-	// Validar líder según reglas de negocio y sincronizar en pivote
+	if err := s.guardarProgramacionHoraria(f.ID, req); err != nil {
+		return fmt.Errorf("error al guardar programación horaria: %w", err)
+	}
+	if jid := derivarJornadaPrincipalID(req); jid != nil {
+		f.JornadaID = jid
+		_ = s.fichaRepo.Update(f)
+	}
+	return nil
+}
+
+func (s *fichaService) finalizeFichaCreate(f *models.FichaCaracterizacion, req dto.FichaCaracterizacionRequest) error {
 	instRepo := repositories.NewInstructorRepository()
 	if err := ValidarAsignacionInstructor(*f.InstructorID, f.ID, true, instRepo, s.fichaRepo, s.instFichaRepo); err != nil {
 		_ = s.fichaRepo.Delete(f.ID)
+		return err
+	}
+	if err := SincronizarInstructorLiderEnPivote(f, s.instFichaRepo); err != nil {
+		return fmt.Errorf(errFmtSyncInstructorLider, err)
+	}
+	return s.applyHorariosIfPresent(f, req)
+}
+
+func (s *fichaService) Create(req dto.FichaCaracterizacionRequest) (*dto.FichaCaracterizacionResponse, error) {
+	f, err := s.buildNewFichaFromRequest(req)
+	if err != nil {
 		return nil, err
 	}
-	if err := SincronizarInstructorLiderEnPivote(&f, s.instFichaRepo); err != nil {
-		return nil, fmt.Errorf(errFmtSyncInstructorLider, err)
+	if err := s.fichaRepo.Create(&f); err != nil {
+		return nil, fmt.Errorf("error al crear ficha: %w", err)
 	}
-	if req.Horarios != nil || req.DiasFormacionIDs != nil || req.DiasFormacion != nil {
-		if err := s.guardarProgramacionHoraria(f.ID, req); err != nil {
-			return nil, fmt.Errorf("error al guardar programación horaria: %w", err)
-		}
-		if jid := derivarJornadaPrincipalID(req); jid != nil {
-			f.JornadaID = jid
-			_ = s.fichaRepo.Update(&f)
-		}
+	if err := s.finalizeFichaCreate(&f, req); err != nil {
+		return nil, err
 	}
 	return s.FindByID(f.ID)
 }
@@ -254,8 +335,18 @@ func (s *fichaService) Update(id uint, req dto.FichaCaracterizacionRequest) (*dt
 	if s.fichaRepo.ExistsByFichaExcludingID(req.Ficha, id) {
 		return nil, errors.New("ya existe otra ficha con ese número")
 	}
+	tipo, errTipo := normalizeTipoFormacion(req.TipoFormacion)
+	if errTipo != nil {
+		return nil, errTipo
+	}
+	req.TipoFormacion = tipo
+	if err := s.applyProgramaONombre(&req); err != nil {
+		return nil, err
+	}
 	f.ProgramaFormacionID = req.ProgramaFormacionID
+	f.Nombre = req.Nombre
 	f.Ficha = req.Ficha
+	f.TipoFormacion = tipo
 	f.InstructorID = req.InstructorID
 	f.FechaInicio = dto.FlexDateToTime(req.FechaInicio)
 	f.FechaFin = dto.FlexDateToTime(req.FechaFin)
@@ -269,6 +360,7 @@ func (s *fichaService) Update(id uint, req dto.FichaCaracterizacionRequest) (*dt
 	f.ModalidadFormacion = nil
 	f.Sede = nil
 	f.Instructor = nil
+	f.ProgramaFormacion = nil
 	// Evitar que Save intente sincronizar la relación HasMany ya cargada (puede interferir con Replace posterior).
 	f.FichaDiasFormacion = nil
 	f.TotalHoras = req.TotalHoras
@@ -281,16 +373,8 @@ func (s *fichaService) Update(id uint, req dto.FichaCaracterizacionRequest) (*dt
 	if err := SincronizarInstructorLiderEnPivote(f, s.instFichaRepo); err != nil {
 		return nil, fmt.Errorf(errFmtSyncInstructorLider, err)
 	}
-	if req.Horarios != nil || req.DiasFormacionIDs != nil || req.DiasFormacion != nil {
-		if err := s.guardarProgramacionHoraria(id, req); err != nil {
-			return nil, fmt.Errorf("error al guardar programación horaria: %w", err)
-		}
-		if jid := derivarJornadaPrincipalID(req); jid != nil {
-			f.JornadaID = jid
-			if err := s.fichaRepo.Update(f); err != nil {
-				return nil, fmt.Errorf("error al actualizar jornada principal: %w", err)
-			}
-		}
+	if err := s.applyHorariosIfPresent(f, req); err != nil {
+		return nil, err
 	}
 	return s.FindByID(id)
 }
@@ -772,10 +856,16 @@ func (s *fichaService) OcultarAprendicesEnAsistencia(fichaID uint, personas []ui
 }
 
 func (s *fichaService) fichaToResponse(f models.FichaCaracterizacion, cantidadAprendices int) dto.FichaCaracterizacionResponse {
+	tipo := f.TipoFormacion
+	if tipo == "" {
+		tipo = models.TipoFormacionRegular
+	}
 	r := dto.FichaCaracterizacionResponse{
 		ID:                   f.ID,
 		ProgramaFormacionID:  f.ProgramaFormacionID,
+		Nombre:               f.Nombre,
 		Ficha:                f.Ficha,
+		TipoFormacion:        tipo,
 		InstructorID:         f.InstructorID,
 		FechaInicio:          f.FechaInicio,
 		FechaFin:             f.FechaFin,
@@ -790,6 +880,8 @@ func (s *fichaService) fichaToResponse(f models.FichaCaracterizacion, cantidadAp
 	}
 	if f.ProgramaFormacion != nil {
 		r.ProgramaFormacionNombre = f.ProgramaFormacion.Nombre
+	} else if strings.TrimSpace(f.Nombre) != "" {
+		r.ProgramaFormacionNombre = f.Nombre
 	}
 	if f.Instructor != nil {
 		if f.Instructor.Persona != nil {
@@ -850,9 +942,15 @@ func fichaDiaToItem(fd models.FichaDiasFormacion) dto.FichaDiaFormacionItem {
 }
 
 func (s *fichaService) fichaRequestToModel(req dto.FichaCaracterizacionRequest) models.FichaCaracterizacion {
+	tipo := req.TipoFormacion
+	if tipo == "" {
+		tipo = models.TipoFormacionRegular
+	}
 	return models.FichaCaracterizacion{
 		ProgramaFormacionID:  req.ProgramaFormacionID,
+		Nombre:               strings.TrimSpace(req.Nombre),
 		Ficha:                req.Ficha,
+		TipoFormacion:        tipo,
 		InstructorID:         req.InstructorID,
 		FechaInicio:          dto.FlexDateToTime(req.FechaInicio),
 		FechaFin:             dto.FlexDateToTime(req.FechaFin),
@@ -1035,9 +1133,7 @@ func (s *fichaService) aprendizToResponse(a models.Aprendiz, fichaNumero string)
 		r.PersonaDocumento = a.Persona.NumeroDocumento
 	}
 	if a.FichaCaracterizacion != nil {
-		if a.FichaCaracterizacion.ProgramaFormacion != nil {
-			r.ProgramaNombre = a.FichaCaracterizacion.ProgramaFormacion.Nombre
-		}
+		r.ProgramaNombre = models.NombreProgramaDisplay(a.FichaCaracterizacion)
 		if a.FichaCaracterizacion.Sede != nil && a.FichaCaracterizacion.Sede.Regional != nil {
 			r.RegionalNombre = a.FichaCaracterizacion.Sede.Regional.Nombre
 		}

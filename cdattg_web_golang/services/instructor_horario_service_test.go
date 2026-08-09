@@ -47,7 +47,7 @@ func (s *stubFichaRepoHorario) FindByIDWithInstructoresAndAprendices(uint) (*mod
 	return nil, nil
 }
 func (s *stubFichaRepoHorario) FindByFicha(string) (*models.FichaCaracterizacion, error) { return nil, nil }
-func (s *stubFichaRepoHorario) FindAll(int, int, *uint, *uint, string) ([]models.FichaCaracterizacion, int64, error) {
+func (s *stubFichaRepoHorario) FindAll(int, int, *uint, *uint, string, string) ([]models.FichaCaracterizacion, int64, error) {
 	return nil, 0, nil
 }
 func (s *stubFichaRepoHorario) FindActivasParaFechaConJornada(time.Time, *uint) ([]models.FichaCaracterizacion, error) {
@@ -64,6 +64,9 @@ func (s *stubFichaRepoHorario) FindSolapandoRango(time.Time, time.Time, []uint, 
 	return nil, nil
 }
 func (s *stubFichaRepoHorario) FindIDsByFichaOPrograma(string, []uint) ([]uint, error) {
+	return nil, nil
+}
+func (s *stubFichaRepoHorario) ListIDsBySedesAndTipos([]uint, []string) ([]uint, error) {
 	return nil, nil
 }
 func (s *stubFichaRepoHorario) Search(string) ([]models.FichaCaracterizacion, error) { return nil, nil }

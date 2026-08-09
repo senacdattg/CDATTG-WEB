@@ -1,6 +1,7 @@
 package services
 
 import (
+	"strings"
 	"time"
 
 	"github.com/sena/cdattg-web-golang/config"
@@ -124,6 +125,9 @@ func (s *InstructorAgendaService) cargarContextoAgenda(
 	}
 	if ficha.ProgramaFormacion != nil {
 		ctx.progNombre = ficha.ProgramaFormacion.Nombre
+	}
+	if strings.TrimSpace(ctx.progNombre) == "" {
+		ctx.progNombre = strings.TrimSpace(ficha.Nombre)
 	}
 	if ficha.Sede != nil {
 		ctx.sedeNombre = ficha.Sede.Nombre

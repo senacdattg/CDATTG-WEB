@@ -1008,6 +1008,7 @@ class ApiService {
     dias?: number;
     ficha_id?: number;
     estado_ficha?: 'activas' | 'inactivas' | 'todas';
+    tipo_formacion?: string;
   }): Promise<MisInasistenciasResponse> {
     const response = await this.api.get<MisInasistenciasResponse>('/asistencias/mis-inasistencias', { params });
     return response.data;

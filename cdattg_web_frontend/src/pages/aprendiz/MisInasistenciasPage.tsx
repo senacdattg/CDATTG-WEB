@@ -2,6 +2,7 @@ import { ArrowPathIcon, CalendarDaysIcon } from '@heroicons/react/24/outline';
 import { Navigate } from 'react-router-dom';
 import { InasistenciasDetalleLista } from '../../components/inasistencias/InasistenciasDetalleLista';
 import { useAuth } from '../../context/AuthContext';
+import { TIPO_FORMACION_OPTIONS } from '../../constants/tipoFormacion';
 import { formatRangoFechasVista } from '../../utils/formatFecha';
 import {
   canViewMisInasistencias,
@@ -30,6 +31,8 @@ export function MisInasistenciasPage() {
     estadoFicha,
     setEstadoFicha,
     estadoFichaOpciones,
+    tipoFormacion,
+    setTipoFormacion,
     fichaId,
     setFichaId,
     fichas,
@@ -87,6 +90,22 @@ export function MisInasistenciasPage() {
                   {estadoFichaOpciones.map((opcion) => (
                     <option key={opcion.value} value={opcion.value}>
                       {opcion.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="flex min-w-[12rem] flex-col gap-1">
+                <span className="font-medium text-gray-700 dark:text-gray-300">Tipo de formación</span>
+                <select
+                  value={tipoFormacion}
+                  onChange={(e) => setTipoFormacion(e.target.value)}
+                  className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-900"
+                  disabled={loading}
+                >
+                  <option value="">Todos</option>
+                  {TIPO_FORMACION_OPTIONS.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
                     </option>
                   ))}
                 </select>

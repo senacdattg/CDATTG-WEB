@@ -67,7 +67,7 @@ type AsistenciaService interface {
 	GetDashboard(sedeID *uint, fecha, tipoFormacion, jornada string) (*dto.AsistenciaDashboardResponse, error)
 	GetCasosBienestar(sedeID *uint, dias, minFallas int, instructorLiderID *uint, tipoFormacion string) (*dto.CasosBienestarResponse, error)
 	GetDetalleInasistenciasAprendiz(fichaNumero string, aprendizID uint, dias int, sedeNombre string, instructorLiderID *uint) (*dto.CasoBienestarAprendizDetalleResponse, error)
-	GetMisInasistencias(personaID uint, dias int, fichaID *uint, estadoFicha string) (*dto.MisInasistenciasResponse, error)
+	GetMisInasistencias(personaID uint, dias int, fichaID *uint, estadoFicha, tipoFormacion string) (*dto.MisInasistenciasResponse, error)
 	GetSesionesSinAsistenciaTomada(userID uint, roles []string, dias int, regionalID, sedeID *uint, tipoFormacion, jornada string) (*dto.SesionesSinAsistenciaTomadaResponse, error)
 	AjustarEstadoAprendiz(asistenciaAprendizID uint, estado, motivo string, instructorFichaIDRegistroSalida *uint) (*dto.AsistenciaAprendizResponse, error)
 	ListPendientesRevision(instructorID uint, fecha string) ([]dto.AsistenciaAprendizResponse, error)
@@ -1039,7 +1039,7 @@ func (s *asistenciaService) GetDetalleInasistenciasAprendiz(fichaNumero string, 
 }
 
 const errMsgAprendizActivoNoEncontrado = "no está matriculado como aprendiz activo"
-const errMsgAprendizFichaFiltroVacio = "no tiene fichas con el estado seleccionado"
+const errMsgAprendizFichaFiltroVacio = "no tiene fichas con los filtros seleccionados"
 
 func labelTipoFormacionMisInasistencias(tipo string) string {
 	switch strings.TrimSpace(tipo) {
@@ -1074,18 +1074,39 @@ func matriculaActivaMisInasistencias(a models.Aprendiz) bool {
 	return a.FichaCaracterizacion.Status
 }
 
-func filtrarMatriculasMisInasistencias(list []models.Aprendiz, estadoFicha string) []models.Aprendiz {
-	estado := normalizarEstadoFichaMisInasistencias(estadoFicha)
-	if estado == "todas" {
-		return list
+func matriculaCoincideEstadoMisInasistencias(activa bool, estado string) bool {
+	switch estado {
+	case "activas":
+		return activa
+	case "inactivas":
+		return !activa
+	default:
+		return true
 	}
+}
+
+func tipoFormacionMatriculaMisInasistencias(a models.Aprendiz) string {
+	if a.FichaCaracterizacion == nil || strings.TrimSpace(a.FichaCaracterizacion.TipoFormacion) == "" {
+		return models.TipoFormacionRegular
+	}
+	return tipoFormacionEfectivo(a.FichaCaracterizacion.TipoFormacion)
+}
+
+func matriculaPasaFiltrosMisInasistencias(a models.Aprendiz, estado, tipoFormacion string) bool {
+	if !matriculaCoincideEstadoMisInasistencias(matriculaActivaMisInasistencias(a), estado) {
+		return false
+	}
+	if tipoFormacion == "" {
+		return true
+	}
+	return tipoFormacionMatriculaMisInasistencias(a) == tipoFormacion
+}
+
+func filtrarMatriculasMisInasistencias(list []models.Aprendiz, estadoFicha, tipoFormacion string) []models.Aprendiz {
+	estado := normalizarEstadoFichaMisInasistencias(estadoFicha)
 	out := make([]models.Aprendiz, 0, len(list))
 	for i := range list {
-		activa := matriculaActivaMisInasistencias(list[i])
-		if estado == "activas" && activa {
-			out = append(out, list[i])
-		}
-		if estado == "inactivas" && !activa {
+		if matriculaPasaFiltrosMisInasistencias(list[i], estado, tipoFormacion) {
 			out = append(out, list[i])
 		}
 	}
@@ -1145,9 +1166,13 @@ func metaFichaMisInasistencias(aprendiz *models.Aprendiz) (fichaID uint, fichaNu
 	return fichaID, fichaNumero, programa, sede, tipo
 }
 
-func (s *asistenciaService) GetMisInasistencias(personaID uint, dias int, fichaID *uint, estadoFicha string) (*dto.MisInasistenciasResponse, error) {
+func (s *asistenciaService) GetMisInasistencias(personaID uint, dias int, fichaID *uint, estadoFicha, tipoFormacion string) (*dto.MisInasistenciasResponse, error) {
 	if personaID == 0 {
 		return nil, errors.New(errMsgAprendizActivoNoEncontrado)
+	}
+	tipoFiltro, errTipo := normalizeTipoFormacionFilter(tipoFormacion)
+	if errTipo != nil {
+		return nil, errTipo
 	}
 	estado := normalizarEstadoFichaMisInasistencias(estadoFicha)
 	todas, err := s.aprendizRepo.FindAllByPersonaID(personaID)
@@ -1157,9 +1182,9 @@ func (s *asistenciaService) GetMisInasistencias(personaID uint, dias int, fichaI
 	if len(todas) == 0 {
 		return nil, errors.New(errMsgAprendizActivoNoEncontrado)
 	}
-	matriculas := filtrarMatriculasMisInasistencias(todas, estado)
+	matriculas := filtrarMatriculasMisInasistencias(todas, estado, tipoFiltro)
 	if len(matriculas) == 0 {
-		if estado == "activas" {
+		if estado == "activas" && tipoFiltro == "" {
 			return nil, errors.New(errMsgAprendizActivoNoEncontrado)
 		}
 		return nil, errors.New(errMsgAprendizFichaFiltroVacio)

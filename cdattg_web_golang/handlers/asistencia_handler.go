@@ -661,7 +661,8 @@ func (h *AsistenciaHandler) GetDetalleInasistenciasAprendiz(c *gin.Context) {
 }
 
 // GetMisInasistencias devuelve las inasistencias del aprendiz autenticado (resuelto por persona_id del JWT).
-// Query: dias (default 30, 0=histórico), ficha_id, estado_ficha (activas|inactivas|todas, default activas).
+// Query: dias (default 30, 0=histórico), ficha_id, estado_ficha (activas|inactivas|todas, default activas),
+// tipo_formacion (opcional: FORMACION_REGULAR|MEDIA_TECNICA|FORMACION_COMPLEMENTARIA).
 func (h *AsistenciaHandler) GetMisInasistencias(c *gin.Context) {
 	u, _ := c.Get("user")
 	user, _ := u.(*models.User)
@@ -674,10 +675,11 @@ func (h *AsistenciaHandler) GetMisInasistencias(c *gin.Context) {
 		parseDiasAnalisisQuery(c),
 		parseUintQuery(c, "ficha_id"),
 		c.Query("estado_ficha"),
+		c.Query("tipo_formacion"),
 	)
 	if err != nil {
 		msg := err.Error()
-		if msg == "no está matriculado como aprendiz activo" || msg == "no tiene fichas con el estado seleccionado" {
+		if msg == "no está matriculado como aprendiz activo" || msg == "no tiene fichas con los filtros seleccionados" {
 			c.JSON(http.StatusNotFound, gin.H{"error": msg})
 			return
 		}

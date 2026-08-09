@@ -23,6 +23,7 @@ export const ESTADO_FICHA_OPCIONES: { value: EstadoFichaMisInasistencias; label:
 export function useMisInasistencias(enabled: boolean) {
   const [dias, setDias] = useState<number>(30);
   const [estadoFicha, setEstadoFicha] = useState<EstadoFichaMisInasistencias>('activas');
+  const [tipoFormacion, setTipoFormacion] = useState('');
   const [fichaId, setFichaId] = useState<number | null>(null);
   const [fichas, setFichas] = useState<MisInasistenciasFichaOpcion[]>([]);
   const [data, setData] = useState<MisInasistenciasResponse | null>(null);
@@ -31,6 +32,11 @@ export function useMisInasistencias(enabled: boolean) {
 
   const cambiarEstadoFicha = useCallback((next: EstadoFichaMisInasistencias) => {
     setEstadoFicha(next);
+    setFichaId(null);
+  }, []);
+
+  const cambiarTipoFormacion = useCallback((next: string) => {
+    setTipoFormacion(next);
     setFichaId(null);
   }, []);
 
@@ -43,8 +49,10 @@ export function useMisInasistencias(enabled: boolean) {
         dias?: number;
         ficha_id?: number;
         estado_ficha?: EstadoFichaMisInasistencias;
+        tipo_formacion?: string;
       } = { dias, estado_ficha: estadoFicha };
       if (fichaId != null && fichaId > 0) params.ficha_id = fichaId;
+      if (tipoFormacion) params.tipo_formacion = tipoFormacion;
       const resp = await apiService.getMisInasistencias(params);
       setData(resp);
       const lista = resp.fichas ?? [];
@@ -61,7 +69,7 @@ export function useMisInasistencias(enabled: boolean) {
     } finally {
       setLoading(false);
     }
-  }, [dias, enabled, estadoFicha, fichaId]);
+  }, [dias, enabled, estadoFicha, fichaId, tipoFormacion]);
 
   useEffect(() => {
     if (!enabled) {
@@ -78,6 +86,8 @@ export function useMisInasistencias(enabled: boolean) {
     estadoFicha,
     setEstadoFicha: cambiarEstadoFicha,
     estadoFichaOpciones: ESTADO_FICHA_OPCIONES,
+    tipoFormacion,
+    setTipoFormacion: cambiarTipoFormacion,
     fichaId,
     setFichaId,
     fichas,

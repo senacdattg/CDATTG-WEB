@@ -10,9 +10,10 @@ type AccesoLookupRequest struct {
 }
 
 // AccesoIngresoRequest confirma ingreso al centro.
+// TipoPersona es opcional: el backend lo infiere (aprendiz / instructor / visitante).
 type AccesoIngresoRequest struct {
 	NumeroDocumento string `json:"numero_documento" binding:"required"`
-	TipoPersona     string `json:"tipo_persona" binding:"required"`
+	TipoPersona     string `json:"tipo_persona"`
 	MetodoRegistro  string `json:"metodo_registro" binding:"required"`
 	SedeID          *uint  `json:"sede_id"`
 	Observaciones   string `json:"observaciones"`
@@ -32,30 +33,33 @@ type AccesoSalidaRequest struct {
 
 // AccesoPersonaFicha datos visibles para el vigilante.
 type AccesoPersonaFicha struct {
-	PersonaID       uint   `json:"persona_id"`
-	NumeroDocumento string `json:"numero_documento"`
-	TipoDocumentoID *uint  `json:"tipo_documento_id,omitempty"`
-	PrimerNombre    string `json:"primer_nombre"`
-	SegundoNombre   string `json:"segundo_nombre"`
-	PrimerApellido  string `json:"primer_apellido"`
-	SegundoApellido string `json:"segundo_apellido"`
-	NombreCompleto  string `json:"nombre_completo"`
-	Email           string `json:"email"`
-	Celular         string `json:"celular"`
-	Telefono        string `json:"telefono"`
-	EsNueva         bool   `json:"es_nueva"`
-	PerfilCompleto  bool   `json:"perfil_completo"`
-	TipoSugerido    string `json:"tipo_sugerido"`
+	PersonaID       uint     `json:"persona_id"`
+	NumeroDocumento string   `json:"numero_documento"`
+	TipoDocumentoID *uint    `json:"tipo_documento_id,omitempty"`
+	PrimerNombre    string   `json:"primer_nombre"`
+	SegundoNombre   string   `json:"segundo_nombre"`
+	PrimerApellido  string   `json:"primer_apellido"`
+	SegundoApellido string   `json:"segundo_apellido"`
+	NombreCompleto  string   `json:"nombre_completo"`
+	Email           string   `json:"email"`
+	Celular         string   `json:"celular"`
+	Telefono        string   `json:"telefono"`
+	EsNueva         bool     `json:"es_nueva"`
+	PerfilCompleto  bool     `json:"perfil_completo"`
+	TipoSugerido    string   `json:"tipo_sugerido"` // tipo principal para registrar ingreso
+	Tipos           []string `json:"tipos"`         // todos los roles detectados (aprendiz, instructor, …)
 }
 
 // AccesoFichaResumen ficha de caracterización activa ligada a la persona (solo si status=true).
 type AccesoFichaResumen struct {
-	ID              uint   `json:"id"`
-	Numero          string `json:"numero"`
-	ProgramaNombre  string `json:"programa_nombre"`
-	JornadaNombre   string `json:"jornada_nombre"`
-	SedeNombre      string `json:"sede_nombre"`
-	Activa          bool   `json:"activa"`
+	ID                 uint   `json:"id"`
+	Numero             string `json:"numero"`
+	ProgramaNombre     string `json:"programa_nombre"`
+	TipoFormacion      string `json:"tipo_formacion"`
+	TipoFormacionLabel string `json:"tipo_formacion_label"`
+	JornadaNombre      string `json:"jornada_nombre"`
+	SedeNombre         string `json:"sede_nombre"`
+	Activa             bool   `json:"activa"`
 }
 
 // AccesoVisitaAbierta resumen de la visita abierta actual.
@@ -71,14 +75,15 @@ type AccesoLookupResponse struct {
 	Persona                 AccesoPersonaFicha   `json:"persona"`
 	Dentro                  bool                 `json:"dentro"`
 	AccionSugerida          string               `json:"accion_sugerida"` // INGRESO | SALIDA
-	VisitaAbierta           *AccesoVisitaAbierta `json:"visita_abierta,omitempty"`
-	Ficha                   *AccesoFichaResumen  `json:"ficha,omitempty"` // solo si está relacionada y activa
-	SedeID                  uint                 `json:"sede_id"`
-	TiposPersona            []string             `json:"tipos_persona"`
-	MotivosSalida           []string             `json:"motivos_salida"`
-	PuedeConfirmar          bool                 `json:"puede_confirmar"`
-	Alerta                  string               `json:"alerta,omitempty"`
-	PermiteSalidaSinIngreso bool                 `json:"permite_salida_sin_ingreso"`
+	VisitaAbierta           *AccesoVisitaAbierta  `json:"visita_abierta,omitempty"`
+	Ficha                   *AccesoFichaResumen   `json:"ficha,omitempty"`  // primera ficha (compat)
+	Fichas                  []AccesoFichaResumen  `json:"fichas,omitempty"` // todas las fichas activas vinculadas
+	SedeID                  uint                  `json:"sede_id"`
+	TiposPersona            []string              `json:"tipos_persona"`
+	MotivosSalida           []string              `json:"motivos_salida"`
+	PuedeConfirmar          bool                  `json:"puede_confirmar"`
+	Alerta                  string                `json:"alerta,omitempty"`
+	PermiteSalidaSinIngreso bool                  `json:"permite_salida_sin_ingreso"`
 }
 
 // AccesoRegistroResponse respuesta tras confirmar ingreso/salida.
@@ -90,6 +95,7 @@ type AccesoRegistroResponse struct {
 	Mensaje          string               `json:"mensaje"`
 	VisitaAbierta    *AccesoVisitaAbierta `json:"visita_abierta,omitempty"`
 	Ficha            *AccesoFichaResumen  `json:"ficha,omitempty"`
+	Fichas           []AccesoFichaResumen `json:"fichas,omitempty"`
 	SedeID           uint                 `json:"sede_id"`
 	SalidaSinIngreso bool                 `json:"salida_sin_ingreso,omitempty"`
 }

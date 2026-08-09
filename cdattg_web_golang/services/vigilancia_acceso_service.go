@@ -193,43 +193,86 @@ func (s *vigilanciaAccesoService) requireSedeID(sedeID *uint) (uint, error) {
 	return 0, errors.New("sede no encontrada o inactiva")
 }
 
-func (s *vigilanciaAccesoService) sugerirTipoPersona(personaID uint) string {
-	if inst, err := s.instructorRepo.FindByPersonaID(personaID); err == nil && inst != nil {
-		return tipoInstructor
+// resolverTiposPersona detecta todos los roles de la persona (puede ser aprendiz e instructor a la vez).
+func (s *vigilanciaAccesoService) resolverTiposPersona(personaID uint) []string {
+	tipos := make([]string, 0, 3)
+	esAprendiz := false
+	if activos, err := s.aprendizRepo.FindActivosByPersonaID(personaID); err == nil && len(activos) > 0 {
+		esAprendiz = true
+	} else if apr, err := s.aprendizRepo.FindByPersonaID(personaID); err == nil && apr != nil {
+		esAprendiz = true
 	}
-	if apr, err := s.aprendizRepo.FindByPersonaID(personaID); err == nil && apr != nil {
-		return tipoAprendiz
+	if esAprendiz {
+		tipos = append(tipos, tipoAprendiz)
+	}
+	if inst, err := s.instructorRepo.FindByPersonaID(personaID); err == nil && inst != nil {
+		tipos = append(tipos, tipoInstructor)
+	}
+	if len(tipos) == 0 {
+		return []string{tipoVisitante}
+	}
+	return tipos
+}
+
+func primarioTipoPersona(tipos []string) string {
+	for _, t := range tipos {
+		if t == tipoAprendiz {
+			return tipoAprendiz
+		}
+	}
+	if len(tipos) > 0 {
+		return tipos[0]
 	}
 	return tipoVisitante
 }
 
-// resolveFichaActiva devuelve la ficha del aprendiz solo si la matrícula está activa y la ficha status=true.
-// Si la ficha está inactiva o no hay relación, retorna nil (no se muestra al vigilante).
-func (s *vigilanciaAccesoService) resolveFichaActiva(personaID uint) *dto.AccesoFichaResumen {
-	apr, err := s.aprendizRepo.FindActivoByPersonaID(personaID)
-	if err != nil || apr == nil || apr.FichaCaracterizacionID == 0 {
-		return nil
+func (s *vigilanciaAccesoService) sugerirTipoPersona(personaID uint) string {
+	return primarioTipoPersona(s.resolverTiposPersona(personaID))
+}
+
+func labelTipoFormacionAcceso(tipo string) string {
+	switch tipo {
+	case models.TipoFormacionMediaTecnica:
+		return "Media Técnica"
+	case models.TipoFormacionComplementaria:
+		return "Formación Complementaria"
+	default:
+		return "Formación Regular"
 	}
-	ficha, err := s.fichaRepo.FindByID(apr.FichaCaracterizacionID)
-	if err != nil || ficha == nil || !ficha.Status {
-		return nil
+}
+
+func fichaVigenteParaAcceso(ficha *models.FichaCaracterizacion, hoy time.Time) bool {
+	if ficha == nil || !ficha.Status {
+		return false
 	}
-	if !config.IgnorarVigenciaFicha() {
-		hoy := time.Now()
-		if ficha.FechaFin != nil && ficha.FechaFin.Before(hoy.Truncate(24*time.Hour)) {
-			return nil
-		}
-		if ficha.FechaInicio != nil && ficha.FechaInicio.After(hoy) {
-			return nil
-		}
+	if config.IgnorarVigenciaFicha() {
+		return true
 	}
-	res := &dto.AccesoFichaResumen{
-		ID:     ficha.ID,
-		Numero: ficha.Ficha,
-		Activa: true,
+	if ficha.FechaFin != nil && ficha.FechaFin.Before(hoy.Truncate(24*time.Hour)) {
+		return false
 	}
-	if ficha.ProgramaFormacion != nil {
-		res.ProgramaNombre = ficha.ProgramaFormacion.Nombre
+	if ficha.FechaInicio != nil && ficha.FechaInicio.After(hoy) {
+		return false
+	}
+	return true
+}
+
+func toAccesoFichaResumen(ficha *models.FichaCaracterizacion) dto.AccesoFichaResumen {
+	tipo := strings.TrimSpace(ficha.TipoFormacion)
+	if tipo == "" {
+		tipo = models.TipoFormacionRegular
+	}
+	nombre := strings.TrimSpace(ficha.Nombre)
+	if ficha.ProgramaFormacion != nil && strings.TrimSpace(ficha.ProgramaFormacion.Nombre) != "" {
+		nombre = ficha.ProgramaFormacion.Nombre
+	}
+	res := dto.AccesoFichaResumen{
+		ID:                 ficha.ID,
+		Numero:             ficha.Ficha,
+		ProgramaNombre:     nombre,
+		TipoFormacion:      tipo,
+		TipoFormacionLabel: labelTipoFormacionAcceso(tipo),
+		Activa:             true,
 	}
 	if ficha.Jornada != nil {
 		res.JornadaNombre = ficha.Jornada.Nombre
@@ -240,7 +283,49 @@ func (s *vigilanciaAccesoService) resolveFichaActiva(personaID uint) *dto.Acceso
 	return res
 }
 
-func toFicha(p *models.Persona, esNueva bool, tipoSugerido string) dto.AccesoPersonaFicha {
+// resolveFichasActivas todas las fichas activas/vigentes donde la persona es aprendiz.
+func (s *vigilanciaAccesoService) resolveFichasActivas(personaID uint) []dto.AccesoFichaResumen {
+	list, err := s.aprendizRepo.FindActivosByPersonaID(personaID)
+	if err != nil || len(list) == 0 {
+		return nil
+	}
+	hoy := time.Now()
+	out := make([]dto.AccesoFichaResumen, 0, len(list))
+	seen := make(map[uint]struct{}, len(list))
+	for i := range list {
+		ficha := list[i].FichaCaracterizacion
+		if ficha == nil && list[i].FichaCaracterizacionID > 0 {
+			if loaded, errLoad := s.fichaRepo.FindByID(list[i].FichaCaracterizacionID); errLoad == nil {
+				ficha = loaded
+			}
+		}
+		if !fichaVigenteParaAcceso(ficha, hoy) {
+			continue
+		}
+		if _, dup := seen[ficha.ID]; dup {
+			continue
+		}
+		seen[ficha.ID] = struct{}{}
+		out = append(out, toAccesoFichaResumen(ficha))
+	}
+	if len(out) == 0 {
+		return nil
+	}
+	return out
+}
+
+func primeraFichaAcceso(fichas []dto.AccesoFichaResumen) *dto.AccesoFichaResumen {
+	if len(fichas) == 0 {
+		return nil
+	}
+	f := fichas[0]
+	return &f
+}
+
+func toFicha(p *models.Persona, esNueva bool, tipos []string) dto.AccesoPersonaFicha {
+	if len(tipos) == 0 {
+		tipos = []string{tipoVisitante}
+	}
 	return dto.AccesoPersonaFicha{
 		PersonaID:       p.ID,
 		NumeroDocumento: p.NumeroDocumento,
@@ -255,7 +340,8 @@ func toFicha(p *models.Persona, esNueva bool, tipoSugerido string) dto.AccesoPer
 		Telefono:        p.Telefono,
 		EsNueva:         esNueva,
 		PerfilCompleto:  PersonaPerfilCompleto(p),
-		TipoSugerido:    tipoSugerido,
+		TipoSugerido:    primarioTipoPersona(tipos),
+		Tipos:           tipos,
 	}
 }
 
@@ -310,7 +396,7 @@ func (s *vigilanciaAccesoService) Lookup(req dto.AccesoLookupRequest) (*dto.Acce
 		return nil, err
 	}
 
-	tipoSug := s.sugerirTipoPersona(persona.ID)
+	tipos := s.resolverTiposPersona(persona.ID)
 	abierta, err := s.accesoRepo.FindAbiertaByPersonaAndSede(persona.ID, sedeID)
 	dentro := false
 	var visita *dto.AccesoVisitaAbierta
@@ -346,12 +432,14 @@ func (s *vigilanciaAccesoService) Lookup(req dto.AccesoLookupRequest) (*dto.Acce
 		}
 	}
 
+	fichas := s.resolveFichasActivas(persona.ID)
 	return &dto.AccesoLookupResponse{
-		Persona:                 toFicha(persona, esNueva, tipoSug),
+		Persona:                 toFicha(persona, esNueva, tipos),
 		Dentro:                  dentro,
 		AccionSugerida:          accion,
 		VisitaAbierta:           visita,
-		Ficha:                   s.resolveFichaActiva(persona.ID),
+		Ficha:                   primeraFichaAcceso(fichas),
+		Fichas:                  fichas,
 		SedeID:                  sedeID,
 		TiposPersona:            append([]string{}, tiposPersonaAcceso...),
 		MotivosSalida:           append([]string{}, motivosSalidaAcceso...),
@@ -365,10 +453,6 @@ func (s *vigilanciaAccesoService) Ingreso(req dto.AccesoIngresoRequest, registra
 	doc := normalizeDocumentoAcceso(req.NumeroDocumento)
 	if doc == "" {
 		return nil, errors.New(errDocObligatorio)
-	}
-	tipo, err := normalizeTipoPersona(req.TipoPersona)
-	if err != nil {
-		return nil, err
 	}
 	metodo, err := normalizeMetodo(req.MetodoRegistro)
 	if err != nil {
@@ -390,9 +474,13 @@ func (s *vigilanciaAccesoService) Ingreso(req dto.AccesoIngresoRequest, registra
 		return nil, err
 	}
 
+	// Tipo automático: aprendiz / instructor / visitante (no se pide en portería).
+	tipo := s.sugerirTipoPersona(persona.ID)
+
 	now := time.Now()
 	regID := registradoPorUserID
-	fichaInfo := s.resolveFichaActiva(persona.ID)
+	fichas := s.resolveFichasActivas(persona.ID)
+	fichaInfo := primeraFichaAcceso(fichas)
 	row := &models.PersonaIngresoSalida{
 		PersonaID:           persona.ID,
 		SedeID:              sedeID,
@@ -418,13 +506,14 @@ func (s *vigilanciaAccesoService) Ingreso(req dto.AccesoIngresoRequest, registra
 	}
 
 	return &dto.AccesoRegistroResponse{
-		Persona:       toFicha(persona, esNueva, tipo),
+		Persona:       toFicha(persona, esNueva, s.resolverTiposPersona(persona.ID)),
 		Accion:        accionIngreso,
 		VisitaID:      row.ID,
 		Dentro:        true,
 		Mensaje:       msg,
 		VisitaAbierta: visitaDTO(row),
 		Ficha:         fichaInfo,
+		Fichas:        fichas,
 		SedeID:        sedeID,
 	}, nil
 }
@@ -445,13 +534,10 @@ func (s *vigilanciaAccesoService) crearSalidaSinIngreso(
 	persona *models.Persona,
 	sedeID uint,
 	motivo, observacion, metodo string,
-	tipoPersona string,
+	_ string, // tipoPersona ignorado: se infiere automáticamente
 	registradoPorUserID uint,
 ) (*dto.AccesoRegistroResponse, error) {
-	tipo, errTipo := normalizeTipoPersona(tipoPersona)
-	if errTipo != nil {
-		tipo = s.sugerirTipoPersona(persona.ID)
-	}
+	tipo := s.sugerirTipoPersona(persona.ID)
 	now := time.Now()
 	regID := registradoPorUserID
 	obs := strings.TrimSpace(observacion)
@@ -478,13 +564,15 @@ func (s *vigilanciaAccesoService) crearSalidaSinIngreso(
 	if err := s.accesoRepo.Create(row); err != nil {
 		return nil, err
 	}
+	fichas := s.resolveFichasActivas(persona.ID)
 	return &dto.AccesoRegistroResponse{
-		Persona:          toFicha(persona, false, tipo),
+		Persona:          toFicha(persona, false, s.resolverTiposPersona(persona.ID)),
 		Accion:           accionSalida,
 		VisitaID:         row.ID,
 		Dentro:           false,
 		Mensaje:          "Salida irregular registrada (sin ingreso previo).",
-		Ficha:            s.resolveFichaActiva(persona.ID),
+		Ficha:            primeraFichaAcceso(fichas),
+		Fichas:           fichas,
 		SedeID:           sedeID,
 		SalidaSinIngreso: true,
 	}, nil
@@ -555,13 +643,15 @@ func (s *vigilanciaAccesoService) cerrarVisita(
 		return nil, err
 	}
 
+	fichas := s.resolveFichasActivas(persona.ID)
 	return &dto.AccesoRegistroResponse{
-		Persona:  toFicha(persona, false, abierta.TipoPersona),
+		Persona:  toFicha(persona, false, s.resolverTiposPersona(persona.ID)),
 		Accion:   accionSalida,
 		VisitaID: abierta.ID,
 		Dentro:   false,
 		Mensaje:  "Salida registrada.",
-		Ficha:    s.resolveFichaActiva(persona.ID),
+		Ficha:    primeraFichaAcceso(fichas),
+		Fichas:   fichas,
 		SedeID:   sedeID,
 	}, nil
 }
@@ -580,11 +670,11 @@ func (s *vigilanciaAccesoService) ListDentro(sedeID *uint) ([]dto.AccesoDentroIt
 		row := rows[i]
 		var ficha dto.AccesoPersonaFicha
 		if row.Persona != nil {
-			ficha = toFicha(row.Persona, false, row.TipoPersona)
+			ficha = toFicha(row.Persona, false, s.resolverTiposPersona(row.Persona.ID))
 		} else {
 			p, errP := s.personaRepo.FindByID(row.PersonaID)
 			if errP == nil && p != nil {
-				ficha = toFicha(p, false, row.TipoPersona)
+				ficha = toFicha(p, false, s.resolverTiposPersona(p.ID))
 			}
 		}
 		out = append(out, dto.AccesoDentroItem{
@@ -664,7 +754,7 @@ func indiceSalidaIngreso(ingresos, salidas int64) float64 {
 	return float64(salidas) / float64(ingresos)
 }
 
-func historialItemFromRow(row *models.PersonaIngresoSalida) dto.AccesoHistorialItem {
+func (s *vigilanciaAccesoService) historialItemFromRow(row *models.PersonaIngresoSalida) dto.AccesoHistorialItem {
 	estado := "abierto"
 	var tsSalida *string
 	if row.TimestampSalida != nil {
@@ -685,7 +775,7 @@ func historialItemFromRow(row *models.PersonaIngresoSalida) dto.AccesoHistorialI
 		Estado:            estado,
 	}
 	if row.Persona != nil {
-		item.Persona = toFicha(row.Persona, false, row.TipoPersona)
+		item.Persona = toFicha(row.Persona, false, s.resolverTiposPersona(row.Persona.ID))
 	}
 	if row.Sede != nil {
 		item.SedeNombre = row.Sede.Nombre
@@ -708,7 +798,7 @@ func (s *vigilanciaAccesoService) Historial(f dto.AccesoHistorialFiltros) (*dto.
 	}
 	items := make([]dto.AccesoHistorialItem, 0, len(rows))
 	for i := range rows {
-		items = append(items, historialItemFromRow(&rows[i]))
+		items = append(items, s.historialItemFromRow(&rows[i]))
 	}
 	page := q.Page
 	if page < 1 {

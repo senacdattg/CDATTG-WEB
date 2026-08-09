@@ -60,6 +60,7 @@ export type BienestarCasosQuery = {
   dias?: number;
   min_fallas?: number;
   sede?: string;
+  tipo_formacion?: string;
 };
 
 export const bienestarPaths = {
@@ -73,6 +74,7 @@ export const bienestarPaths = {
       if (query.dias != null) params.set('dias', String(query.dias));
       if (query.min_fallas != null) params.set('min_fallas', String(query.min_fallas));
       if (query.sede) params.set('sede', query.sede);
+      if (query.tipo_formacion) params.set('tipo_formacion', query.tipo_formacion);
       const qs = params.toString();
       return qs ? `${base}?${qs}` : base;
     },

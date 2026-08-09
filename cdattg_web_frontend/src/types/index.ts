@@ -412,8 +412,10 @@ export interface BloqueResponse {
 
 // Fichas de caracterización
 export interface FichaCaracterizacionRequest {
-  programa_formacion_id: number;
+  programa_formacion_id?: number | null;
+  nombre?: string;
   ficha: string;
+  tipo_formacion?: string;
   instructor_id?: number | null;
   fecha_inicio?: string;
   fecha_fin?: string;
@@ -433,9 +435,11 @@ export interface FichaCaracterizacionRequest {
 
 export interface FichaCaracterizacionResponse {
   id: number;
-  programa_formacion_id: number;
+  programa_formacion_id?: number | null;
+  nombre?: string;
   programa_formacion_nombre?: string;
   ficha: string;
+  tipo_formacion?: string;
   instructor_id?: number;
   instructor_nombre?: string;
   fecha_inicio?: string;
@@ -562,7 +566,10 @@ export interface AsistenciaRequest {
 export interface AsistenciaRetroactivaRequest {
   instructor_ficha_id: number;
   fecha: string;
-  aprendiz_ids: number[];
+  /** Aprendices presentes */
+  aprendiz_ids?: number[];
+  /** Aprendices con inasistencia justificada */
+  justificados_ids?: number[];
   motivo: string;
 }
 
@@ -870,10 +877,23 @@ export interface CasoBienestarAprendizDetalleResponse {
   inasistencias_justificadas?: InasistenciaDetalleItem[];
 }
 
-export interface MisInasistenciasResponse {
+export interface MisInasistenciasFichaOpcion {
   aprendiz_id: number;
+  ficha_id: number;
   ficha_numero: string;
   programa_nombre?: string;
+  tipo_formacion?: string;
+  tipo_formacion_label?: string;
+  sede_nombre?: string;
+}
+
+export interface MisInasistenciasResponse {
+  aprendiz_id: number;
+  ficha_id?: number;
+  ficha_numero: string;
+  programa_nombre?: string;
+  tipo_formacion?: string;
+  tipo_formacion_label?: string;
   sede_nombre?: string;
   fecha_inicio: string;
   fecha_fin: string;
@@ -882,6 +902,8 @@ export interface MisInasistenciasResponse {
   total_inasistencias_justificadas?: number;
   inasistencias: InasistenciaDetalleItem[];
   inasistencias_justificadas?: InasistenciaDetalleItem[];
+  /** Todas las fichas activas del aprendiz (para selector). */
+  fichas?: MisInasistenciasFichaOpcion[];
 }
 
 export interface SesionSinAsistenciaTomadaItem {
@@ -893,6 +915,8 @@ export interface SesionSinAsistenciaTomadaItem {
   programa_nombre: string;
   sede_nombre: string;
   jornada_nombre: string;
+  tipo_formacion?: string;
+  tipo_formacion_label?: string;
   fecha: string;
   sesion_finalizada: boolean;
   tipo_incumplimiento: 'sesion_sin_marcas' | 'dia_sin_sesion';
@@ -915,6 +939,8 @@ export interface CasoBienestarItem {
   programa_nombre?: string;
   sede_nombre: string;
   jornada_nombre?: string;
+  tipo_formacion?: string;
+  tipo_formacion_label?: string;
   instructor_nombre?: string;
   ambiente_nombre?: string;
   modalidad_formacion_nombre?: string;
@@ -1136,6 +1162,8 @@ export interface AccesoPersonaFicha {
   es_nueva: boolean;
   perfil_completo: boolean;
   tipo_sugerido: string;
+  /** Todos los roles detectados (ej. aprendiz e instructor a la vez). */
+  tipos?: string[];
 }
 
 export interface AccesoVisitaAbierta {
@@ -1150,6 +1178,8 @@ export interface AccesoFichaResumen {
   id: number;
   numero: string;
   programa_nombre: string;
+  tipo_formacion?: string;
+  tipo_formacion_label?: string;
   jornada_nombre: string;
   sede_nombre: string;
   activa: boolean;
@@ -1163,6 +1193,7 @@ export interface AccesoLookupResponse {
   accion_sugerida: 'INGRESO' | 'SALIDA';
   visita_abierta?: AccesoVisitaAbierta;
   ficha?: AccesoFichaResumen;
+  fichas?: AccesoFichaResumen[];
   sede_id: number;
   tipos_persona: string[];
   motivos_salida: string[];
@@ -1179,6 +1210,7 @@ export interface AccesoRegistroResponse {
   mensaje: string;
   visita_abierta?: AccesoVisitaAbierta;
   ficha?: AccesoFichaResumen;
+  fichas?: AccesoFichaResumen[];
   sede_id: number;
   salida_sin_ingreso?: boolean;
 }

@@ -497,7 +497,9 @@ class ApiService {
   }
 
   async createDiaSinFormacionFicha(data: {
-    ficha_ids: number[];
+    ficha_ids?: number[];
+    sede_ids?: number[];
+    tipos_formacion?: string[];
     fecha_inicio: string;
     fecha_fin: string;
     motivo: string;
@@ -630,10 +632,18 @@ class ApiService {
     pageSize = 20,
     programaId?: number,
     misFichas?: boolean,
-    search?: string
+    search?: string,
+    tipoFormacion?: string,
   ): Promise<PaginatedResponse<FichaCaracterizacionResponse>> {
     const response = await this.api.get<PaginatedResponse<FichaCaracterizacionResponse>>('/fichas-caracterizacion', {
-      params: { page, page_size: pageSize, programa_id: programaId, mis_fichas: misFichas ? '1' : undefined, q: search },
+      params: {
+        page,
+        page_size: pageSize,
+        programa_id: programaId,
+        mis_fichas: misFichas ? '1' : undefined,
+        q: search,
+        tipo_formacion: tipoFormacion || undefined,
+      },
     });
     return response.data;
   }
@@ -663,17 +673,26 @@ class ApiService {
     await this.api.delete(`/fichas-caracterizacion/${id}`);
   }
 
-  async uploadFichasImport(file: File): Promise<FichaImportResult> {
+  async downloadFichasImportTemplate(): Promise<Blob> {
+    const response = await this.api.get<Blob>('/fichas-caracterizacion/import/template', {
+      responseType: 'blob',
+    });
+    return response.data;
+  }
+
+  async uploadFichasImport(file: File, tipoFormacion: string): Promise<FichaImportResult> {
     const formData = new FormData();
     formData.append('file', file);
+    formData.append('tipo_formacion', tipoFormacion);
     const response = await this.api.post<FichaImportResult>('/fichas-caracterizacion/import', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
     });
     return response.data;
   }
 
-  async exportAllFichasExcel(): Promise<Blob> {
+  async exportAllFichasExcel(tipoFormacion: string): Promise<Blob> {
     const response = await this.api.get<Blob>('/fichas-caracterizacion/export/all', {
+      params: { tipo_formacion: tipoFormacion },
       responseType: 'blob',
     });
     return response.data;
@@ -875,6 +894,7 @@ class ApiService {
     regional_id?: number;
     sede_id?: number;
     jornada?: string;
+    tipo_formacion?: string;
     ficha?: string;
     estado_ficha?: 'activas' | 'inactivas' | 'todas';
     aprendiz_id?: number;
@@ -931,7 +951,12 @@ class ApiService {
   }
 
   /** Casos de bienestar: aprendices con N+ inasistencias (riesgo deserción). Params: dias (default 30), min_fallas (default 3), sede_id (opcional). */
-  async getCasosBienestar(params?: { dias?: number; min_fallas?: number; sede_id?: number }): Promise<CasosBienestarResponse> {
+  async getCasosBienestar(params?: {
+    dias?: number;
+    min_fallas?: number;
+    sede_id?: number;
+    tipo_formacion?: string;
+  }): Promise<CasosBienestarResponse> {
     const response = await this.api.get<CasosBienestarResponse>('/asistencias/dashboard/casos-bienestar', { params });
     return response.data;
   }
@@ -941,6 +966,8 @@ class ApiService {
     dias?: number;
     regional_id?: number;
     sede_id?: number;
+    tipo_formacion?: string;
+    jornada?: string;
   }): Promise<SesionesSinAsistenciaTomadaResponse> {
     const response = await this.api.get<SesionesSinAsistenciaTomadaResponse>(
       '/asistencias/dashboard/sesiones-sin-asistencia-tomada',
@@ -962,7 +989,7 @@ class ApiService {
   }
 
   /** Inasistencias del aprendiz autenticado (resuelto por persona_id del JWT). */
-  async getMisInasistencias(params?: { dias?: number }): Promise<MisInasistenciasResponse> {
+  async getMisInasistencias(params?: { dias?: number; ficha_id?: number }): Promise<MisInasistenciasResponse> {
     const response = await this.api.get<MisInasistenciasResponse>('/asistencias/mis-inasistencias', { params });
     return response.data;
   }
@@ -1087,10 +1114,10 @@ class ApiService {
 
   async accesoIngreso(data: {
     numero_documento: string;
-    tipo_persona: string;
     metodo_registro: string;
     sede_id: number;
     observaciones?: string;
+    tipo_persona?: string;
   }): Promise<AccesoRegistroResponse> {
     const response = await this.api.post<{ data: AccesoRegistroResponse }>('/vigilancia/acceso/ingreso', data);
     return response.data.data;

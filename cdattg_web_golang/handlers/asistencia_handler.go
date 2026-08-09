@@ -559,7 +559,8 @@ func (h *AsistenciaHandler) AjustarEstadoAprendiz(c *gin.Context) {
 	c.JSON(http.StatusOK, resp)
 }
 
-// GetDashboard devuelve el resumen para el dashboard de asistencia (solo superadmin). Query: sede_id (opcional), fecha (opcional, default hoy).
+// GetDashboard devuelve el resumen para el dashboard de asistencia (solo superadmin).
+// Query: sede_id, fecha, tipo_formacion, jornada (opcionales).
 func (h *AsistenciaHandler) GetDashboard(c *gin.Context) {
 	fecha := c.Query("fecha")
 	if fecha == "" {
@@ -573,9 +574,9 @@ func (h *AsistenciaHandler) GetDashboard(c *gin.Context) {
 			sedeID = &u
 		}
 	}
-	resp, err := h.svc.GetDashboard(sedeID, fecha)
+	resp, err := h.svc.GetDashboard(sedeID, fecha, c.Query("tipo_formacion"), c.Query("jornada"))
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 	if resp.Fecha == "" {

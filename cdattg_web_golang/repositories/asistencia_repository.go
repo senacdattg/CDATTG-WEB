@@ -211,14 +211,15 @@ type DetalleSesionCasosBienestarRaw struct {
 
 // DashboardFichaRow una fila del resumen por ficha para el dashboard
 type DashboardFichaRow struct {
-	FichaID              uint
-	FichaNumero          string
-	ProgramaNombre       string
-	JornadaNombre        string
-	SedeNombre           string
-	CantidadVinieron     int // asistencia efectiva en el día (con ingreso registrado)
-	CantidadEnFormacion  int // aún sin salida (en formación ahora)
-	TotalAprendices      int
+	FichaID             uint
+	FichaNumero         string
+	ProgramaNombre      string
+	JornadaNombre       string
+	SedeNombre          string
+	TipoFormacion       string
+	CantidadVinieron    int // asistencia efectiva en el día (con ingreso registrado)
+	CantidadEnFormacion int // aún sin salida (en formación ahora)
+	TotalAprendices     int
 }
 
 // DashboardFichaSinSesionRow ficha sin ninguna asistencia registrada en el día consultado
@@ -396,6 +397,7 @@ func (r *asistenciaRepository) GetDashboardResumen(sedeID *uint, fecha string) (
 		ProgramaNombre      string `gorm:"column:programa_nombre"`
 		JornadaNombre       string `gorm:"column:jornada_nombre"`
 		SedeNombre          string `gorm:"column:sede_nombre"`
+		TipoFormacion       string `gorm:"column:tipo_formacion"`
 		CantidadVinieron    int    `gorm:"column:cantidad_vinieron"`
 		CantidadEnFormacion int    `gorm:"column:cantidad_en_formacion"`
 		TotalAprendices     int    `gorm:"column:total_aprendices"`
@@ -403,6 +405,7 @@ func (r *asistenciaRepository) GetDashboardResumen(sedeID *uint, fecha string) (
 	var rows []row
 	raw := `
 		SELECT fc.id AS ficha_id, fc.ficha AS ficha_numero, ` + sqlProgramaNombreFicha + ` AS programa_nombre, COALESCE(j.nombre, '') AS jornada_nombre, COALESCE(s.nombre, '') AS sede_nombre,
+		       COALESCE(NULLIF(BTRIM(fc.tipo_formacion), ''), 'FORMACION_REGULAR') AS tipo_formacion,
 		       COUNT(DISTINCT CASE WHEN ` + asistSQLAsistioEfectivoAA + ` THEN aa.aprendiz_ficha_id END)::int AS cantidad_vinieron,
 		       COUNT(DISTINCT CASE WHEN aa.hora_ingreso IS NOT NULL AND aa.hora_salida IS NULL THEN aa.aprendiz_ficha_id END)::int AS cantidad_en_formacion,
 		       COUNT(DISTINCT af.id)::int AS total_aprendices
@@ -421,7 +424,7 @@ func (r *asistenciaRepository) GetDashboardResumen(sedeID *uint, fecha string) (
 		raw += asistSQLFilterSedeFicha
 		args = append(args, *sedeID)
 	}
-	raw += " GROUP BY fc.id, fc.ficha, fc.nombre, pf.nombre, j.nombre, s.nombre ORDER BY fc.ficha"
+	raw += " GROUP BY fc.id, fc.ficha, fc.nombre, fc.tipo_formacion, pf.nombre, j.nombre, s.nombre ORDER BY fc.ficha"
 	if err := r.db.Raw(raw, args...).Scan(&rows).Error; err != nil {
 		return totalAprendices, nil, err
 	}
@@ -433,6 +436,7 @@ func (r *asistenciaRepository) GetDashboardResumen(sedeID *uint, fecha string) (
 			ProgramaNombre:      rows[i].ProgramaNombre,
 			JornadaNombre:       rows[i].JornadaNombre,
 			SedeNombre:          rows[i].SedeNombre,
+			TipoFormacion:       rows[i].TipoFormacion,
 			CantidadVinieron:    rows[i].CantidadVinieron,
 			CantidadEnFormacion: rows[i].CantidadEnFormacion,
 			TotalAprendices:     rows[i].TotalAprendices,

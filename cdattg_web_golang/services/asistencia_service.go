@@ -64,7 +64,7 @@ type AsistenciaService interface {
 	ActualizarTipoObservacionAsistencia(id uint, req dto.TipoObservacionAsistenciaUpdateRequest) (*dto.TipoObservacionAsistenciaItem, error)
 	EliminarTipoObservacionAsistencia(id uint) error
 	EliminarRegistroAprendiz(asistenciaAprendizID uint) error
-	GetDashboard(sedeID *uint, fecha string) (*dto.AsistenciaDashboardResponse, error)
+	GetDashboard(sedeID *uint, fecha, tipoFormacion, jornada string) (*dto.AsistenciaDashboardResponse, error)
 	GetCasosBienestar(sedeID *uint, dias, minFallas int, instructorLiderID *uint, tipoFormacion string) (*dto.CasosBienestarResponse, error)
 	GetDetalleInasistenciasAprendiz(fichaNumero string, aprendizID uint, dias int, sedeNombre string, instructorLiderID *uint) (*dto.CasoBienestarAprendizDetalleResponse, error)
 	GetMisInasistencias(personaID uint, dias int, fichaID *uint) (*dto.MisInasistenciasResponse, error)
@@ -784,7 +784,13 @@ func (s *asistenciaService) ListAprendicesEnSesion(asistenciaID uint) ([]dto.Asi
 	return resp, nil
 }
 
-func (s *asistenciaService) GetDashboard(sedeID *uint, fecha string) (*dto.AsistenciaDashboardResponse, error) {
+func (s *asistenciaService) GetDashboard(sedeID *uint, fecha, tipoFormacion, jornada string) (*dto.AsistenciaDashboardResponse, error) {
+	tipoFiltro, errTipo := normalizeTipoFormacionFilter(tipoFormacion)
+	if errTipo != nil {
+		return nil, errTipo
+	}
+	jornadaFiltro := strings.TrimSpace(jornada)
+
 	_, porFichaRaw, err := s.repo.GetDashboardResumen(sedeID, fecha)
 	if err != nil {
 		return nil, err
@@ -808,6 +814,13 @@ func (s *asistenciaService) GetDashboard(sedeID *uint, fecha string) (*dto.Asist
 	if errSinAct != nil {
 		return nil, errSinAct
 	}
+
+	porFichaActivas = filtrarDashboardPorFicha(porFichaActivas, tipoFiltro, jornadaFiltro)
+	porFicha = filtrarDashboardPorFicha(porFicha, tipoFiltro, jornadaFiltro)
+	sinSesionDTO = filtrarDashboardSinSesion(sinSesionDTO, tipoFiltro, jornadaFiltro)
+	sinSesionActivas = filtrarDashboardSinSesion(sinSesionActivas, tipoFiltro, jornadaFiltro)
+	totalEnFormacion = sumarEnFormacionDashboard(porFichaActivas)
+
 	var totalFichas int64
 	if n, errC := s.fichaRepo.CountAll(sedeID); errC == nil {
 		totalFichas = n
@@ -826,18 +839,64 @@ func (s *asistenciaService) GetDashboard(sedeID *uint, fecha string) (*dto.Asist
 		FichasConSesionHoy:             len(porFichaActivas),
 	}
 	for i := range porFicha {
+		tipo := tipoFormacionEfectivo(porFicha[i].TipoFormacion)
 		resp.PorFicha[i] = dto.AsistenciaDashboardPorFicha{
 			FichaID:             porFicha[i].FichaID,
 			FichaNumero:         porFicha[i].FichaNumero,
 			ProgramaNombre:      porFicha[i].ProgramaNombre,
 			JornadaNombre:       porFicha[i].JornadaNombre,
 			SedeNombre:          porFicha[i].SedeNombre,
+			TipoFormacion:       tipo,
+			TipoFormacionLabel:  labelTipoFormacionMisInasistencias(tipo),
 			CantidadVinieron:    porFicha[i].CantidadVinieron,
 			CantidadEnFormacion: porFicha[i].CantidadEnFormacion,
 			TotalAprendices:     porFicha[i].TotalAprendices,
 		}
 	}
 	return resp, nil
+}
+
+func filtrarDashboardPorFicha(rows []repositories.DashboardFichaRow, tipoFiltro, jornadaFiltro string) []repositories.DashboardFichaRow {
+	if tipoFiltro == "" && jornadaFiltro == "" {
+		return rows
+	}
+	out := make([]repositories.DashboardFichaRow, 0, len(rows))
+	for i := range rows {
+		if tipoFiltro != "" && tipoFormacionEfectivo(rows[i].TipoFormacion) != tipoFiltro {
+			continue
+		}
+		if jornadaFiltro != "" && !strings.EqualFold(strings.TrimSpace(rows[i].JornadaNombre), jornadaFiltro) {
+			continue
+		}
+		out = append(out, rows[i])
+	}
+	return out
+}
+
+func filtrarDashboardSinSesion(rows []dto.AsistenciaDashboardFichaSinSesion, tipoFiltro, jornadaFiltro string) []dto.AsistenciaDashboardFichaSinSesion {
+	if tipoFiltro == "" && jornadaFiltro == "" {
+		return rows
+	}
+	out := make([]dto.AsistenciaDashboardFichaSinSesion, 0, len(rows))
+	for i := range rows {
+		tipo := tipoFormacionEfectivo(rows[i].TipoFormacion)
+		if tipoFiltro != "" && tipo != tipoFiltro {
+			continue
+		}
+		if jornadaFiltro != "" && !strings.EqualFold(strings.TrimSpace(rows[i].JornadaNombre), jornadaFiltro) {
+			continue
+		}
+		out = append(out, rows[i])
+	}
+	return out
+}
+
+func sumarEnFormacionDashboard(rows []repositories.DashboardFichaRow) int {
+	total := 0
+	for i := range rows {
+		total += rows[i].CantidadEnFormacion
+	}
+	return total
 }
 
 func filtrarCasosBienestarPorTipo(rows []repositories.CasosBienestarRow, tipoFiltro string) []repositories.CasosBienestarRow {

@@ -79,6 +79,14 @@ export const SIDEBAR_MANIFEST: SidebarManifestItem[] = [
     alsoVisibleForRoles: ['INSTRUCTOR'],
     iconKey: 'fichas',
   },
+  {
+    section: 'Formación',
+    path: fichasPaths.complementaria,
+    label: 'Formación Complementaria',
+    permission: 'VER FICHAS',
+    alsoVisibleForRoles: ['INSTRUCTOR'],
+    iconKey: 'fichas',
+  },
 
   // —— Personal ——
   {

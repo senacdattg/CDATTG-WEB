@@ -15,7 +15,6 @@ import type {
   AccesoModo,
   AccesoMotivoSalida,
   AccesoRegistroResponse,
-  AccesoTipoPersona,
   AccesoDentroItem,
   AccesoPersonaFicha,
   AccesoFichaResumen,
@@ -48,8 +47,6 @@ const MOTIVO_LABELS: Record<string, string> = {
   OTRO: 'Otro',
 };
 
-const TIPOS_DEFAULT = ['APRENDIZ', 'INSTRUCTOR', 'ADMINISTRATIVO', 'VISITANTE'];
-
 type ContextoGuardado = { regionalId: number; sedeId: number; modo: AccesoModo };
 
 function focusDocInput() {
@@ -69,12 +66,22 @@ function labelTipo(t: string): string {
   return TIPO_LABELS[t] || t;
 }
 
-function resolveTipoInicial(lookup: AccesoLookupResponse): AccesoTipoPersona {
-  const sugerido = (lookup.persona.tipo_sugerido || 'VISITANTE').toUpperCase();
-  if (lookup.tipos_persona.includes(sugerido)) {
-    return sugerido as AccesoTipoPersona;
+function fichasParaResumenLookup(lookup: {
+  fichas?: AccesoFichaResumen[];
+  ficha?: AccesoFichaResumen | null;
+}): AccesoFichaResumen[] {
+  if (lookup.fichas && lookup.fichas.length > 0) return lookup.fichas;
+  if (lookup.ficha) return [lookup.ficha];
+  return [];
+}
+
+function labelTiposPersona(persona: AccesoPersonaFicha): string {
+  let tipos = persona.tipos ?? [];
+  if (tipos.length === 0 && persona.tipo_sugerido) {
+    tipos = [persona.tipo_sugerido];
   }
-  return 'VISITANTE';
+  if (tipos.length === 0) return '—';
+  return tipos.map(labelTipo).join(' · ');
 }
 
 function loadContexto(): ContextoGuardado | null {
@@ -121,74 +128,58 @@ function FeedbackBanner({ accion, mensaje }: Readonly<{ accion: 'INGRESO' | 'SAL
   );
 }
 
+function FichasVinculadasPanel({ fichas }: Readonly<{ fichas: AccesoFichaResumen[] }>) {
+  if (fichas.length === 0) return null;
+  const titulo = fichas.length === 1 ? 'Ficha vinculada' : `Fichas vinculadas (${fichas.length})`;
+  return (
+    <div className="space-y-2">
+      <p className="text-xs font-semibold uppercase tracking-wide text-emerald-800 dark:text-emerald-200">
+        {titulo}
+      </p>
+      {fichas.map((ficha) => (
+        <div
+          key={ficha.id}
+          className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 dark:border-emerald-800 dark:bg-emerald-950/40"
+        >
+          <p className="mb-1 text-xs font-semibold text-emerald-900 dark:text-emerald-100">
+            {ficha.tipo_formacion_label || 'Formación'}
+          </p>
+          <dl className="space-y-1">
+            <FichaRow label="Nº ficha" value={ficha.numero} />
+            <FichaRow label="Nombre / programa" value={ficha.programa_nombre || '—'} />
+            <FichaRow label="Jornada" value={ficha.jornada_nombre || '—'} />
+            <FichaRow label="Sede ficha" value={ficha.sede_nombre || '—'} />
+          </dl>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function FichaPersonaResumen({
   persona,
   visitaLabel,
-  ficha,
+  fichas,
 }: Readonly<{
   persona: AccesoPersonaFicha;
   visitaLabel?: string;
-  ficha?: AccesoFichaResumen | null;
+  fichas?: AccesoFichaResumen[] | null;
 }>) {
+  const lista = fichas?.length ? fichas : [];
   return (
     <dl className="space-y-2 text-sm">
       <FichaRow label="Documento" value={persona.numero_documento} />
       <FichaRow label="Nombre" value={persona.nombre_completo || 'Sin nombre'} />
       <FichaRow label="Contacto" value={persona.celular || persona.email || persona.telefono || '—'} />
-      <FichaRow label="Tipo" value={labelTipo(persona.tipo_sugerido) || '—'} />
+      <FichaRow label="Tipo" value={labelTiposPersona(persona)} />
       {visitaLabel ? <FichaRow label="Dentro desde" value={visitaLabel} /> : null}
-      {ficha ? (
-        <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 dark:border-emerald-800 dark:bg-emerald-950/40">
-          <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-emerald-800 dark:text-emerald-200">
-            Ficha activa
-          </p>
-          <dl className="space-y-1">
-            <FichaRow label="Nº ficha" value={ficha.numero} />
-            <FichaRow label="Programa" value={ficha.programa_nombre || '—'} />
-            <FichaRow label="Jornada" value={ficha.jornada_nombre || '—'} />
-            <FichaRow label="Sede ficha" value={ficha.sede_nombre || '—'} />
-          </dl>
-        </div>
-      ) : null}
+      <FichasVinculadasPanel fichas={lista} />
       {persona.es_nueva ? (
         <p className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-xs text-blue-800 dark:border-blue-800 dark:bg-blue-950/40 dark:text-blue-200">
           Usuario creado automáticamente. Deberá completar sus datos al iniciar sesión en el sistema.
         </p>
       ) : null}
     </dl>
-  );
-}
-
-function FormIngresoTipo({
-  tipos,
-  tipoPersona,
-  onChange,
-  disabled,
-}: Readonly<{
-  tipos: string[];
-  tipoPersona: AccesoTipoPersona;
-  onChange: (v: AccesoTipoPersona) => void;
-  disabled: boolean;
-}>) {
-  return (
-    <div>
-      <label htmlFor="porteria-tipo" className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
-        Tipo de persona
-      </label>
-      <select
-        id="porteria-tipo"
-        className="input-field w-full"
-        value={tipoPersona}
-        onChange={(e) => onChange(e.target.value as AccesoTipoPersona)}
-        disabled={disabled}
-      >
-        {tipos.map((t) => (
-          <option key={t} value={t}>
-            {labelTipo(t)}
-          </option>
-        ))}
-      </select>
-    </div>
   );
 }
 
@@ -287,62 +278,27 @@ function textoBtnConfirmar(
   return 'Confirmar salida';
 }
 
-function PanelFichaSalida({
-  tipos,
-  motivos,
-  tipoPersona,
-  motivoSalida,
-  observacionSalida,
-  confirmando,
-  forzarSinIngreso,
-  puedeNormal,
-  onTipo,
-  onMotivo,
-  onObservacion,
-}: Readonly<{
-  tipos: string[];
-  motivos: string[];
-  tipoPersona: AccesoTipoPersona;
-  motivoSalida: AccesoMotivoSalida;
-  observacionSalida: string;
-  confirmando: boolean;
-  forzarSinIngreso: boolean;
-  puedeNormal: boolean;
-  onTipo: (v: AccesoTipoPersona) => void;
-  onMotivo: (v: AccesoMotivoSalida) => void;
-  onObservacion: (v: string) => void;
-}>) {
-  return (
-    <>
-      {(puedeNormal || forzarSinIngreso) && (
-        <>
-          {forzarSinIngreso ? (
-            <FormIngresoTipo tipos={tipos} tipoPersona={tipoPersona} onChange={onTipo} disabled={confirmando} />
-          ) : null}
-          <FormSalidaMotivo
-            motivos={motivos}
-            motivoSalida={motivoSalida}
-            observacionSalida={observacionSalida}
-            onMotivo={onMotivo}
-            onObservacion={onObservacion}
-            disabled={confirmando}
-          />
-        </>
-      )}
-    </>
-  );
+function puedeConfirmarLookup(
+  lookup: AccesoLookupResponse | null,
+  modo: AccesoModo,
+  salidaAutoDesdeEntrada: boolean,
+  forzarSinIngreso: boolean,
+): boolean {
+  if (!lookup) return false;
+  const esIngreso = modo === 'ENTRADA' && !salidaAutoDesdeEntrada;
+  const puedeNormal = lookup.puede_confirmar;
+  const puedeIrregular = !esIngreso && lookup.permite_salida_sin_ingreso && forzarSinIngreso;
+  return puedeNormal || puedeIrregular;
 }
 
 function PanelFicha({
   lookup,
   modo,
-  tipoPersona,
   motivoSalida,
   observacionSalida,
   confirmando,
   forzarSinIngreso,
   salidaAutoDesdeEntrada,
-  onTipo,
   onMotivo,
   onObservacion,
   onConfirmar,
@@ -350,13 +306,11 @@ function PanelFicha({
 }: Readonly<{
   lookup: AccesoLookupResponse | null;
   modo: AccesoModo;
-  tipoPersona: AccesoTipoPersona;
   motivoSalida: AccesoMotivoSalida;
   observacionSalida: string;
   confirmando: boolean;
   forzarSinIngreso: boolean;
   salidaAutoDesdeEntrada: boolean;
-  onTipo: (v: AccesoTipoPersona) => void;
   onMotivo: (v: AccesoMotivoSalida) => void;
   onObservacion: (v: string) => void;
   onConfirmar: () => void;
@@ -372,14 +326,12 @@ function PanelFicha({
 
   // Si está en ENTRADA pero la persona ya está adentro, el flujo efectivo es SALIDA (sin cambiar el botón).
   const esIngreso = modo === 'ENTRADA' && !salidaAutoDesdeEntrada;
-  const tipos = lookup.tipos_persona?.length ? lookup.tipos_persona : TIPOS_DEFAULT;
   const motivos = lookup.motivos_salida?.length ? lookup.motivos_salida : Object.keys(MOTIVO_LABELS);
   const visitaLabel = lookup.visita_abierta
     ? `${formatHora(lookup.visita_abierta.timestamp_entrada)} (${labelTipo(lookup.visita_abierta.tipo_persona)})`
     : undefined;
   const puedeNormal = lookup.puede_confirmar;
-  const puedeIrregular = !esIngreso && lookup.permite_salida_sin_ingreso && forzarSinIngreso;
-  const puedeConfirmar = puedeNormal || puedeIrregular;
+  const puedeConfirmar = puedeConfirmarLookup(lookup, modo, salidaAutoDesdeEntrada, forzarSinIngreso);
   const titulo = tituloFicha(esIngreso, Boolean(lookup.alerta), forzarSinIngreso, salidaAutoDesdeEntrada);
 
   return (
@@ -403,25 +355,22 @@ function PanelFicha({
         );
       })()}
 
-      <FichaPersonaResumen persona={lookup.persona} visitaLabel={visitaLabel} ficha={lookup.ficha} />
+      <FichaPersonaResumen
+        persona={lookup.persona}
+        visitaLabel={visitaLabel}
+        fichas={fichasParaResumenLookup(lookup)}
+      />
 
-      {esIngreso ? (
-        <FormIngresoTipo tipos={tipos} tipoPersona={tipoPersona} onChange={onTipo} disabled={confirmando || !puedeConfirmar} />
-      ) : (
-        <PanelFichaSalida
-          tipos={tipos}
+      {!esIngreso && (puedeNormal || forzarSinIngreso) ? (
+        <FormSalidaMotivo
           motivos={motivos}
-          tipoPersona={tipoPersona}
           motivoSalida={motivoSalida}
           observacionSalida={observacionSalida}
-          confirmando={confirmando}
-          forzarSinIngreso={forzarSinIngreso}
-          puedeNormal={puedeNormal}
-          onTipo={onTipo}
           onMotivo={onMotivo}
           onObservacion={onObservacion}
+          disabled={confirmando}
         />
-      )}
+      ) : null}
 
       <div className="flex flex-wrap gap-2">
         <button
@@ -487,7 +436,6 @@ export function VigilanciaPorteria() {
   const [camaraActiva, setCamaraActiva] = useState(true);
   const [lookup, setLookup] = useState<AccesoLookupResponse | null>(null);
   const [metodo, setMetodo] = useState<AccesoMetodoRegistro>('MANUAL');
-  const [tipoPersona, setTipoPersona] = useState<AccesoTipoPersona>('VISITANTE');
   const [motivoSalida, setMotivoSalida] = useState<AccesoMotivoSalida>('DESCANSO');
   const [observacionSalida, setObservacionSalida] = useState('');
   const [forzarSinIngreso, setForzarSinIngreso] = useState(false);
@@ -622,7 +570,6 @@ export function VigilanciaPorteria() {
           setLookup(resSalida);
           setSalidaAutoDesdeEntrada(true);
           setDocumento('');
-          setTipoPersona(resolveTipoInicial(resSalida));
           if (resSalida.motivos_salida?.length) {
             setMotivoSalida(resSalida.motivos_salida[0] as AccesoMotivoSalida);
           }
@@ -630,7 +577,6 @@ export function VigilanciaPorteria() {
         } else {
           setLookup(res);
           setDocumento('');
-          setTipoPersona(resolveTipoInicial(res));
           if (res.motivos_salida?.length) {
             setMotivoSalida(res.motivos_salida[0] as AccesoMotivoSalida);
           }
@@ -650,11 +596,6 @@ export function VigilanciaPorteria() {
     },
     [contextoListo, sedeId, modo],
   );
-
-  const handleSubmitDocumento: ComponentProps<'form'>['onSubmit'] = (e) => {
-    e.preventDefault();
-    void runLookup(documento, 'LASER');
-  };
 
   const handleEscaneoCamara = useCallback(
     (doc: string) => {
@@ -684,8 +625,9 @@ export function VigilanciaPorteria() {
     runLookup,
   ]);
 
-  const handleConfirmar = async () => {
+  const handleConfirmar = useCallback(async () => {
     if (!lookup || confirmando || !sedeId) return;
+    if (!puedeConfirmarLookup(lookup, modo, salidaAutoDesdeEntrada, forzarSinIngreso)) return;
     const doc = lookup.persona.numero_documento;
     const registrarSalida = modo === 'SALIDA' || salidaAutoDesdeEntrada;
     setConfirmando(true);
@@ -705,12 +647,10 @@ export function VigilanciaPorteria() {
           metodo_registro: metodo,
           sede_id: sedeId,
           permitir_sin_ingreso: forzarSinIngreso || undefined,
-          tipo_persona: forzarSinIngreso ? tipoPersona : undefined,
         });
       } else {
         res = await apiService.accesoIngreso({
           numero_documento: doc,
-          tipo_persona: tipoPersona,
           metodo_registro: metodo,
           sede_id: sedeId,
         });
@@ -726,6 +666,24 @@ export function VigilanciaPorteria() {
       setConfirmando(false);
       focusDocInput();
     }
+  }, [
+    lookup,
+    confirmando,
+    sedeId,
+    modo,
+    salidaAutoDesdeEntrada,
+    forzarSinIngreso,
+    motivoSalida,
+    observacionSalida,
+    metodo,
+    refreshDentro,
+    showFeedback,
+    resetTrasRegistro,
+  ]);
+
+  const handleSubmitDocumento: ComponentProps<'form'>['onSubmit'] = (e) => {
+    e.preventDefault();
+    void runLookup(documento, 'LASER');
   };
 
   const escaneoHabilitado = contextoListo && !!sedeId;
@@ -902,7 +860,7 @@ export function VigilanciaPorteria() {
               <p className="text-center text-sm text-primary-600 dark:text-primary-400">Buscando…</p>
             ) : (
               <p className="text-center text-xs text-gray-500 dark:text-gray-400">
-                Automático (~3 s), Enter o botón Buscar (útil en celular).
+                Buscar: automático (~3 s), Enter o botón.
               </p>
             )}
           </form>
@@ -940,13 +898,11 @@ export function VigilanciaPorteria() {
           <PanelFicha
             lookup={lookup}
             modo={modo}
-            tipoPersona={tipoPersona}
             motivoSalida={motivoSalida}
             observacionSalida={observacionSalida}
             confirmando={confirmando}
             forzarSinIngreso={forzarSinIngreso}
             salidaAutoDesdeEntrada={salidaAutoDesdeEntrada}
-            onTipo={setTipoPersona}
             onMotivo={setMotivoSalida}
             onObservacion={setObservacionSalida}
             onConfirmar={() => void handleConfirmar()}

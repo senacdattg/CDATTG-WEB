@@ -25,6 +25,18 @@ export const fichasRoutes: RouteObject[] = [
     lazy: lazyFichasList,
   },
   {
+    path: fichasPaths.mediaTecnica,
+    handle: { breadcrumb: { label: 'Media Técnica' } },
+    lazy: lazyFichasList,
+  },
+  {
+    path: `${fichasPaths.mediaTecnica}/:fichaId`,
+    handle: {
+      breadcrumb: detalleBreadcrumb('Media Técnica', fichasPaths.mediaTecnica),
+    },
+    lazy: lazyFichaDetalle,
+  },
+  {
     path: `${fichasPaths.index}/:fichaId`,
     handle: {
       breadcrumb: detalleBreadcrumb('Formación Regular', fichasPaths.index),

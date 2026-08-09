@@ -71,6 +71,14 @@ export const SIDEBAR_MANIFEST: SidebarManifestItem[] = [
     alsoVisibleForRoles: ['INSTRUCTOR'],
     iconKey: 'fichas',
   },
+  {
+    section: 'Formación',
+    path: fichasPaths.mediaTecnica,
+    label: 'Media Técnica',
+    permission: 'VER FICHAS',
+    alsoVisibleForRoles: ['INSTRUCTOR'],
+    iconKey: 'fichas',
+  },
 
   // —— Personal ——
   {

@@ -5,13 +5,19 @@ import { apiService } from '../services/api';
 import { axiosErrorMessage } from '../utils/httpError';
 import { useAuth } from '../context/AuthContext';
 import { LABEL_INSTRUCTOR_LIDER } from '../constants/instructorLiderLabels';
-import { labelTipoFormacion } from '../constants/tipoFormacion';
+import {
+  TIPO_FORMACION_OPTIONS,
+  labelTipoFormacion,
+  type TipoFormacion,
+} from '../constants/tipoFormacion';
 import { FichaCaracterizacionCard } from '../components/FichaCaracterizacionCard';
 import type { FichaCaracterizacionResponse } from '../types';
 import { tituloProgramaFicha } from '../utils/fichaListDisplay';
 import { asistenciaHistorialFichaPath, asistenciaPaths } from './asistencia/asistenciaPaths';
 
 const HISTORIAL_SEARCH_ID = 'asistencia-historial-buscar-ficha';
+
+type FiltroTipoHistorial = 'TODOS' | TipoFormacion;
 
 type HistorialFichasTableProps = Readonly<{ rows: FichaCaracterizacionResponse[] }>;
 
@@ -23,33 +29,33 @@ function HistorialFichasTable({ rows }: HistorialFichasTableProps) {
           <caption className="sr-only">Listado de fichas para consultar historial de asistencia</caption>
           <thead className="bg-gray-50 dark:bg-gray-700/50">
             <tr>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">
+              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-600 dark:text-gray-300">
                 Ficha
               </th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">
+              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-600 dark:text-gray-300">
                 Programa / nombre
               </th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">
+              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-600 dark:text-gray-300">
                 Tipo
               </th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">
+              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-600 dark:text-gray-300">
                 {LABEL_INSTRUCTOR_LIDER}
               </th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">
+              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-600 dark:text-gray-300">
                 Jornada
               </th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">
+              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-600 dark:text-gray-300">
                 Sede / Ambiente
               </th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">
+              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-600 dark:text-gray-300">
                 Aprendices
               </th>
-              <th className="px-4 py-3 text-right text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider w-40">
+              <th className="w-40 px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-gray-600 dark:text-gray-300">
                 Acción
               </th>
             </tr>
           </thead>
-          <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-600">
+          <tbody className="divide-y divide-gray-200 bg-white dark:divide-gray-600 dark:bg-gray-800">
             {rows.map((item) => (
               <tr key={item.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/30">
                 <td className="px-4 py-3 text-sm font-medium text-gray-900 dark:text-white">{item.ficha}</td>
@@ -68,9 +74,9 @@ function HistorialFichasTable({ rows }: HistorialFichasTableProps) {
                 <td className="px-4 py-3 text-right">
                   <Link
                     to={asistenciaHistorialFichaPath(item.id)}
-                    className="inline-flex items-center gap-1.5 px-3 py-2 bg-primary-600 text-white text-sm font-medium rounded-lg hover:bg-primary-700 transition-colors"
+                    className="inline-flex items-center gap-1.5 rounded-lg bg-primary-600 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-700"
                   >
-                    <CalendarDaysIcon className="w-4 h-4" aria-hidden />
+                    <CalendarDaysIcon className="h-4 w-4" aria-hidden />
                     Ver historial
                   </Link>
                 </td>
@@ -113,6 +119,7 @@ export const AsistenciaHistorial = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
+  const [filtroTipo, setFiltroTipo] = useState<FiltroTipoHistorial>('TODOS');
 
   const isSuperAdmin = roles.includes('SUPER ADMINISTRADOR');
 
@@ -120,7 +127,15 @@ export const AsistenciaHistorial = () => {
     setLoading(true);
     setError('');
     try {
-      const res = await apiService.getFichasCaracterizacion(1, 500, undefined, isSuperAdmin ? undefined : true);
+      const tipoParam = filtroTipo === 'TODOS' ? undefined : filtroTipo;
+      const res = await apiService.getFichasCaracterizacion(
+        1,
+        500,
+        undefined,
+        isSuperAdmin ? undefined : true,
+        undefined,
+        tipoParam,
+      );
       setFichas(res.data);
     } catch (e: unknown) {
       setFichas([]);
@@ -128,7 +143,7 @@ export const AsistenciaHistorial = () => {
     } finally {
       setLoading(false);
     }
-  }, [isSuperAdmin]);
+  }, [isSuperAdmin, filtroTipo]);
 
   useEffect(() => {
     loadFichas();
@@ -147,6 +162,15 @@ export const AsistenciaHistorial = () => {
 
   const hayResultados = fichasFiltradas.length > 0;
   const vacioTrasFiltro = !loading && hayResultados === false;
+  const mensajeVacio = (() => {
+    if (!isSuperAdmin && fichas.length === 0 && filtroTipo === 'TODOS' && !searchQuery.trim()) {
+      return 'No tiene fichas asignadas como instructor. Solo puede ver el historial de las fichas en las que está asignado.';
+    }
+    if (filtroTipo !== 'TODOS' || searchQuery.trim()) {
+      return 'No hay fichas que coincidan con los filtros seleccionados.';
+    }
+    return 'No hay fichas registradas.';
+  })();
 
   return (
     <div className="space-y-6">
@@ -160,7 +184,7 @@ export const AsistenciaHistorial = () => {
           </p>
         </div>
         <Link to={asistenciaPaths.fichas} className="btn-secondary inline-flex items-center gap-2">
-          <ClipboardDocumentListIcon className="w-5 h-5" aria-hidden />
+          <ClipboardDocumentListIcon className="h-5 w-5" aria-hidden />
           Tomar asistencia
         </Link>
       </div>
@@ -168,56 +192,97 @@ export const AsistenciaHistorial = () => {
       {error && (
         <div
           role="alert"
-          className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 px-4 py-3 rounded-lg"
+          className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-red-700 dark:border-red-800 dark:bg-red-900/20 dark:text-red-300"
         >
           {error}
         </div>
       )}
 
-      {!loading && isSuperAdmin && (
-        <div className="flex flex-col sm:flex-row gap-4 items-end sm:items-center bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-600">
-          <div className="w-full sm:w-auto flex-1 min-w-[250px]">
+      {!loading && (
+        <div className="space-y-3 rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-600 dark:bg-gray-800">
+          <div className="min-w-[220px] max-w-xl">
             <label
               htmlFor={HISTORIAL_SEARCH_ID}
-              className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+              className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300"
             >
               Buscar ficha
             </label>
             <div className="relative">
               <MagnifyingGlassIcon
-                className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none"
+                className="pointer-events-none absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400"
                 aria-hidden
               />
               <input
                 id={HISTORIAL_SEARCH_ID}
                 type="search"
                 autoComplete="off"
-                placeholder="Buscar por código de ficha o programa..."
+                placeholder="Código de ficha o programa…"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 dark:text-white transition-shadow"
+                className="w-full rounded-lg border border-gray-300 bg-gray-50 py-2 pl-10 pr-4 text-sm transition-shadow focus:border-primary-500 focus:ring-2 focus:ring-primary-500 dark:border-gray-600 dark:bg-gray-900 dark:text-white"
               />
+            </div>
+          </div>
+
+          <div>
+            <p className="mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">Tipo de formación</p>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                className={`rounded-lg px-3 py-1.5 text-sm font-medium ${
+                  filtroTipo === 'TODOS'
+                    ? 'bg-primary-600 text-white'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600'
+                }`}
+                onClick={() => setFiltroTipo('TODOS')}
+              >
+                Todas
+              </button>
+              {TIPO_FORMACION_OPTIONS.map((opt) => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  className={`rounded-lg px-3 py-1.5 text-sm font-medium ${
+                    filtroTipo === opt.value
+                      ? 'bg-primary-600 text-white'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600'
+                  }`}
+                  onClick={() => setFiltroTipo(opt.value)}
+                >
+                  {opt.label}
+                </button>
+              ))}
             </div>
           </div>
         </div>
       )}
 
       {loading && (
-        <div className="text-center py-12 text-gray-500 dark:text-gray-400" role="status" aria-live="polite">
+        <div className="py-12 text-center text-gray-500 dark:text-gray-400" role="status" aria-live="polite">
           Cargando fichas…
         </div>
       )}
 
       {vacioTrasFiltro && (
-        <div className="card text-center py-12">
-          <p className="text-gray-600 dark:text-gray-400">
-            {isSuperAdmin
-              ? 'No hay fichas registradas'
-              : 'No tiene fichas asignadas como instructor. Solo puede ver el historial de las fichas en las que está asignado.'}
-          </p>
-          <Link to={asistenciaPaths.fichas} className="btn-primary mt-4 inline-flex">
-            Ir a tomar asistencia
-          </Link>
+        <div className="card py-12 text-center">
+          <p className="text-gray-600 dark:text-gray-400">{mensajeVacio}</p>
+          {(filtroTipo !== 'TODOS' || searchQuery.trim()) && (
+            <button
+              type="button"
+              className="btn-secondary mt-4 inline-flex"
+              onClick={() => {
+                setFiltroTipo('TODOS');
+                setSearchQuery('');
+              }}
+            >
+              Limpiar filtros
+            </button>
+          )}
+          {filtroTipo === 'TODOS' && !searchQuery.trim() && (
+            <Link to={asistenciaPaths.fichas} className="btn-primary mt-4 inline-flex">
+              Ir a tomar asistencia
+            </Link>
+          )}
         </div>
       )}
 

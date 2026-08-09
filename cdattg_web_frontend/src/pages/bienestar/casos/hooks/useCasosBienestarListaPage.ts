@@ -14,6 +14,7 @@ export function useCasosBienestarListaPage() {
   const canView = canViewCasosBienestar(roles);
   const [dias, setDias] = useState(30);
   const [minFallas, setMinFallas] = useState(3);
+  const [tipoFormacion, setTipoFormacion] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [programaFiltroIndex, setProgramaFiltroIndex] = useState(0);
 
@@ -21,6 +22,7 @@ export function useCasosBienestarListaPage() {
     enabled: canView,
     dias,
     minFallas,
+    tipoFormacion,
   });
 
   const casosPorFicha = useMemo(
@@ -59,6 +61,8 @@ export function useCasosBienestarListaPage() {
     setDias,
     minFallas,
     setMinFallas,
+    tipoFormacion,
+    setTipoFormacion,
     searchQuery,
     setSearchQuery,
     programaFiltroIndex,

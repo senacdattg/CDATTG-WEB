@@ -3,6 +3,7 @@ import { ExclamationTriangleIcon, MagnifyingGlassIcon } from '@heroicons/react/2
 import { apiService } from '../../services/api';
 import { axiosErrorMessage } from '../../utils/httpError';
 import { useAuth } from '../../context/AuthContext';
+import { TIPO_FORMACION_OPTIONS } from '../../constants/tipoFormacion';
 import type { RegionalItem, SedeItem, SesionSinAsistenciaTomadaItem } from '../../types';
 
 const DIAS_HISTORICO = 0;
@@ -16,6 +17,8 @@ const DIAS_OPCIONES = [
   { value: DIAS_HISTORICO, label: 'Desde el origen de los tiempos' },
 ] as const;
 
+const JORNADAS = ['DIURNA', 'TARDE', 'NOCHE', 'JORNADA CONTINUA', 'FINES DE SEMANA'] as const;
+
 const PAGE_SIZE = 25;
 
 const SesionSinAsistenciaRow = memo(function SesionSinAsistenciaRow({
@@ -26,7 +29,12 @@ const SesionSinAsistenciaRow = memo(function SesionSinAsistenciaRow({
   return (
     <tr className="hover:bg-gray-50 dark:hover:bg-gray-700/30">
       <td className="px-4 py-3 text-sm text-gray-900 dark:text-white whitespace-nowrap">{item.fecha}</td>
-      <td className="px-4 py-3 text-sm font-medium text-gray-900 dark:text-white">{item.ficha_numero}</td>
+      <td className="px-4 py-3 text-sm font-medium text-gray-900 dark:text-white">
+        <div>{item.ficha_numero}</div>
+        {item.tipo_formacion_label ? (
+          <div className="text-xs text-gray-500 dark:text-gray-400">{item.tipo_formacion_label}</div>
+        ) : null}
+      </td>
       <td className="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">
         <div>{item.instructor_nombre || '—'}</div>
         {item.numero_documento ? (
@@ -109,6 +117,8 @@ export function SesionesSinAsistenciaTomadaPage() {
   const [dias, setDias] = useState<number>(30);
   const [regionalId, setRegionalId] = useState('');
   const [sedeId, setSedeId] = useState('');
+  const [tipoFormacion, setTipoFormacion] = useState('');
+  const [jornada, setJornada] = useState('');
   const [regionales, setRegionales] = useState<RegionalItem[]>([]);
   const [sedes, setSedes] = useState<SedeItem[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -133,7 +143,7 @@ export function SesionesSinAsistenciaTomadaPage() {
 
   useEffect(() => {
     setPage(1);
-  }, [dias, regionalId, sedeId, searchQuery]);
+  }, [dias, regionalId, sedeId, tipoFormacion, jornada, searchQuery]);
 
   const cargar = useCallback(async () => {
     setLoading(true);
@@ -143,6 +153,8 @@ export function SesionesSinAsistenciaTomadaPage() {
         dias,
         regional_id: regionalId ? Number(regionalId) : undefined,
         sede_id: sedeId ? Number(sedeId) : undefined,
+        tipo_formacion: tipoFormacion || undefined,
+        jornada: jornada || undefined,
       });
       setData(res);
     } catch (e: unknown) {
@@ -150,7 +162,7 @@ export function SesionesSinAsistenciaTomadaPage() {
     } finally {
       setLoading(false);
     }
-  }, [dias, regionalId, sedeId]);
+  }, [dias, regionalId, sedeId, tipoFormacion, jornada]);
 
   useEffect(() => {
     cargar();
@@ -202,12 +214,11 @@ export function SesionesSinAsistenciaTomadaPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-          Sesiones sin asistencia tomada
+          Panel de toma de asistencia
         </h1>
         <p className="mt-1 text-sm text-gray-600 dark:text-gray-400 max-w-3xl">
-          Días de formación programados en los que el instructor no tomó asistencia: ya sea porque abrió
-          la sesión sin registrar a ningún aprendiz, o porque nunca abrió sesión ese día. Ninguno de
-          estos casos se contabiliza como inasistencia del aprendiz en los reportes de bienestar.
+          Filtre por tipo de formación y jornada para ver fichas e instructores que no tomaron asistencia
+          en días programados: sesión abierta sin marcas o día sin sesión registrada.
         </p>
       </div>
 
@@ -225,6 +236,44 @@ export function SesionesSinAsistenciaTomadaPage() {
             {DIAS_OPCIONES.map((d) => (
               <option key={d.value} value={d.value}>
                 {d.label}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div>
+          <label htmlFor="tipo-sin-asistencia" className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
+            Tipo de formación
+          </label>
+          <select
+            id="tipo-sin-asistencia"
+            value={tipoFormacion}
+            onChange={(e) => setTipoFormacion(e.target.value)}
+            className="input-field min-w-[12rem]"
+          >
+            <option value="">Todos</option>
+            {TIPO_FORMACION_OPTIONS.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div>
+          <label htmlFor="jornada-sin-asistencia" className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
+            Jornada
+          </label>
+          <select
+            id="jornada-sin-asistencia"
+            value={jornada}
+            onChange={(e) => setJornada(e.target.value)}
+            className="input-field min-w-[10rem]"
+          >
+            <option value="">Todas</option>
+            {JORNADAS.map((j) => (
+              <option key={j} value={j}>
+                {j}
               </option>
             ))}
           </select>
@@ -316,7 +365,7 @@ export function SesionesSinAsistenciaTomadaPage() {
                   Fecha
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase">
-                  Ficha
+                  Ficha / tipo
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase">
                   Instructor

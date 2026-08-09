@@ -14,15 +14,16 @@ import (
 )
 
 type AsistenciaAnalisisParams struct {
-	FechaDesde  string
-	FechaHasta  string
-	RegionalID  *uint
-	SedeID      *uint
-	Jornada     string
+	FechaDesde    string
+	FechaHasta    string
+	RegionalID    *uint
+	SedeID        *uint
+	Jornada       string
 	FichaBusqueda string // número de ficha o nombre de programa
-	EstadoFicha string  // activas | inactivas | todas
-	AprendizID  *uint
-	DiaSemanaID *int
+	EstadoFicha   string // activas | inactivas | todas
+	TipoFormacion string // FORMACION_REGULAR | MEDIA_TECNICA | FORMACION_COMPLEMENTARIA | vacío=todas
+	AprendizID    *uint
+	DiaSemanaID   *int
 }
 
 type AnalisisRegistrosAprendizParams struct {
@@ -129,6 +130,10 @@ func (s *asistenciaAnalisisService) GetAnalisis(userID uint, roles []string, p A
 	}
 	jornada := strings.TrimSpace(p.Jornada)
 	estadoFicha := normalizarEstadoFicha(p.EstadoFicha)
+	tipoFormacion, errTipo := normalizeTipoFormacionFilter(p.TipoFormacion)
+	if errTipo != nil {
+		return nil, errTipo
+	}
 
 	fichaIDs, sinMatch, err := s.resolverFichaIDs(p.FichaBusqueda, sedeIDs)
 	if err != nil {
@@ -138,15 +143,23 @@ func (s *asistenciaAnalisisService) GetAnalisis(userID uint, roles []string, p A
 		return emptyAnalisisResponse(p), nil
 	}
 
-	horaToma, err := s.buildHoraToma(desde, hasta, sedeIDs, fichaIDs, p.AprendizID, jornada, estadoFicha)
+	horaToma, err := s.buildHoraToma(desde, hasta, sedeIDs, fichaIDs, p.AprendizID, repositories.AnalisisSesionFiltros{
+		Jornada:       jornada,
+		EstadoFicha:   estadoFicha,
+		TipoFormacion: tipoFormacion,
+	})
 	if err != nil {
 		return nil, err
 	}
-	cumplimiento, err := s.buildCumplimiento(desde, hasta, sedeIDs, jornada, fichaIDs, estadoFicha, horaToma.sesionesPorFicha)
+	cumplimiento, err := s.buildCumplimiento(desde, hasta, sedeIDs, fichaIDs, repositories.AnalisisSesionFiltros{
+		Jornada:       jornada,
+		EstadoFicha:   estadoFicha,
+		TipoFormacion: tipoFormacion,
+	}, horaToma.sesionesPorFicha)
 	if err != nil {
 		return nil, err
 	}
-	diaSemana, err := s.buildSemanaAnterior(sedeIDs, jornada, p.DiaSemanaID, fichaIDs, estadoFicha)
+	diaSemana, err := s.buildSemanaAnterior(sedeIDs, jornada, p.DiaSemanaID, fichaIDs, estadoFicha, tipoFormacion)
 	if err != nil {
 		return nil, err
 	}
@@ -181,14 +194,17 @@ func fichaEnAlcanceSedes(ficha *models.FichaCaracterizacion, sedeIDs []uint) boo
 }
 
 func (s *asistenciaAnalisisService) nombreProgramaFicha(ficha *models.FichaCaracterizacion) string {
-	if ficha.ProgramaFormacion != nil {
-		return ficha.ProgramaFormacion.Nombre
+	if nombre := models.NombreProgramaDisplay(ficha); nombre != "" {
+		return nombre
 	}
-	f, err := s.fichaRepo.FindByID(ficha.ID)
-	if err != nil || f.ProgramaFormacion == nil {
+	if ficha == nil {
 		return ""
 	}
-	return f.ProgramaFormacion.Nombre
+	f, err := s.fichaRepo.FindByID(ficha.ID)
+	if err != nil || f == nil {
+		return ""
+	}
+	return models.NombreProgramaDisplay(f)
 }
 
 func (s *asistenciaAnalisisService) resolverFichaEnAlcance(
@@ -462,9 +478,9 @@ func (s *asistenciaAnalisisService) buildHoraToma(
 	sedeIDs []uint,
 	fichaIDs []uint,
 	aprendizID *uint,
-	jornada, estadoFicha string,
+	filtros repositories.AnalisisSesionFiltros,
 ) (horaTomaBuildResult, error) {
-	rows, err := s.analisisRepo.FindSesionesDetalle(desde, hasta, sedeIDs, fichaIDs, aprendizID, jornada, estadoFicha)
+	rows, err := s.analisisRepo.FindSesionesDetalle(desde, hasta, sedeIDs, fichaIDs, aprendizID, filtros)
 	if err != nil {
 		return horaTomaBuildResult{}, err
 	}
@@ -557,16 +573,16 @@ func rangoDiasFichaEnConsulta(f *models.FichaCaracterizacion, desde, hasta time.
 func (s *asistenciaAnalisisService) buildCumplimiento(
 	desde, hasta time.Time,
 	sedeIDs []uint,
-	jornada string,
 	fichaIDs []uint,
-	estadoFicha string,
+	filtros repositories.AnalisisSesionFiltros,
 	sesionesPorFicha map[uint]*fichaSesionesAgrupadas,
 ) (dto.AnalisisCumplimientoSection, error) {
-	fichas, err := s.fichaRepo.FindSolapandoRango(desde, hasta, sedeIDs, jornada, false, estadoFicha)
+	fichas, err := s.fichaRepo.FindSolapandoRango(desde, hasta, sedeIDs, filtros.Jornada, false, filtros.EstadoFicha)
 	if err != nil {
 		return dto.AnalisisCumplimientoSection{}, err
 	}
 	fichas = filtrarFichasPorIDs(fichas, fichaIDs)
+	fichas = filtrarFichasPorTipoFormacion(fichas, filtros.TipoFormacion)
 
 	items := make([]dto.AnalisisCumplimientoFicha, 0, len(fichas))
 	for i := range fichas {
@@ -607,6 +623,7 @@ func (s *asistenciaAnalisisService) buildSemanaAnterior(
 	diaSemanaID *int,
 	fichaIDs []uint,
 	estadoFicha string,
+	tipoFormacion string,
 ) (dto.AnalisisDiaSemanaSection, error) {
 	loc := utils.AppLocation()
 	desde, hasta := rangoSemanaAnteriorCompleta(time.Now())
@@ -620,7 +637,7 @@ func (s *asistenciaAnalisisService) buildSemanaAnterior(
 		if diaSemanaID != nil && *diaSemanaID > 0 && diaID != *diaSemanaID {
 			continue
 		}
-		diaRes, err := s.procesarDiaSemanaAnterior(d, sedeIDs, jornada, fichaIDs, estadoFicha)
+		diaRes, err := s.procesarDiaSemanaAnterior(d, sedeIDs, jornada, fichaIDs, estadoFicha, tipoFormacion)
 		if err != nil {
 			return dto.AnalisisDiaSemanaSection{}, err
 		}

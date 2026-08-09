@@ -34,8 +34,10 @@ function normalizeDiaIds(ids?: (number | string)[] | null): number[] {
 
 function buildFichaUpdatePayload(f: FichaCaracterizacionResponse, nuevoInstructorId: number): FichaCaracterizacionRequest {
   return {
-    programa_formacion_id: f.programa_formacion_id,
+    programa_formacion_id: f.programa_formacion_id ?? null,
+    nombre: f.nombre || f.programa_formacion_nombre || '',
     ficha: f.ficha,
+    tipo_formacion: f.tipo_formacion || 'FORMACION_REGULAR',
     instructor_id: nuevoInstructorId,
     fecha_inicio: toDateInputString(f.fecha_inicio),
     fecha_fin: toDateInputString(f.fecha_fin),

@@ -163,10 +163,7 @@ func fichaToSinSesionDTO(f models.FichaCaracterizacion, totalAprendices int) dto
 }
 
 func nombreProgramaFicha(f models.FichaCaracterizacion) string {
-	if f.ProgramaFormacion == nil {
-		return ""
-	}
-	return f.ProgramaFormacion.Nombre
+	return models.NombreProgramaDisplay(&f)
 }
 
 func nombreJornadaFicha(f models.FichaCaracterizacion) string {

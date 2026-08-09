@@ -624,6 +624,7 @@ func (h *AsistenciaHandler) GetCasosBienestar(c *gin.Context) {
 		parseDiasAnalisisQuery(c),
 		parseMinFallasQuery(c),
 		instructorLiderID,
+		c.Query("tipo_formacion"),
 	)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -666,7 +667,7 @@ func (h *AsistenciaHandler) GetMisInasistencias(c *gin.Context) {
 		c.JSON(http.StatusForbidden, gin.H{"error": "Su cuenta no está vinculada a una persona."})
 		return
 	}
-	resp, err := h.svc.GetMisInasistencias(*user.PersonaID, parseDiasAnalisisQuery(c))
+	resp, err := h.svc.GetMisInasistencias(*user.PersonaID, parseDiasAnalisisQuery(c), parseUintQuery(c, "ficha_id"))
 	if err != nil {
 		if err.Error() == "no está matriculado como aprendiz activo" {
 			c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
@@ -689,6 +690,8 @@ func (h *AsistenciaHandler) GetSesionesSinAsistenciaTomada(c *gin.Context) {
 		parseDiasAnalisisQuery(c),
 		parseUintQuery(c, "regional_id"),
 		parseUintQuery(c, "sede_id"),
+		c.Query("tipo_formacion"),
+		c.Query("jornada"),
 	)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})

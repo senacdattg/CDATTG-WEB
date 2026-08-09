@@ -87,6 +87,7 @@ type CasosBienestarRow struct {
 	ProgramaNombre       string
 	SedeNombre           string
 	JornadaNombre        string
+	TipoFormacion        string
 	InstructorNombre     string
 	AmbienteNombre       string
 	ModalidadNombre      string
@@ -128,6 +129,7 @@ type SesionSinAsistenciaTomadaRow struct {
 	ProgramaNombre      string
 	SedeNombre          string
 	JornadaNombre       string
+	TipoFormacion       string
 	SedeID              uint
 	Fecha               time.Time
 	IsFinished          bool
@@ -145,6 +147,7 @@ type AsignacionInstructorFichaReporteRaw struct {
 	ProgramaNombre    string
 	SedeNombre        string
 	JornadaNombre     string
+	TipoFormacion     string
 	SedeID            uint
 	FechaInicio       *time.Time
 	FechaFin          *time.Time
@@ -166,17 +169,18 @@ type SesionCasosBienestarRaw struct {
 
 // AprendizCasosBienestarRaw aprendiz activo con metadatos de ficha.
 type AprendizCasosBienestarRaw struct {
-	AprendizID      uint
-	FichaID         uint
-	FichaNumero     string
-	PersonaNombre   string
-	NumeroDocumento string
-	ProgramaNombre  string
-	SedeNombre      string
-	JornadaNombre   string
+	AprendizID       uint
+	FichaID          uint
+	FichaNumero      string
+	PersonaNombre    string
+	NumeroDocumento  string
+	ProgramaNombre   string
+	SedeNombre       string
+	JornadaNombre    string
+	TipoFormacion    string
 	InstructorNombre string
-	AmbienteNombre  string
-	ModalidadNombre string
+	AmbienteNombre   string
+	ModalidadNombre  string
 }
 
 // AsistenciaEfectivaRaw asistencia efectiva de un aprendiz en una sesión.
@@ -398,7 +402,7 @@ func (r *asistenciaRepository) GetDashboardResumen(sedeID *uint, fecha string) (
 	}
 	var rows []row
 	raw := `
-		SELECT fc.id AS ficha_id, fc.ficha AS ficha_numero, COALESCE(pf.nombre, '') AS programa_nombre, COALESCE(j.nombre, '') AS jornada_nombre, COALESCE(s.nombre, '') AS sede_nombre,
+		SELECT fc.id AS ficha_id, fc.ficha AS ficha_numero, ` + sqlProgramaNombreFicha + ` AS programa_nombre, COALESCE(j.nombre, '') AS jornada_nombre, COALESCE(s.nombre, '') AS sede_nombre,
 		       COUNT(DISTINCT CASE WHEN ` + asistSQLAsistioEfectivoAA + ` THEN aa.aprendiz_ficha_id END)::int AS cantidad_vinieron,
 		       COUNT(DISTINCT CASE WHEN aa.hora_ingreso IS NOT NULL AND aa.hora_salida IS NULL THEN aa.aprendiz_ficha_id END)::int AS cantidad_en_formacion,
 		       COUNT(DISTINCT af.id)::int AS total_aprendices
@@ -417,7 +421,7 @@ func (r *asistenciaRepository) GetDashboardResumen(sedeID *uint, fecha string) (
 		raw += asistSQLFilterSedeFicha
 		args = append(args, *sedeID)
 	}
-	raw += " GROUP BY fc.id, fc.ficha, pf.nombre, j.nombre, s.nombre ORDER BY fc.ficha"
+	raw += " GROUP BY fc.id, fc.ficha, fc.nombre, pf.nombre, j.nombre, s.nombre ORDER BY fc.ficha"
 	if err := r.db.Raw(raw, args...).Scan(&rows).Error; err != nil {
 		return totalAprendices, nil, err
 	}
@@ -456,7 +460,7 @@ func (r *asistenciaRepository) GetFichasSinSesionHoy(sedeID *uint, fecha string)
 	var rows []row
 	raw := `
 SELECT fc.id AS ficha_id, fc.ficha AS ficha_numero,
-			COALESCE(pf.nombre, '') AS programa_nombre,
+			COALESCE(NULLIF(BTRIM(pf.nombre), ''), NULLIF(BTRIM(fc.nombre), ''), '') AS programa_nombre,
 			COALESCE(j.nombre, '') AS jornada_nombre,
 			COALESCE(s.nombre, '') AS sede_nombre,
 			COUNT(DISTINCT af.id)::int AS total_aprendices
@@ -480,7 +484,7 @@ SELECT fc.id AS ficha_id, fc.ficha AS ficha_numero,
 		raw += asistSQLFilterSedeFicha
 		args = append(args, *sedeID)
 	}
-	raw += " GROUP BY fc.id, fc.ficha, pf.nombre, j.nombre, s.nombre ORDER BY fc.ficha"
+	raw += " GROUP BY fc.id, fc.ficha, fc.nombre, pf.nombre, j.nombre, s.nombre ORDER BY fc.ficha"
 	if err := r.db.Raw(raw, args...).Scan(&rows).Error; err != nil {
 		return nil, err
 	}
@@ -585,6 +589,7 @@ func (r *asistenciaRepository) ListAprendicesActivosCasosBienestar(sedeID *uint,
 		ProgramaNombre   string `gorm:"column:programa_nombre"`
 		SedeNombre       string `gorm:"column:sede_nombre"`
 		JornadaNombre    string `gorm:"column:jornada_nombre"`
+		TipoFormacion    string `gorm:"column:tipo_formacion"`
 		InstructorNombre string `gorm:"column:instructor_nombre"`
 		AmbienteNombre   string `gorm:"column:ambiente_nombre"`
 		ModalidadNombre  string `gorm:"column:modalidad_nombre"`
@@ -597,9 +602,10 @@ SELECT
   TRIM(COALESCE(p.primer_nombre,'') || ' ' || COALESCE(p.segundo_nombre,'') || ' ' ||
        COALESCE(p.primer_apellido,'') || ' ' || COALESCE(p.segundo_apellido,'')) AS persona_nombre,
   COALESCE(p.numero_documento,'') AS numero_documento,
-  COALESCE(pf.nombre,'') AS programa_nombre,
+  COALESCE(NULLIF(BTRIM(pf.nombre), ''), NULLIF(BTRIM(fc.nombre), ''), '') AS programa_nombre,
   COALESCE(s.nombre,'') AS sede_nombre,
   COALESCE(j.nombre,'') AS jornada_nombre,
+  COALESCE(NULLIF(BTRIM(fc.tipo_formacion), ''), 'FORMACION_REGULAR') AS tipo_formacion,
   COALESCE(
     NULLIF(TRIM(COALESCE(ip.primer_nombre,'') || ' ' || COALESCE(ip.segundo_nombre,'') || ' ' ||
          COALESCE(ip.primer_apellido,'') || ' ' || COALESCE(ip.segundo_apellido,'')), ''),
@@ -801,6 +807,7 @@ func (r *asistenciaRepository) ListSesionesSinAsistenciaTomadaEnRango(sedeIDs []
 		ProgramaNombre    string    `gorm:"column:programa_nombre"`
 		SedeNombre        string    `gorm:"column:sede_nombre"`
 		JornadaNombre     string    `gorm:"column:jornada_nombre"`
+		TipoFormacion     string    `gorm:"column:tipo_formacion"`
 		SedeID            uint      `gorm:"column:sede_id"`
 		Fecha             time.Time `gorm:"column:fecha"`
 		IsFinished        bool      `gorm:"column:is_finished"`
@@ -815,9 +822,10 @@ SELECT
   TRIM(COALESCE(p.primer_nombre,'') || ' ' || COALESCE(p.segundo_nombre,'') || ' ' ||
        COALESCE(p.primer_apellido,'') || ' ' || COALESCE(p.segundo_apellido,'')) AS instructor_nombre,
   COALESCE(p.numero_documento, '') AS numero_documento,
-  COALESCE(pf.nombre, '') AS programa_nombre,
+  COALESCE(NULLIF(BTRIM(pf.nombre), ''), NULLIF(BTRIM(fc.nombre), ''), '') AS programa_nombre,
   COALESCE(s.nombre, '') AS sede_nombre,
   COALESCE(j.nombre, '') AS jornada_nombre,
+  COALESCE(NULLIF(BTRIM(fc.tipo_formacion), ''), 'FORMACION_REGULAR') AS tipo_formacion,
   COALESCE(fc.sede_id, 0) AS sede_id,
   a.fecha::date AS fecha,
   a.is_finished
@@ -853,6 +861,7 @@ WHERE a.fecha >= ? AND a.fecha < ?
 			ProgramaNombre:     rows[i].ProgramaNombre,
 			SedeNombre:         rows[i].SedeNombre,
 			JornadaNombre:      rows[i].JornadaNombre,
+			TipoFormacion:      rows[i].TipoFormacion,
 			SedeID:             rows[i].SedeID,
 			Fecha:              rows[i].Fecha,
 			IsFinished:         rows[i].IsFinished,
@@ -900,6 +909,7 @@ func (r *asistenciaRepository) ListAsignacionesInstructorFichaActivas(sedeIDs []
 		ProgramaNombre    string     `gorm:"column:programa_nombre"`
 		SedeNombre        string     `gorm:"column:sede_nombre"`
 		JornadaNombre     string     `gorm:"column:jornada_nombre"`
+		TipoFormacion     string     `gorm:"column:tipo_formacion"`
 		SedeID            uint       `gorm:"column:sede_id"`
 		FechaInicio       *time.Time `gorm:"column:fecha_inicio"`
 		FechaFin          *time.Time `gorm:"column:fecha_fin"`
@@ -913,9 +923,10 @@ SELECT
   TRIM(COALESCE(p.primer_nombre,'') || ' ' || COALESCE(p.segundo_nombre,'') || ' ' ||
        COALESCE(p.primer_apellido,'') || ' ' || COALESCE(p.segundo_apellido,'')) AS instructor_nombre,
   COALESCE(p.numero_documento, '') AS numero_documento,
-  COALESCE(pf.nombre, '') AS programa_nombre,
+  COALESCE(NULLIF(BTRIM(pf.nombre), ''), NULLIF(BTRIM(fc.nombre), ''), '') AS programa_nombre,
   COALESCE(s.nombre, '') AS sede_nombre,
   COALESCE(j.nombre, '') AS jornada_nombre,
+  COALESCE(NULLIF(BTRIM(fc.tipo_formacion), ''), 'FORMACION_REGULAR') AS tipo_formacion,
   COALESCE(fc.sede_id, 0) AS sede_id,
   ifc.fecha_inicio,
   ifc.fecha_fin

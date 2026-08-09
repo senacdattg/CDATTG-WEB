@@ -23,7 +23,8 @@ type AsistenciaRequest struct {
 type AsistenciaRetroactivaRequest struct {
 	InstructorFichaID uint   `json:"instructor_ficha_id" binding:"required"`
 	Fecha             string `json:"fecha" binding:"required"` // YYYY-MM-DD, día pasado
-	AprendizIDs       []uint `json:"aprendiz_ids" binding:"required,min=1"`
+	AprendizIDs       []uint `json:"aprendiz_ids"`             // presentes (compat)
+	JustificadosIDs   []uint `json:"justificados_ids"`         // inasistencia justificada
 	Motivo            string `json:"motivo" binding:"required"`
 }
 
@@ -202,6 +203,8 @@ type CasoBienestarItem struct {
 	ProgramaNombre       string `json:"programa_nombre"`
 	SedeNombre           string `json:"sede_nombre"`
 	JornadaNombre        string `json:"jornada_nombre,omitempty"`
+	TipoFormacion        string `json:"tipo_formacion,omitempty"`
+	TipoFormacionLabel   string `json:"tipo_formacion_label,omitempty"`
 	InstructorNombre     string `json:"instructor_nombre,omitempty"`
 	AmbienteNombre       string `json:"ambiente_nombre,omitempty"`
 	ModalidadNombre      string `json:"modalidad_formacion_nombre,omitempty"`
@@ -228,18 +231,33 @@ type CasoBienestarAprendizDetalleResponse struct {
 	InasistenciasJustificadas []InasistenciaDetalleItem `json:"inasistencias_justificadas"`
 }
 
+// MisInasistenciasFichaOpcion ficha activa a la que está vinculado el aprendiz.
+type MisInasistenciasFichaOpcion struct {
+	AprendizID         uint   `json:"aprendiz_id"`
+	FichaID            uint   `json:"ficha_id"`
+	FichaNumero        string `json:"ficha_numero"`
+	ProgramaNombre     string `json:"programa_nombre,omitempty"`
+	TipoFormacion      string `json:"tipo_formacion,omitempty"`
+	TipoFormacionLabel string `json:"tipo_formacion_label,omitempty"`
+	SedeNombre         string `json:"sede_nombre,omitempty"`
+}
+
 // MisInasistenciasResponse detalle de inasistencias del aprendiz autenticado.
 type MisInasistenciasResponse struct {
-	AprendizID                uint                      `json:"aprendiz_id"`
-	FichaNumero               string                    `json:"ficha_numero"`
-	ProgramaNombre            string                    `json:"programa_nombre,omitempty"`
-	SedeNombre                string                    `json:"sede_nombre,omitempty"`
-	FechaInicio               string                    `json:"fecha_inicio"`
-	FechaFin                  string                    `json:"fecha_fin"`
-	TotalInasistencias        int                       `json:"total_inasistencias"` // sin justificar
-	TotalInasistenciasJustificadas int                  `json:"total_inasistencias_justificadas"`
-	Inasistencias             []InasistenciaDetalleItem `json:"inasistencias"`
-	InasistenciasJustificadas []InasistenciaDetalleItem `json:"inasistencias_justificadas"`
+	AprendizID                     uint                          `json:"aprendiz_id"`
+	FichaID                        uint                          `json:"ficha_id,omitempty"`
+	FichaNumero                    string                        `json:"ficha_numero"`
+	ProgramaNombre                 string                        `json:"programa_nombre,omitempty"`
+	TipoFormacion                  string                        `json:"tipo_formacion,omitempty"`
+	TipoFormacionLabel             string                        `json:"tipo_formacion_label,omitempty"`
+	SedeNombre                     string                        `json:"sede_nombre,omitempty"`
+	FechaInicio                    string                        `json:"fecha_inicio"`
+	FechaFin                       string                        `json:"fecha_fin"`
+	TotalInasistencias             int                           `json:"total_inasistencias"` // sin justificar
+	TotalInasistenciasJustificadas int                           `json:"total_inasistencias_justificadas"`
+	Inasistencias                  []InasistenciaDetalleItem     `json:"inasistencias"`
+	InasistenciasJustificadas      []InasistenciaDetalleItem     `json:"inasistencias_justificadas"`
+	Fichas                         []MisInasistenciasFichaOpcion `json:"fichas"`
 }
 
 // InstructorPendienteItem resume cuántos aprendices tiene un instructor con registros "por corregir" (requiere_revision=true) en el período analizado.
@@ -260,6 +278,8 @@ type SesionSinAsistenciaTomadaItem struct {
 	ProgramaNombre     string `json:"programa_nombre"`
 	SedeNombre         string `json:"sede_nombre"`
 	JornadaNombre      string `json:"jornada_nombre"`
+	TipoFormacion      string `json:"tipo_formacion,omitempty"`
+	TipoFormacionLabel string `json:"tipo_formacion_label,omitempty"`
 	Fecha              string `json:"fecha"`
 	SesionFinalizada   bool   `json:"sesion_finalizada"`
 	TipoIncumplimiento string `json:"tipo_incumplimiento"`

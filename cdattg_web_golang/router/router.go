@@ -25,6 +25,7 @@ const (
 	permCrearPersona    = "CREAR PERSONA"
 	permEditarMiPersona = "EDITAR MI PERSONA"
 	permVerFichas       = "VER FICHAS"
+	permCrearFicha      = "CREAR FICHA"
 	permCrearInstructor = "CREAR INSTRUCTOR"
 	permTomarAsistencia = "TOMAR ASISTENCIA"
 	permVerAsistencia          = "VER ASISTENCIA"
@@ -150,9 +151,10 @@ func SetupRouter() *gin.Engine {
 				fichas.GET("/:id/detalle", middleware.RequirePermissionLeerFichaIndividual(), fichaHandler.GetByIDWithDetail)
 				fichas.GET("/:id/codigo", middleware.RequirePermissionVerFichaOrInstructorDeFicha(), fichaHandler.GetCodigo)
 				fichas.GET("/:id", middleware.RequirePermissionLeerFichaIndividual(), fichaHandler.GetByID)
-				fichas.POST(routeImport, middleware.RequirePermission("ficha", "CREAR FICHA"), fichaHandler.ImportFichas)
+				fichas.GET(routeImport+"/template", middleware.RequirePermission("ficha", permCrearFicha), fichaHandler.DownloadFichaImportTemplate)
+				fichas.POST(routeImport, middleware.RequirePermission("ficha", permCrearFicha), fichaHandler.ImportFichas)
 				fichas.GET("/export/all", middleware.RequirePermission("ficha", permVerFichas), fichaHandler.ExportAllExcel)
-				fichas.POST("", middleware.RequirePermission("ficha", "CREAR FICHA"), fichaHandler.Create)
+				fichas.POST("", middleware.RequirePermission("ficha", permCrearFicha), fichaHandler.Create)
 				fichas.PUT("/:id", middleware.RequirePermission("ficha", "EDITAR FICHA"), fichaHandler.Update)
 				fichas.DELETE("/:id", middleware.RequirePermission("ficha", "ELIMINAR FICHA"), fichaHandler.Delete)
 				fichas.GET("/:id/instructores", middleware.RequirePermissionListInstructoresFicha(), fichaHandler.ListInstructores)

@@ -66,7 +66,7 @@ export const SIDEBAR_MANIFEST: SidebarManifestItem[] = [
   {
     section: 'Formación',
     path: fichasPaths.index,
-    label: 'Fichas',
+    label: 'Formación Regular',
     permission: 'VER FICHAS',
     alsoVisibleForRoles: ['INSTRUCTOR'],
     iconKey: 'fichas',

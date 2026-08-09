@@ -6,6 +6,8 @@ import { axiosErrorMessage } from '../../utils/httpError';
 import { useAuth } from '../../context/AuthContext';
 import { asistenciaPaths } from '../../routes/paths';
 import type { AprendizResponse, FichaCaracterizacionResponse, InstructorFichaResponse } from '../../types';
+import { tituloProgramaFicha } from '../../utils/fichaListDisplay';
+import { labelTipoFormacion } from '../../constants/tipoFormacion';
 
 const MAX_DIAS_ATRAS = 30;
 
@@ -46,6 +48,8 @@ function etiquetaInstructorRetroactiva(i: InstructorFichaResponse): string {
   return email ? `${nombre} (${email})` : `${nombre} (#${i.instructor_id})`;
 }
 
+type EstadoAprendizRetro = '' | 'presente' | 'justificada';
+
 export function CargaRetroactivaAsistenciaPage() {
   const { roles } = useAuth();
   const isSuperAdmin = roles.includes('SUPER ADMINISTRADOR');
@@ -55,7 +59,7 @@ export function CargaRetroactivaAsistenciaPage() {
   const [instructores, setInstructores] = useState<InstructorFichaResponse[]>([]);
   const [instructorFichaId, setInstructorFichaId] = useState<number | ''>('');
   const [aprendices, setAprendices] = useState<AprendizResponse[]>([]);
-  const [seleccionados, setSeleccionados] = useState<Set<number>>(new Set());
+  const [estados, setEstados] = useState<Record<number, EstadoAprendizRetro>>({});
   const [fecha, setFecha] = useState(ultimoDiaHabilISO());
   const [motivo, setMotivo] = useState('');
   const [buscarFicha, setBuscarFicha] = useState('');
@@ -86,7 +90,7 @@ export function CargaRetroactivaAsistenciaPage() {
       setInstructores([]);
       setInstructorFichaId('');
       setAprendices([]);
-      setSeleccionados(new Set());
+      setEstados({});
       return;
     }
     (async () => {
@@ -101,7 +105,7 @@ export function CargaRetroactivaAsistenciaPage() {
         setInstructorFichaId(inst.length === 1 ? inst[0].id : '');
         const visibles = aprs.filter((a) => a.estado && !a.oculto_en_asistencia);
         setAprendices(visibles);
-        setSeleccionados(new Set());
+        setEstados({});
       } catch (e: unknown) {
         setError(axiosErrorMessage(e, 'Error al cargar instructores o aprendices.'));
       } finally {
@@ -117,8 +121,9 @@ export function CargaRetroactivaAsistenciaPage() {
     return base.filter(
       (f) =>
         f.ficha.toLowerCase().includes(q) ||
-        (f.programa_formacion_nombre || '').toLowerCase().includes(q) ||
-        (f.instructor_nombre || '').toLowerCase().includes(q),
+        tituloProgramaFicha(f).toLowerCase().includes(q) ||
+        (f.instructor_nombre || '').toLowerCase().includes(q) ||
+        labelTipoFormacion(f.tipo_formacion).toLowerCase().includes(q),
     );
   }, [fichas, buscarFicha]);
 
@@ -127,24 +132,41 @@ export function CargaRetroactivaAsistenciaPage() {
     [fichas, fichaId],
   );
 
-  const toggleAprendiz = useCallback((id: number) => {
-    setSeleccionados((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
+  const presentes = useMemo(
+    () => aprendices.filter((a) => estados[a.id] === 'presente').map((a) => a.id),
+    [aprendices, estados],
+  );
+  const justificados = useMemo(
+    () => aprendices.filter((a) => estados[a.id] === 'justificada').map((a) => a.id),
+    [aprendices, estados],
+  );
+
+  const setEstadoAprendiz = useCallback((id: number, value: EstadoAprendizRetro) => {
+    setEstados((prev) => {
+      const next = { ...prev };
+      if (!value) delete next[id];
+      else next[id] = value;
       return next;
     });
   }, []);
 
-  const seleccionarTodos = useCallback(() => {
-    setSeleccionados(new Set(aprendices.map((a) => a.id)));
+  const marcarTodosPresentes = useCallback(() => {
+    const next: Record<number, EstadoAprendizRetro> = {};
+    for (const a of aprendices) next[a.id] = 'presente';
+    setEstados(next);
   }, [aprendices]);
+
+  const limpiarEstados = useCallback(() => setEstados({}), []);
 
   const enviarAsistencia = async () => {
     setError('');
     setExito('');
-    if (!instructorFichaId || !fecha || seleccionados.size === 0 || !motivo.trim()) {
-      setError('Complete ficha, instructor, fecha, motivo y al menos un aprendiz.');
+    if (!instructorFichaId || !fecha || !motivo.trim()) {
+      setError('Complete ficha, instructor, fecha y motivo.');
+      return;
+    }
+    if (presentes.length === 0 && justificados.length === 0) {
+      setError('Marque al menos un aprendiz como presente o con inasistencia justificada.');
       return;
     }
     try {
@@ -152,13 +174,14 @@ export function CargaRetroactivaAsistenciaPage() {
       const res = await apiService.registrarAsistenciaRetroactiva({
         instructor_ficha_id: instructorFichaId,
         fecha,
-        aprendiz_ids: Array.from(seleccionados),
+        aprendiz_ids: presentes,
+        justificados_ids: justificados,
         motivo: motivo.trim(),
       });
       setExito(
-        `Registrados: ${res.registrados}. Omitidos (ya existían): ${res.omitidos}. Sesión #${res.asistencia.id}.`,
+        `Registrados: ${res.registrados} (presentes: ${presentes.length}, justificados: ${justificados.length}). Omitidos (ya existían): ${res.omitidos}. Sesión #${res.asistencia.id}.`,
       );
-      setSeleccionados(new Set());
+      setEstados({});
       setMotivo('');
     } catch (err: unknown) {
       const status = (err as { response?: { status?: number } }).response?.status;
@@ -256,7 +279,7 @@ export function CargaRetroactivaAsistenciaPage() {
                 <option value="">Seleccione ficha…</option>
                 {fichasFiltradas.map((f) => (
                   <option key={f.id} value={f.id}>
-                    {f.ficha} — {f.programa_formacion_nombre || 'Sin programa'}
+                    {f.ficha} — {tituloProgramaFicha(f) || 'Sin programa'} ({labelTipoFormacion(f.tipo_formacion)})
                   </option>
                 ))}
               </select>
@@ -311,8 +334,9 @@ export function CargaRetroactivaAsistenciaPage() {
             {fichaSeleccionada && (
               <div className="flex flex-col justify-end text-sm text-gray-600 dark:text-gray-400">
                 <span>
-                  Programa: {fichaSeleccionada.programa_formacion_nombre || '—'}
+                  Programa / nombre: {tituloProgramaFicha(fichaSeleccionada) || '—'}
                 </span>
+                <span>Tipo: {labelTipoFormacion(fichaSeleccionada.tipo_formacion)}</span>
                 <span>Jornada: {fichaSeleccionada.jornada_nombre || '—'}</span>
               </div>
             )}
@@ -336,22 +360,35 @@ export function CargaRetroactivaAsistenciaPage() {
         <div className="card space-y-4">
           <div className="flex items-center justify-between gap-3 flex-wrap">
             <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-              Aprendices presentes{' '}
+              Aprendices{' '}
               <span className="ml-2 text-sm font-normal text-gray-500 dark:text-gray-400 tabular-nums">
-                ({seleccionados.size}/{aprendices.length})
+                ({presentes.length} presentes · {justificados.length} justificados / {aprendices.length})
               </span>
             </h2>
             <div className="flex gap-3">
               <button
                 type="button"
                 className="text-sm text-primary-600 dark:text-primary-400 hover:underline disabled:opacity-50"
-                onClick={seleccionarTodos}
+                onClick={marcarTodosPresentes}
                 disabled={aprendices.length === 0}
               >
-                Todos
+                Todos presentes
+              </button>
+              <button
+                type="button"
+                className="text-sm text-gray-600 dark:text-gray-400 hover:underline disabled:opacity-50"
+                onClick={limpiarEstados}
+                disabled={aprendices.length === 0}
+              >
+                Limpiar
               </button>
             </div>
           </div>
+
+          <p className="text-xs text-gray-500 dark:text-gray-400">
+            Por cada aprendiz elija: sin marcar (inasistencia sin justificar si hay sesión), presente, o inasistencia
+            justificada.
+          </p>
 
           {loadingDetalle && (
             <output className="block text-sm text-gray-500 dark:text-gray-400">
@@ -365,25 +402,33 @@ export function CargaRetroactivaAsistenciaPage() {
           )}
 
           {aprendices.length > 0 && (
-            <ul className="max-h-72 overflow-y-auto rounded-lg border border-gray-200 dark:border-gray-600 divide-y divide-gray-200 dark:divide-gray-600 bg-gray-50 dark:bg-gray-900/40">
+            <ul className="max-h-80 overflow-y-auto rounded-lg border border-gray-200 dark:border-gray-600 divide-y divide-gray-200 dark:divide-gray-600 bg-gray-50 dark:bg-gray-900/40">
               {aprendices.map((a) => (
-                <li key={a.id} className="px-4 py-2.5 hover:bg-white/60 dark:hover:bg-gray-700/40 transition-colors">
-                  <label className="flex items-center gap-3 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={seleccionados.has(a.id)}
-                      onChange={() => toggleAprendiz(a.id)}
-                      className="h-4 w-4 rounded border-gray-300 dark:border-gray-500 text-primary-600 focus:ring-primary-500 dark:bg-gray-700"
-                    />
-                    <span className="text-sm text-gray-900 dark:text-gray-100">
-                      {a.persona_nombre}
-                      {a.persona_documento ? (
-                        <span className="text-gray-500 dark:text-gray-400 ml-2 tabular-nums">
-                          Doc. {a.persona_documento}
-                        </span>
-                      ) : null}
-                    </span>
+                <li
+                  key={a.id}
+                  className="flex flex-wrap items-center justify-between gap-3 px-4 py-2.5 hover:bg-white/60 dark:hover:bg-gray-700/40 transition-colors"
+                >
+                  <span className="text-sm text-gray-900 dark:text-gray-100">
+                    {a.persona_nombre}
+                    {a.persona_documento ? (
+                      <span className="text-gray-500 dark:text-gray-400 ml-2 tabular-nums">
+                        Doc. {a.persona_documento}
+                      </span>
+                    ) : null}
+                  </span>
+                  <label className="sr-only" htmlFor={`estado-apr-${a.id}`}>
+                    Estado de {a.persona_nombre}
                   </label>
+                  <select
+                    id={`estado-apr-${a.id}`}
+                    value={estados[a.id] ?? ''}
+                    onChange={(e) => setEstadoAprendiz(a.id, e.target.value as EstadoAprendizRetro)}
+                    className="input-field w-full max-w-[14rem] text-sm py-1.5"
+                  >
+                    <option value="">Sin marcar</option>
+                    <option value="presente">Presente</option>
+                    <option value="justificada">Inasistencia justificada</option>
+                  </select>
                 </li>
               ))}
             </ul>

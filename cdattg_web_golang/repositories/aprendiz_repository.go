@@ -21,6 +21,8 @@ type AprendizRepository interface {
 	FindByPersonaID(personaID uint) (*models.Aprendiz, error)
 	FindActivoByPersonaID(personaID uint) (*models.Aprendiz, error)
 	FindActivosByPersonaID(personaID uint) ([]models.Aprendiz, error)
+	// FindAllByPersonaID todas las matrículas de la persona (activas e inactivas), con ficha precargada.
+	FindAllByPersonaID(personaID uint) ([]models.Aprendiz, error)
 	FindAll(page, pageSize int, fichaID *uint, search string) ([]models.Aprendiz, int64, error)
 	Create(a *models.Aprendiz) error
 	Update(a *models.Aprendiz) error
@@ -92,6 +94,22 @@ func (r *aprendizRepository) FindActivosByPersonaID(personaID uint) ([]models.Ap
 	var list []models.Aprendiz
 	err := r.db.Where("persona_id = ? AND estado = ?", personaID, true).
 		Order("updated_at DESC").
+		Preload("FichaCaracterizacion").
+		Preload(aprendizPreloadFichaPrograma).
+		Preload("FichaCaracterizacion.Jornada").
+		Preload(aprendizPreloadFichaSedeRegional).
+		Find(&list).Error
+	if err != nil {
+		return nil, err
+	}
+	return list, nil
+}
+
+// FindAllByPersonaID todas las matrículas de la persona (activas e inactivas).
+func (r *aprendizRepository) FindAllByPersonaID(personaID uint) ([]models.Aprendiz, error) {
+	var list []models.Aprendiz
+	err := r.db.Where("persona_id = ?", personaID).
+		Order("estado DESC, updated_at DESC").
 		Preload("FichaCaracterizacion").
 		Preload(aprendizPreloadFichaPrograma).
 		Preload("FichaCaracterizacion.Jornada").

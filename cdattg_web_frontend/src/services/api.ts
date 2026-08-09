@@ -1004,7 +1004,11 @@ class ApiService {
   }
 
   /** Inasistencias del aprendiz autenticado (resuelto por persona_id del JWT). */
-  async getMisInasistencias(params?: { dias?: number; ficha_id?: number }): Promise<MisInasistenciasResponse> {
+  async getMisInasistencias(params?: {
+    dias?: number;
+    ficha_id?: number;
+    estado_ficha?: 'activas' | 'inactivas' | 'todas';
+  }): Promise<MisInasistenciasResponse> {
     const response = await this.api.get<MisInasistenciasResponse>('/asistencias/mis-inasistencias', { params });
     return response.data;
   }

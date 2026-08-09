@@ -235,7 +235,7 @@ type CasoBienestarAprendizDetalleResponse struct {
 	InasistenciasJustificadas []InasistenciaDetalleItem `json:"inasistencias_justificadas"`
 }
 
-// MisInasistenciasFichaOpcion ficha activa a la que está vinculado el aprendiz.
+// MisInasistenciasFichaOpcion ficha a la que está vinculado el aprendiz (activa o no según filtro).
 type MisInasistenciasFichaOpcion struct {
 	AprendizID         uint   `json:"aprendiz_id"`
 	FichaID            uint   `json:"ficha_id"`
@@ -244,6 +244,7 @@ type MisInasistenciasFichaOpcion struct {
 	TipoFormacion      string `json:"tipo_formacion,omitempty"`
 	TipoFormacionLabel string `json:"tipo_formacion_label,omitempty"`
 	SedeNombre         string `json:"sede_nombre,omitempty"`
+	Activa             bool   `json:"activa"`
 }
 
 // MisInasistenciasResponse detalle de inasistencias del aprendiz autenticado.

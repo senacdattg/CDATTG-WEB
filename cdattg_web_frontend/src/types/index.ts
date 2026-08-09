@@ -887,6 +887,8 @@ export interface MisInasistenciasFichaOpcion {
   tipo_formacion?: string;
   tipo_formacion_label?: string;
   sede_nombre?: string;
+  /** Matrícula y ficha vigentes. */
+  activa?: boolean;
 }
 
 export interface MisInasistenciasResponse {
@@ -904,7 +906,7 @@ export interface MisInasistenciasResponse {
   total_inasistencias_justificadas?: number;
   inasistencias: InasistenciaDetalleItem[];
   inasistencias_justificadas?: InasistenciaDetalleItem[];
-  /** Todas las fichas activas del aprendiz (para selector). */
+  /** Fichas del aprendiz según filtro estado_ficha. */
   fichas?: MisInasistenciasFichaOpcion[];
 }
 

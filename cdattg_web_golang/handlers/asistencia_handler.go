@@ -660,7 +660,8 @@ func (h *AsistenciaHandler) GetDetalleInasistenciasAprendiz(c *gin.Context) {
 	c.JSON(http.StatusOK, resp)
 }
 
-// GetMisInasistencias devuelve las inasistencias del aprendiz autenticado (resuelto por persona_id del JWT). Query: dias (default 30, 0=histórico completo).
+// GetMisInasistencias devuelve las inasistencias del aprendiz autenticado (resuelto por persona_id del JWT).
+// Query: dias (default 30, 0=histórico), ficha_id, estado_ficha (activas|inactivas|todas, default activas).
 func (h *AsistenciaHandler) GetMisInasistencias(c *gin.Context) {
 	u, _ := c.Get("user")
 	user, _ := u.(*models.User)
@@ -668,13 +669,19 @@ func (h *AsistenciaHandler) GetMisInasistencias(c *gin.Context) {
 		c.JSON(http.StatusForbidden, gin.H{"error": "Su cuenta no está vinculada a una persona."})
 		return
 	}
-	resp, err := h.svc.GetMisInasistencias(*user.PersonaID, parseDiasAnalisisQuery(c), parseUintQuery(c, "ficha_id"))
+	resp, err := h.svc.GetMisInasistencias(
+		*user.PersonaID,
+		parseDiasAnalisisQuery(c),
+		parseUintQuery(c, "ficha_id"),
+		c.Query("estado_ficha"),
+	)
 	if err != nil {
-		if err.Error() == "no está matriculado como aprendiz activo" {
-			c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		msg := err.Error()
+		if msg == "no está matriculado como aprendiz activo" || msg == "no tiene fichas con el estado seleccionado" {
+			c.JSON(http.StatusNotFound, gin.H{"error": msg})
 			return
 		}
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"error": msg})
 		return
 	}
 	c.JSON(http.StatusOK, resp)

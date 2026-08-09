@@ -67,7 +67,7 @@ type AsistenciaService interface {
 	GetDashboard(sedeID *uint, fecha, tipoFormacion, jornada string) (*dto.AsistenciaDashboardResponse, error)
 	GetCasosBienestar(sedeID *uint, dias, minFallas int, instructorLiderID *uint, tipoFormacion string) (*dto.CasosBienestarResponse, error)
 	GetDetalleInasistenciasAprendiz(fichaNumero string, aprendizID uint, dias int, sedeNombre string, instructorLiderID *uint) (*dto.CasoBienestarAprendizDetalleResponse, error)
-	GetMisInasistencias(personaID uint, dias int, fichaID *uint) (*dto.MisInasistenciasResponse, error)
+	GetMisInasistencias(personaID uint, dias int, fichaID *uint, estadoFicha string) (*dto.MisInasistenciasResponse, error)
 	GetSesionesSinAsistenciaTomada(userID uint, roles []string, dias int, regionalID, sedeID *uint, tipoFormacion, jornada string) (*dto.SesionesSinAsistenciaTomadaResponse, error)
 	AjustarEstadoAprendiz(asistenciaAprendizID uint, estado, motivo string, instructorFichaIDRegistroSalida *uint) (*dto.AsistenciaAprendizResponse, error)
 	ListPendientesRevision(instructorID uint, fecha string) ([]dto.AsistenciaAprendizResponse, error)
@@ -1039,6 +1039,7 @@ func (s *asistenciaService) GetDetalleInasistenciasAprendiz(fichaNumero string, 
 }
 
 const errMsgAprendizActivoNoEncontrado = "no está matriculado como aprendiz activo"
+const errMsgAprendizFichaFiltroVacio = "no tiene fichas con el estado seleccionado"
 
 func labelTipoFormacionMisInasistencias(tipo string) string {
 	switch strings.TrimSpace(tipo) {
@@ -1051,8 +1052,51 @@ func labelTipoFormacionMisInasistencias(tipo string) string {
 	}
 }
 
+func normalizarEstadoFichaMisInasistencias(v string) string {
+	switch strings.ToLower(strings.TrimSpace(v)) {
+	case "inactivas":
+		return "inactivas"
+	case "todas":
+		return "todas"
+	default:
+		return "activas"
+	}
+}
+
+// matriculaActivaMisInasistencias: matrícula activa y ficha vigente (si hay ficha).
+func matriculaActivaMisInasistencias(a models.Aprendiz) bool {
+	if !a.Estado {
+		return false
+	}
+	if a.FichaCaracterizacion == nil {
+		return true
+	}
+	return a.FichaCaracterizacion.Status
+}
+
+func filtrarMatriculasMisInasistencias(list []models.Aprendiz, estadoFicha string) []models.Aprendiz {
+	estado := normalizarEstadoFichaMisInasistencias(estadoFicha)
+	if estado == "todas" {
+		return list
+	}
+	out := make([]models.Aprendiz, 0, len(list))
+	for i := range list {
+		activa := matriculaActivaMisInasistencias(list[i])
+		if estado == "activas" && activa {
+			out = append(out, list[i])
+		}
+		if estado == "inactivas" && !activa {
+			out = append(out, list[i])
+		}
+	}
+	return out
+}
+
 func opcionFichaMisInasistencias(a models.Aprendiz) dto.MisInasistenciasFichaOpcion {
-	op := dto.MisInasistenciasFichaOpcion{AprendizID: a.ID}
+	op := dto.MisInasistenciasFichaOpcion{
+		AprendizID: a.ID,
+		Activa:     matriculaActivaMisInasistencias(a),
+	}
 	if a.FichaCaracterizacion == nil {
 		return op
 	}
@@ -1071,16 +1115,16 @@ func opcionFichaMisInasistencias(a models.Aprendiz) dto.MisInasistenciasFichaOpc
 	return op
 }
 
-func seleccionarAprendizMisInasistencias(activos []models.Aprendiz, fichaID *uint) (*models.Aprendiz, error) {
+func seleccionarAprendizMisInasistencias(matriculas []models.Aprendiz, fichaID *uint) (*models.Aprendiz, error) {
 	if fichaID != nil && *fichaID > 0 {
-		for i := range activos {
-			if activos[i].FichaCaracterizacionID == *fichaID {
-				return &activos[i], nil
+		for i := range matriculas {
+			if matriculas[i].FichaCaracterizacionID == *fichaID {
+				return &matriculas[i], nil
 			}
 		}
-		return nil, errors.New("no está matriculado como aprendiz activo en la ficha indicada")
+		return nil, errors.New("no está matriculado en la ficha indicada con el filtro seleccionado")
 	}
-	return &activos[0], nil
+	return &matriculas[0], nil
 }
 
 func metaFichaMisInasistencias(aprendiz *models.Aprendiz) (fichaID uint, fichaNumero, programa, sede, tipo string) {
@@ -1101,21 +1145,32 @@ func metaFichaMisInasistencias(aprendiz *models.Aprendiz) (fichaID uint, fichaNu
 	return fichaID, fichaNumero, programa, sede, tipo
 }
 
-func (s *asistenciaService) GetMisInasistencias(personaID uint, dias int, fichaID *uint) (*dto.MisInasistenciasResponse, error) {
+func (s *asistenciaService) GetMisInasistencias(personaID uint, dias int, fichaID *uint, estadoFicha string) (*dto.MisInasistenciasResponse, error) {
 	if personaID == 0 {
 		return nil, errors.New(errMsgAprendizActivoNoEncontrado)
 	}
-	activos, err := s.aprendizRepo.FindActivosByPersonaID(personaID)
-	if err != nil || len(activos) == 0 {
+	estado := normalizarEstadoFichaMisInasistencias(estadoFicha)
+	todas, err := s.aprendizRepo.FindAllByPersonaID(personaID)
+	if err != nil {
+		return nil, err
+	}
+	if len(todas) == 0 {
 		return nil, errors.New(errMsgAprendizActivoNoEncontrado)
 	}
-
-	opciones := make([]dto.MisInasistenciasFichaOpcion, 0, len(activos))
-	for i := range activos {
-		opciones = append(opciones, opcionFichaMisInasistencias(activos[i]))
+	matriculas := filtrarMatriculasMisInasistencias(todas, estado)
+	if len(matriculas) == 0 {
+		if estado == "activas" {
+			return nil, errors.New(errMsgAprendizActivoNoEncontrado)
+		}
+		return nil, errors.New(errMsgAprendizFichaFiltroVacio)
 	}
 
-	aprendiz, errSel := seleccionarAprendizMisInasistencias(activos, fichaID)
+	opciones := make([]dto.MisInasistenciasFichaOpcion, 0, len(matriculas))
+	for i := range matriculas {
+		opciones = append(opciones, opcionFichaMisInasistencias(matriculas[i]))
+	}
+
+	aprendiz, errSel := seleccionarAprendizMisInasistencias(matriculas, fichaID)
 	if errSel != nil {
 		return nil, errSel
 	}

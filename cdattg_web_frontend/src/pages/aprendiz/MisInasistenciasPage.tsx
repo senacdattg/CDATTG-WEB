@@ -10,6 +10,16 @@ import {
 import { useMisInasistencias } from './hooks/useMisInasistencias';
 import { EleccionRepresentantesBanner } from '../../components/elecciones/EleccionRepresentantesBanner';
 
+function sufijoEstadoEnSelect(mostrarEstados: boolean, activa: boolean | undefined): string {
+  if (!mostrarEstados) return '';
+  return activa === false ? ' · Inactiva' : ' · Activa';
+}
+
+function etiquetaEstadoFichaUnica(mostrarEstados: boolean, activa: boolean | undefined): string {
+  if (!mostrarEstados) return '';
+  return activa === false ? ' (inactiva)' : ' (activa)';
+}
+
 export function MisInasistenciasPage() {
   const { roles, permissions } = useAuth();
   const canView = canViewMisInasistencias(roles, permissions);
@@ -17,6 +27,9 @@ export function MisInasistenciasPage() {
     dias,
     setDias,
     diasOpciones,
+    estadoFicha,
+    setEstadoFicha,
+    estadoFichaOpciones,
     fichaId,
     setFichaId,
     fichas,
@@ -34,6 +47,7 @@ export function MisInasistenciasPage() {
   const justificadas = data?.inasistencias_justificadas ?? [];
   const totalJustificadas = data?.total_inasistencias_justificadas ?? justificadas.length;
   const variasFichas = fichas.length > 1;
+  const mostrarSufijoEstado = estadoFicha === 'todas';
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
@@ -61,30 +75,50 @@ export function MisInasistenciasPage() {
       <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-800">
         <div className="flex flex-wrap items-end justify-between gap-4 border-b border-gray-100 pb-4 dark:border-gray-700">
           <div className="min-w-[16rem] flex-1 space-y-2 text-sm text-gray-600 dark:text-gray-400">
-            {variasFichas ? (
-              <label className="flex flex-col gap-1">
-                <span className="font-medium text-gray-700 dark:text-gray-300">Ficha</span>
+            <div className="flex flex-wrap gap-3">
+              <label className="flex min-w-[10rem] flex-col gap-1">
+                <span className="font-medium text-gray-700 dark:text-gray-300">Estado de ficha</span>
                 <select
-                  value={fichaId ?? ''}
-                  onChange={(e) => setFichaId(e.target.value ? Number(e.target.value) : null)}
+                  value={estadoFicha}
+                  onChange={(e) => setEstadoFicha(e.target.value as typeof estadoFicha)}
                   className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-900"
                   disabled={loading}
                 >
-                  {fichas.map((f) => (
-                    <option key={f.ficha_id} value={f.ficha_id}>
-                      {f.ficha_numero}
-                      {f.programa_nombre ? ` — ${f.programa_nombre}` : ''}
-                      {f.tipo_formacion_label ? ` (${f.tipo_formacion_label})` : ''}
+                  {estadoFichaOpciones.map((opcion) => (
+                    <option key={opcion.value} value={opcion.value}>
+                      {opcion.label}
                     </option>
                   ))}
                 </select>
               </label>
-            ) : (
+              {variasFichas ? (
+                <label className="flex min-w-[16rem] flex-1 flex-col gap-1">
+                  <span className="font-medium text-gray-700 dark:text-gray-300">Ficha</span>
+                  <select
+                    value={fichaId ?? ''}
+                    onChange={(e) => setFichaId(e.target.value ? Number(e.target.value) : null)}
+                    className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-900"
+                    disabled={loading}
+                  >
+                    {fichas.map((f) => (
+                      <option key={f.ficha_id} value={f.ficha_id}>
+                        {f.ficha_numero}
+                        {f.programa_nombre ? ` — ${f.programa_nombre}` : ''}
+                        {f.tipo_formacion_label ? ` (${f.tipo_formacion_label})` : ''}
+                        {sufijoEstadoEnSelect(mostrarSufijoEstado, f.activa)}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              ) : null}
+            </div>
+            {!variasFichas && (
               <>
                 {data?.ficha_numero && (
                   <p>
                     <span className="font-medium text-gray-800 dark:text-gray-200">Ficha: </span>
                     {data.ficha_numero}
+                    {etiquetaEstadoFichaUnica(mostrarSufijoEstado && Boolean(fichas[0]), fichas[0]?.activa)}
                   </p>
                 )}
                 {data?.programa_nombre && (

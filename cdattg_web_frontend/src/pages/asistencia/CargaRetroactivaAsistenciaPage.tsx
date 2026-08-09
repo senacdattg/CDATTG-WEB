@@ -144,8 +144,8 @@ export function CargaRetroactivaAsistenciaPage() {
   const setEstadoAprendiz = useCallback((id: number, value: EstadoAprendizRetro) => {
     setEstados((prev) => {
       const next = { ...prev };
-      if (!value) delete next[id];
-      else next[id] = value;
+      if (value) next[id] = value;
+      else delete next[id];
       return next;
     });
   }, []);

@@ -352,7 +352,7 @@ func (h *FichaHandler) OcultarAprendicesEnAsistencia(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": msg})
 }
 
-// DownloadFichaImportTemplate descarga la plantilla Excel para importar fichas (Media Técnica / Complementaria).
+// DownloadFichaImportTemplate descarga la plantilla Excel para importar fichas.
 func (h *FichaHandler) DownloadFichaImportTemplate(c *gin.Context) {
 	buf, err := h.importSvc.BuildImportTemplate()
 	if err != nil {
@@ -364,7 +364,7 @@ func (h *FichaHandler) DownloadFichaImportTemplate(c *gin.Context) {
 }
 
 // ImportFichas sube un Excel de reporte de aprendices (ficha de caracterización) e importa ficha y personas como aprendices.
-// Solo permitido para MEDIA_TECNICA y FORMACION_COMPLEMENTARIA (campo form tipo_formacion).
+// Requiere campo form tipo_formacion (FORMACION_REGULAR, MEDIA_TECNICA o FORMACION_COMPLEMENTARIA).
 func (h *FichaHandler) ImportFichas(c *gin.Context) {
 	tipoFormacion, err := services.AllowTipoFormacionImportExport(c.PostForm("tipo_formacion"))
 	if err != nil {
@@ -409,7 +409,7 @@ func (h *FichaHandler) ImportFichas(c *gin.Context) {
 }
 
 // ExportAllExcel genera un archivo Excel con una hoja por ficha y su listado de aprendices activos.
-// Solo permitido para MEDIA_TECNICA y FORMACION_COMPLEMENTARIA (query tipo_formacion).
+// Filtra por query tipo_formacion (FORMACION_REGULAR, MEDIA_TECNICA o FORMACION_COMPLEMENTARIA).
 func (h *FichaHandler) ExportAllExcel(c *gin.Context) {
 	tipoFormacion, err := services.AllowTipoFormacionImportExport(c.Query("tipo_formacion"))
 	if err != nil {

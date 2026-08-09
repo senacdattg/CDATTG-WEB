@@ -278,8 +278,8 @@ export const FichasCaracterizacion = () => {
   const location = useLocation();
   const tipoFormacion = useMemo(() => tipoFormacionDesdePath(location.pathname), [location.pathname]);
   const tituloTipo = labelTipoFormacion(tipoFormacion);
-  const permiteImportExport =
-    tipoFormacion === TIPO_FORMACION.MEDIA_TECNICA || tipoFormacion === TIPO_FORMACION.COMPLEMENTARIA;
+  const permiteImportExport = true;
+  const mostrarFiltroPrograma = tipoFormacion === TIPO_FORMACION.REGULAR;
   const puedeProgramarInstructores = canProgramarInstructores(roles, hasPermission);
   const [list, setList] = useState<FichaCaracterizacionResponse[]>([]);
   const [programas, setProgramas] = useState<ProgramaFormacionResponse[]>([]);
@@ -506,7 +506,7 @@ export const FichasCaracterizacion = () => {
             />
           </div>
         </div>
-        {!permiteImportExport && (
+        {mostrarFiltroPrograma && (
           <div className="w-full sm:w-auto min-w-[250px]">
             <label
               htmlFor="fichas-admin-programa"

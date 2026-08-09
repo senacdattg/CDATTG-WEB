@@ -32,14 +32,14 @@ type FichaImportService interface {
 	BuildImportTemplate() ([]byte, error)
 }
 
-// AllowTipoFormacionImportExport restringe import/export a Media Técnica y Formación Complementaria.
+// AllowTipoFormacionImportExport valida el tipo para import/export de fichas.
 func AllowTipoFormacionImportExport(v string) (string, error) {
 	t := strings.TrimSpace(strings.ToUpper(v))
 	switch t {
-	case models.TipoFormacionMediaTecnica, models.TipoFormacionComplementaria:
+	case models.TipoFormacionRegular, models.TipoFormacionMediaTecnica, models.TipoFormacionComplementaria:
 		return t, nil
 	default:
-		return "", fmt.Errorf("importación/exportación solo permitida para MEDIA_TECNICA o FORMACION_COMPLEMENTARIA")
+		return "", fmt.Errorf("tipo_formacion inválido para importación/exportación (use FORMACION_REGULAR, MEDIA_TECNICA o FORMACION_COMPLEMENTARIA)")
 	}
 }
 
@@ -220,8 +220,8 @@ func (s *fichaImportService) BuildImportTemplate() ([]byte, error) {
 	if sheet == "" {
 		sheet = "Sheet1"
 	}
-	_ = f.SetCellValue(sheet, "A1", "Plantilla importación ficha (Media Técnica / Complementaria)")
-	_ = f.SetCellValue(sheet, "A2", "Reemplace el código, el nombre de la formación y las filas de ejemplo. El nombre no se liga al catálogo de programas.")
+	_ = f.SetCellValue(sheet, "A1", "Plantilla importación ficha (Formación Regular / Media Técnica / Complementaria)")
+	_ = f.SetCellValue(sheet, "A2", "Reemplace el código, el nombre de la formación y las filas de ejemplo.")
 	_ = f.SetCellValue(sheet, "A3", "Ficha de Caracterización:")
 	_ = f.SetCellValue(sheet, "C3", "1234567 - NOMBRE DE LA FORMACION")
 	headers := []string{

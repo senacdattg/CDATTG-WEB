@@ -29,6 +29,7 @@ const (
 	roleAdministrador             = "ADMINISTRADOR"
 	roleCoordinador               = "COORDINADOR"
 	roleBienestarAprendiz         = "BIENESTAR AL APRENDIZ"
+	roleFPI                       = "FPI"
 	roleInstructor                = "INSTRUCTOR"
 	actVerPersona                 = "VER PERSONA"
 	actVerFicha                   = "VER FICHA"
@@ -637,7 +638,7 @@ func requireAnyRole(allowed ...string) gin.HandlerFunc {
 	}
 }
 
-// RequireSuperAdminAdminOrCoordinator permite acceso a SUPER ADMINISTRADOR, ADMINISTRADOR o COORDINADOR.
+// RequireSuperAdminAdminOrCoordinator permite acceso a SUPER ADMINISTRADOR, ADMINISTRADOR, COORDINADOR o FPI.
 func RequireSuperAdminAdminOrCoordinator() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		userID, ok := requireAuthenticatedUserID(c)
@@ -656,7 +657,7 @@ func RequireSuperAdminAdminOrCoordinator() gin.HandlerFunc {
 			return
 		}
 		for _, r := range roles {
-			if r == roleSuperAdministrador || r == roleAdministrador || r == roleCoordinador {
+			if r == roleSuperAdministrador || r == roleAdministrador || r == roleCoordinador || r == roleFPI {
 				c.Next()
 				return
 			}

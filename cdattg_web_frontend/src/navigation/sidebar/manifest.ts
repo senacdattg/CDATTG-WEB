@@ -174,7 +174,7 @@ export const SIDEBAR_MANIFEST: SidebarManifestItem[] = [
     path: complementariosPaths.betowa,
     label: 'Complementarios (Betowa)',
     permission: null,
-    rolesRequired: ['SUPER ADMINISTRADOR', 'ADMINISTRADOR', 'COORDINADOR'],
+    rolesRequired: ['SUPER ADMINISTRADOR', 'ADMINISTRADOR', 'COORDINADOR', 'FPI'],
     iconKey: 'complementarios',
   },
   {
@@ -182,7 +182,7 @@ export const SIDEBAR_MANIFEST: SidebarManifestItem[] = [
     path: complementariosPaths.consultarRegistro,
     label: 'Sofía · Fase 1 · Consultar Registro',
     permission: null,
-    rolesRequired: ['SUPER ADMINISTRADOR', 'ADMINISTRADOR', 'COORDINADOR'],
+    rolesRequired: ['SUPER ADMINISTRADOR', 'ADMINISTRADOR', 'COORDINADOR', 'FPI'],
     iconKey: 'complementarios',
   },
   {
@@ -190,7 +190,7 @@ export const SIDEBAR_MANIFEST: SidebarManifestItem[] = [
     path: complementariosPaths.inscripciones,
     label: 'Sofía · Fase 2 · Programas',
     permission: null,
-    rolesRequired: ['SUPER ADMINISTRADOR', 'ADMINISTRADOR', 'COORDINADOR'],
+    rolesRequired: ['SUPER ADMINISTRADOR', 'ADMINISTRADOR', 'COORDINADOR', 'FPI'],
     iconKey: 'complementarios',
   },
 

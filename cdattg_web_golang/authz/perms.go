@@ -17,6 +17,8 @@ var RoleNames = []string{
 	"PROVEEDOR",
 	// Rol especializado para oficina de bienestar al aprendiz (acceso a dashboard y casos de bienestar)
 	"BIENESTAR AL APRENDIZ",
+	// Rol solo para módulo FPI (Sofía / Betowa / complementarios)
+	"FPI",
 }
 
 // Permisos por objeto (obj). Se usan en Casbin como (roleName o userID, obj, act).

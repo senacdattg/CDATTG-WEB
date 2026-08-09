@@ -45,6 +45,9 @@ func RunRolePermissionSeeder(db *gorm.DB) error {
 	if err := seedVigilanciaPermissions(e); err != nil {
 		return err
 	}
+	if err := seedFPIPermissions(e); err != nil {
+		return err
+	}
 
 	if err := e.SavePolicy(); err != nil {
 		return err
@@ -207,6 +210,11 @@ func seedVigilanciaPermissions(e *casbin.Enforcer) error {
 		}
 	}
 	return nil
+}
+
+// seedFPIPermissions: perfil mínimo para el módulo FPI (Sofía/Betowa) + ver/editar mi persona.
+func seedFPIPermissions(e *casbin.Enforcer) error {
+	return seedVerPersonaForRoles(e, []string{"FPI", "BIENESTAR AL APRENDIZ"})
 }
 
 // SyncInventarioPermissionsToRoles: inventario desactivado, no hace nada.

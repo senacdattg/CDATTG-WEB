@@ -5,8 +5,10 @@ import { apiService } from '../services/api';
 import { axiosErrorMessage } from '../utils/httpError';
 import { useAuth } from '../context/AuthContext';
 import { LABEL_INSTRUCTOR_LIDER } from '../constants/instructorLiderLabels';
+import { labelTipoFormacion } from '../constants/tipoFormacion';
 import { FichaCaracterizacionCard } from '../components/FichaCaracterizacionCard';
 import type { FichaCaracterizacionResponse } from '../types';
+import { tituloProgramaFicha } from '../utils/fichaListDisplay';
 import { asistenciaHistorialFichaPath, asistenciaPaths } from './asistencia/asistenciaPaths';
 
 const HISTORIAL_SEARCH_ID = 'asistencia-historial-buscar-ficha';
@@ -25,7 +27,10 @@ function HistorialFichasTable({ rows }: HistorialFichasTableProps) {
                 Ficha
               </th>
               <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">
-                Programa de formación
+                Programa / nombre
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">
+                Tipo
               </th>
               <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">
                 {LABEL_INSTRUCTOR_LIDER}
@@ -49,7 +54,10 @@ function HistorialFichasTable({ rows }: HistorialFichasTableProps) {
               <tr key={item.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/30">
                 <td className="px-4 py-3 text-sm font-medium text-gray-900 dark:text-white">{item.ficha}</td>
                 <td className="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">
-                  {item.programa_formacion_nombre || '–'}
+                  {tituloProgramaFicha(item) || '–'}
+                </td>
+                <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">
+                  {labelTipoFormacion(item.tipo_formacion)}
                 </td>
                 <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">{item.instructor_nombre || '–'}</td>
                 <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">{item.jornada_nombre || '–'}</td>
@@ -132,7 +140,8 @@ export const AsistenciaHistorial = () => {
     return fichas.filter(
       (ficha) =>
         ficha.ficha.toLowerCase().includes(q) ||
-        (ficha.programa_formacion_nombre?.toLowerCase().includes(q) ?? false)
+        tituloProgramaFicha(ficha).toLowerCase().includes(q) ||
+        labelTipoFormacion(ficha.tipo_formacion).toLowerCase().includes(q),
     );
   }, [fichas, searchQuery]);
 

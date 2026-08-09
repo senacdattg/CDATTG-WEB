@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { apiService } from '../../../services/api';
 import { axiosErrorMessage } from '../../../utils/httpError';
-import type { MisInasistenciasResponse } from '../../../types';
+import type { MisInasistenciasFichaOpcion, MisInasistenciasResponse } from '../../../types';
 
 const DIAS_HISTORICO = 0;
 
@@ -14,6 +14,8 @@ const DIAS_OPCIONES = [
 
 export function useMisInasistencias(enabled: boolean) {
   const [dias, setDias] = useState<number>(30);
+  const [fichaId, setFichaId] = useState<number | null>(null);
+  const [fichas, setFichas] = useState<MisInasistenciasFichaOpcion[]>([]);
   const [data, setData] = useState<MisInasistenciasResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -23,15 +25,23 @@ export function useMisInasistencias(enabled: boolean) {
     setLoading(true);
     setError('');
     try {
-      const resp = await apiService.getMisInasistencias({ dias });
+      const params: { dias?: number; ficha_id?: number } = { dias };
+      if (fichaId != null && fichaId > 0) params.ficha_id = fichaId;
+      const resp = await apiService.getMisInasistencias(params);
       setData(resp);
+      if (resp.fichas?.length) {
+        setFichas(resp.fichas);
+        if (fichaId == null && resp.ficha_id) {
+          setFichaId(resp.ficha_id);
+        }
+      }
     } catch (err) {
       setData(null);
       setError(axiosErrorMessage(err, 'No se pudo cargar el detalle de inasistencias.'));
     } finally {
       setLoading(false);
     }
-  }, [dias, enabled]);
+  }, [dias, enabled, fichaId]);
 
   useEffect(() => {
     if (!enabled) {
@@ -45,6 +55,9 @@ export function useMisInasistencias(enabled: boolean) {
     dias,
     setDias,
     diasOpciones: DIAS_OPCIONES,
+    fichaId,
+    setFichaId,
+    fichas,
     data,
     loading,
     error,

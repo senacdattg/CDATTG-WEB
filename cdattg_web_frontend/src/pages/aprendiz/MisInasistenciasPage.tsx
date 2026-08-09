@@ -13,7 +13,18 @@ import { EleccionRepresentantesBanner } from '../../components/elecciones/Elecci
 export function MisInasistenciasPage() {
   const { roles, permissions } = useAuth();
   const canView = canViewMisInasistencias(roles, permissions);
-  const { dias, setDias, diasOpciones, data, loading, error, recargar } = useMisInasistencias(canView);
+  const {
+    dias,
+    setDias,
+    diasOpciones,
+    fichaId,
+    setFichaId,
+    fichas,
+    data,
+    loading,
+    error,
+    recargar,
+  } = useMisInasistencias(canView);
 
   if (!canView) {
     return <Navigate to="/perfil" replace state={{ message: MENSAJE_SIN_PERMISO_MIS_INASISTENCIAS }} />;
@@ -22,6 +33,7 @@ export function MisInasistenciasPage() {
   const rangoPeriodo = formatRangoFechasVista(data?.fecha_inicio, data?.fecha_fin);
   const justificadas = data?.inasistencias_justificadas ?? [];
   const totalJustificadas = data?.total_inasistencias_justificadas ?? justificadas.length;
+  const variasFichas = fichas.length > 1;
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
@@ -48,19 +60,53 @@ export function MisInasistenciasPage() {
 
       <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-800">
         <div className="flex flex-wrap items-end justify-between gap-4 border-b border-gray-100 pb-4 dark:border-gray-700">
-          <div className="space-y-1 text-sm text-gray-600 dark:text-gray-400">
-            {data?.ficha_numero && (
+          <div className="min-w-[16rem] flex-1 space-y-2 text-sm text-gray-600 dark:text-gray-400">
+            {variasFichas ? (
+              <label className="flex flex-col gap-1">
+                <span className="font-medium text-gray-700 dark:text-gray-300">Ficha</span>
+                <select
+                  value={fichaId ?? ''}
+                  onChange={(e) => setFichaId(e.target.value ? Number(e.target.value) : null)}
+                  className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-900"
+                  disabled={loading}
+                >
+                  {fichas.map((f) => (
+                    <option key={f.ficha_id} value={f.ficha_id}>
+                      {f.ficha_numero}
+                      {f.programa_nombre ? ` — ${f.programa_nombre}` : ''}
+                      {f.tipo_formacion_label ? ` (${f.tipo_formacion_label})` : ''}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            ) : (
+              <>
+                {data?.ficha_numero && (
+                  <p>
+                    <span className="font-medium text-gray-800 dark:text-gray-200">Ficha: </span>
+                    {data.ficha_numero}
+                  </p>
+                )}
+                {data?.programa_nombre && (
+                  <p>
+                    <span className="font-medium text-gray-800 dark:text-gray-200">Programa: </span>
+                    {data.programa_nombre}
+                  </p>
+                )}
+              </>
+            )}
+            {data?.tipo_formacion_label && (
               <p>
-                <span className="font-medium text-gray-800 dark:text-gray-200">Ficha: </span>
-                {data.ficha_numero}
+                <span className="font-medium text-gray-800 dark:text-gray-200">Tipo: </span>
+                {data.tipo_formacion_label}
               </p>
             )}
-            {data?.programa_nombre && (
+            {variasFichas && data?.programa_nombre ? (
               <p>
-                <span className="font-medium text-gray-800 dark:text-gray-200">Programa: </span>
+                <span className="font-medium text-gray-800 dark:text-gray-200">Programa / nombre: </span>
                 {data.programa_nombre}
               </p>
-            )}
+            ) : null}
             {data?.sede_nombre && (
               <p>
                 <span className="font-medium text-gray-800 dark:text-gray-200">Sede: </span>
@@ -156,8 +202,8 @@ export function MisInasistenciasPage() {
 
         {!loading && !error && (
           <p className="mt-4 text-xs text-gray-500 dark:text-gray-400">
-            Criterio: días con formación programada. Excluye festivos y PARO de sede. Las justificadas requieren que el
-            instructor haya registrado el tipo de observación correspondiente.
+            Criterio: días con formación programada. Excluye festivos y PARO de sede. Las justificadas requieren el tipo
+            de observación «Inasistencia justificada» (toma normal o carga retroactiva).
           </p>
         )}
       </div>

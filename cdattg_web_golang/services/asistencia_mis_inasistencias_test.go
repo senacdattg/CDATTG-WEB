@@ -4,7 +4,7 @@ import "testing"
 
 func TestGetMisInasistencias_sinPersonaID(t *testing.T) {
 	s := NewAsistenciaService()
-	_, err := s.GetMisInasistencias(0, 30)
+	_, err := s.GetMisInasistencias(0, 30, nil)
 	if err == nil {
 		t.Fatal("expected error for personaID 0")
 	}

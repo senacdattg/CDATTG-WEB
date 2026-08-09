@@ -41,6 +41,13 @@ function esMensajeErrorInterno(msg: string): boolean {
 
 function mensajeDesdeRespuestaAxios(data: unknown, fallback: string, status?: number): string | null {
   if (typeof data === 'string') {
+    const trimmed = data.trim();
+    if (trimmed.startsWith('<') && trimmed.toLowerCase().includes('<html')) {
+      if (status === 405) {
+        return 'El servidor rechazó la solicitud (405). Verifique que el backend esté en ejecución y la API accesible.';
+      }
+      return `${fallback} (HTTP ${status ?? 'error'})`;
+    }
     return textoUtilizable(data);
   }
 

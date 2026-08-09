@@ -227,6 +227,14 @@ func patchFichaNombreYProgramaOpcional() error {
 	)
 }
 
+func patchAutoMigrateSofiaCredencial() error {
+	if err := DB.AutoMigrate(&models.SofiaCredencial{}); err != nil {
+		return err
+	}
+	log.Println("Esquema: tabla sofia_credenciales verificada")
+	return nil
+}
+
 // EnsureSchemaPatches aplica cambios incrementales de esquema sin ejecutar Migrate() completo.
 func EnsureSchemaPatches() error {
 	if DB == nil {
@@ -244,6 +252,7 @@ func EnsureSchemaPatches() error {
 		patchPersonaIngresoSalidaSalidaSinIngreso,
 		patchFichaTipoFormacion,
 		patchFichaNombreYProgramaOpcional,
+		patchAutoMigrateSofiaCredencial,
 	}
 	for _, patch := range patches {
 		if err := patch(); err != nil {

@@ -80,6 +80,7 @@ func SetupRouter() *gin.Engine {
 	configAsistenciaHandler := handlers.NewConfiguracionAsistenciaHandler()
 	eleccionHandler := handlers.NewEleccionHandler()
 	vigilanciaAccesoHandler := handlers.NewVigilanciaAccesoHandler()
+	complementariosHandler := handlers.NewComplementariosHandler()
 
 	// Rutas públicas
 	api := r.Group("/api")
@@ -295,6 +296,32 @@ func SetupRouter() *gin.Engine {
 				vigilancia.GET("/dentro", middleware.RequirePermission("vigilancia", permVerAccesoSede), vigilanciaAccesoHandler.ListDentro)
 				vigilancia.GET("/historial", middleware.RequirePermission("vigilancia", permVerAccesoSede), vigilanciaAccesoHandler.Historial)
 				vigilancia.GET("/estadisticas", middleware.RequirePermission("vigilancia", permVerAccesoSede), vigilanciaAccesoHandler.Estadisticas)
+			}
+
+			// Complementarios (FPI): credenciales SofiaPlus por operador + verificación de aspirantes
+			const rutaCredencialesSofia = "/credenciales"
+			complementarios := protected.Group("/complementarios")
+			complementarios.Use(middleware.RequireSuperAdminAdminOrCoordinator())
+			{
+				complementarios.GET(rutaCredencialesSofia, complementariosHandler.GetCredencialEstado)
+				complementarios.POST(rutaCredencialesSofia, complementariosHandler.GuardarCredencial)
+				complementarios.DELETE(rutaCredencialesSofia, complementariosHandler.EliminarCredencial)
+				complementarios.POST("/verificar-aspirante", complementariosHandler.VerificarAspirante)
+				complementarios.POST("/consultar-inscripciones", complementariosHandler.ConsultarInscripciones)
+				complementarios.GET("/inscripciones/plantilla", complementariosHandler.DescargarPlantillaInscripciones)
+				complementarios.POST("/inscripciones/consultar-lote", complementariosHandler.ConsultarInscripcionesLote)
+				complementarios.GET("/inscripciones/consultar-lote/progreso/:lote_id", complementariosHandler.ProgresoLote)
+				complementarios.GET("/inscripciones/consultar-lote/resultados/:lote_id", complementariosHandler.ResultadosLoteInscripciones)
+				complementarios.GET("/plantilla", complementariosHandler.DescargarPlantilla)
+				complementarios.POST("/verificar-lote", complementariosHandler.VerificarLote)
+				complementarios.GET("/verificar-lote/progreso/:lote_id", complementariosHandler.ProgresoLote)
+				complementarios.GET("/verificar-lote/resultados/:lote_id", complementariosHandler.ResultadosLote)
+
+				betowa := complementarios.Group("/betowa")
+				{
+					betowa.POST("/verificar-aspirante", complementariosHandler.VerificarAspiranteBetowa)
+					betowa.POST("/verificar-lote", complementariosHandler.VerificarLoteBetowa)
+				}
 			}
 
 			// Inventario desactivado: rutas /inventario, /productos, /ordenes, /aprobaciones, /devoluciones, /proveedores, /categorias, /marcas, /contratos-convenios no registradas

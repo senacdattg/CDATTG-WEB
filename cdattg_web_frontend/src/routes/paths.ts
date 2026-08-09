@@ -27,7 +27,17 @@ export const programasPaths = {
 
 export const fichasPaths = {
   index: '/fichas',
-  detalle: (fichaId: number | string) => `/fichas/${fichaId}`,
+  mediaTecnica: '/fichas/media-tecnica',
+  complementaria: '/fichas/complementaria',
+  /** Listado según tipo de formación (submódulo del menú). */
+  listado: (tipoFormacion?: string | null) => {
+    if (tipoFormacion === 'MEDIA_TECNICA') return '/fichas/media-tecnica';
+    if (tipoFormacion === 'FORMACION_COMPLEMENTARIA') return '/fichas/complementaria';
+    return '/fichas';
+  },
+  /** Detalle anidado en el mismo submódulo del listado. */
+  detalle: (fichaId: number | string, tipoFormacion?: string | null) =>
+    `${fichasPaths.listado(tipoFormacion)}/${fichaId}`,
 } as const;
 
 export const asistenciaPaths = {

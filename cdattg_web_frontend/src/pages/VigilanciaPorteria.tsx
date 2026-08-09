@@ -273,9 +273,9 @@ function textoBtnConfirmar(
   forzarSinIngreso: boolean,
 ): string {
   if (confirmando) return 'Registrando…';
-  if (forzarSinIngreso) return 'Confirmar salida irregular';
-  if (esIngreso) return 'Confirmar ingreso';
-  return 'Confirmar salida';
+  if (forzarSinIngreso) return 'Confirmar salida irregular (Enter)';
+  if (esIngreso) return 'Confirmar ingreso (Enter)';
+  return 'Confirmar salida (Enter)';
 }
 
 function puedeConfirmarLookup(
@@ -385,6 +385,11 @@ function PanelFicha({
           Cancelar
         </button>
       </div>
+      {puedeConfirmar && !confirmando ? (
+        <p className="text-center text-xs text-gray-500 dark:text-gray-400">
+          Pulse <kbd className="rounded border border-gray-300 px-1.5 py-0.5 font-mono text-[11px] dark:border-gray-600">Enter</kbd> para confirmar.
+        </p>
+      ) : null}
     </>
   );
 }
@@ -681,10 +686,54 @@ export function VigilanciaPorteria() {
     resetTrasRegistro,
   ]);
 
+  /** Enter: busca si hay documento nuevo; con ficha lista confirma ingreso/salida. */
   const handleSubmitDocumento: ComponentProps<'form'>['onSubmit'] = (e) => {
     e.preventDefault();
+    if (confirmando || loadingLookup) return;
+    const doc = normalizarDocumentoEscaneado(documento);
+    const puedeConfirmar = puedeConfirmarLookup(lookup, modo, salidaAutoDesdeEntrada, forzarSinIngreso);
+    if (!doc) {
+      if (puedeConfirmar) void handleConfirmar();
+      return;
+    }
+    if (lookup?.persona.numero_documento === doc && puedeConfirmar) {
+      void handleConfirmar();
+      return;
+    }
     void runLookup(documento, 'LASER');
   };
+
+  // Enter global cuando la ficha está lista (p. ej. tras clic en el panel).
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== 'Enter' || e.repeat || e.ctrlKey || e.altKey || e.metaKey) return;
+      if (confirmando || loadingLookup) return;
+      if (!puedeConfirmarLookup(lookup, modo, salidaAutoDesdeEntrada, forzarSinIngreso)) return;
+
+      const target = e.target as HTMLElement | null;
+      const tag = target?.tagName;
+      if (tag === 'TEXTAREA' || tag === 'SELECT' || tag === 'BUTTON') return;
+      // El input del documento lo maneja el submit del form.
+      if (tag === 'INPUT' && target?.id === DOC_INPUT_ID) return;
+
+      const doc = normalizarDocumentoEscaneado(documento);
+      if (doc && lookup && doc !== lookup.persona.numero_documento) return;
+
+      e.preventDefault();
+      void handleConfirmar();
+    };
+    globalThis.addEventListener('keydown', onKeyDown);
+    return () => globalThis.removeEventListener('keydown', onKeyDown);
+  }, [
+    confirmando,
+    loadingLookup,
+    lookup,
+    modo,
+    salidaAutoDesdeEntrada,
+    forzarSinIngreso,
+    documento,
+    handleConfirmar,
+  ]);
 
   const escaneoHabilitado = contextoListo && !!sedeId;
 
@@ -860,7 +909,7 @@ export function VigilanciaPorteria() {
               <p className="text-center text-sm text-primary-600 dark:text-primary-400">Buscando…</p>
             ) : (
               <p className="text-center text-xs text-gray-500 dark:text-gray-400">
-                Buscar: automático (~3 s), Enter o botón.
+                Buscar: automático (~3 s), Enter o botón. Con ficha lista, Enter confirma ingreso/salida.
               </p>
             )}
           </form>

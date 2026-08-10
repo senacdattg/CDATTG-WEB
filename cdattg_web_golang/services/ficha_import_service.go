@@ -3,6 +3,7 @@ package services
 import (
 	"bytes"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -11,6 +12,7 @@ import (
 	"github.com/sena/cdattg-web-golang/models"
 	"github.com/sena/cdattg-web-golang/repositories"
 	"github.com/xuri/excelize/v2"
+	"gorm.io/gorm"
 )
 
 // Formato Excel reporte aprendices: fila con "Ficha de Caracterización:", luego "CODE - NOMBRE PROGRAMA";
@@ -26,12 +28,23 @@ const (
 )
 
 type FichaImportService interface {
-	ImportFromExcel(fileBytes []byte, filename string) (*FichaImportResult, error)
+	ImportFromExcel(fileBytes []byte, filename string, tipoFormacion string) (*FichaImportResult, error)
+	BuildImportTemplate() ([]byte, error)
+}
+
+// AllowTipoFormacionImportExport valida el tipo para import/export de fichas.
+func AllowTipoFormacionImportExport(v string) (string, error) {
+	t := strings.TrimSpace(strings.ToUpper(v))
+	switch t {
+	case models.TipoFormacionRegular, models.TipoFormacionMediaTecnica, models.TipoFormacionComplementaria:
+		return t, nil
+	default:
+		return "", fmt.Errorf("tipo_formacion inválido para importación/exportación (use FORMACION_REGULAR, MEDIA_TECNICA o FORMACION_COMPLEMENTARIA)")
+	}
 }
 
 type fichaImportService struct {
 	personaRepo  repositories.PersonaRepository
-	programaRepo repositories.ProgramaFormacionRepository
 	fichaRepo    repositories.FichaRepository
 	aprendizRepo repositories.AprendizRepository
 	catalogoRepo repositories.CatalogoRepository
@@ -41,7 +54,6 @@ type fichaImportService struct {
 func NewFichaImportService() FichaImportService {
 	return &fichaImportService{
 		personaRepo:  repositories.NewPersonaRepository(),
-		programaRepo: repositories.NewProgramaFormacionRepository(),
 		fichaRepo:    repositories.NewFichaRepository(),
 		aprendizRepo: repositories.NewAprendizRepository(),
 		catalogoRepo: repositories.NewCatalogoRepository(),
@@ -165,12 +177,17 @@ func (s *fichaImportService) buildTipoDocumentoCodeMap() map[string]uint {
 	return tipoByCode
 }
 
-func (s *fichaImportService) getOrCreateFicha(fichaCode string, programa *models.ProgramaFormacion) (*models.FichaCaracterizacion, bool, error) {
+func (s *fichaImportService) getOrCreateFicha(fichaCode, nombre string, tipoFormacion string) (*models.FichaCaracterizacion, bool, error) {
 	ficha, err := s.fichaRepo.FindByFicha(fichaCode)
 	if err != nil {
+		if !errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, false, fmt.Errorf("error al buscar ficha %s: %w", fichaCode, err)
+		}
 		ficha = &models.FichaCaracterizacion{
-			ProgramaFormacionID: programa.ID,
+			ProgramaFormacionID: nil,
+			Nombre:              nombre,
 			Ficha:               fichaCode,
+			TipoFormacion:       tipoFormacion,
 			Status:              true,
 		}
 		if err := s.fichaRepo.Create(ficha); err != nil {
@@ -178,7 +195,58 @@ func (s *fichaImportService) getOrCreateFicha(fichaCode string, programa *models
 		}
 		return ficha, true, nil
 	}
+	existing := strings.TrimSpace(ficha.TipoFormacion)
+	if existing == "" {
+		existing = models.TipoFormacionRegular
+	}
+	if existing != tipoFormacion {
+		return nil, false, fmt.Errorf(
+			"la ficha %s ya existe como %s; no se puede importar en %s",
+			fichaCode, existing, tipoFormacion,
+		)
+	}
+	if strings.TrimSpace(ficha.Nombre) == "" && nombre != "" {
+		ficha.Nombre = nombre
+		ficha.ProgramaFormacionID = nil
+		_ = s.fichaRepo.Update(ficha)
+	}
 	return ficha, false, nil
+}
+
+// BuildImportTemplate genera una plantilla Excel compatible con ImportFromExcel.
+func (s *fichaImportService) BuildImportTemplate() ([]byte, error) {
+	f := excelize.NewFile()
+	sheet := f.GetSheetName(0)
+	if sheet == "" {
+		sheet = "Sheet1"
+	}
+	_ = f.SetCellValue(sheet, "A1", "Plantilla importación ficha (Formación Regular / Media Técnica / Complementaria)")
+	_ = f.SetCellValue(sheet, "A2", "Reemplace el código, el nombre de la formación y las filas de ejemplo.")
+	_ = f.SetCellValue(sheet, "A3", "Ficha de Caracterización:")
+	_ = f.SetCellValue(sheet, "C3", "1234567 - NOMBRE DE LA FORMACION")
+	headers := []string{
+		"Tipo de Documento",
+		"Número de Documento",
+		"Nombre",
+		"Apellidos",
+		"Celular",
+		"Correo Electrónico",
+	}
+	for i, h := range headers {
+		cell, _ := excelize.CoordinatesToCellName(i+1, 5)
+		_ = f.SetCellValue(sheet, cell, h)
+	}
+	ejemplo := []string{"CC", "1234567890", "Juan", "Pérez Gómez", "3001234567", "juan.perez@example.com"}
+	for i, v := range ejemplo {
+		cell, _ := excelize.CoordinatesToCellName(i+1, 6)
+		_ = f.SetCellValue(sheet, cell, v)
+	}
+	_ = f.SetColWidth(sheet, "A", "F", 24)
+	var buf bytes.Buffer
+	if err := f.Write(&buf); err != nil {
+		return nil, fmt.Errorf("error generando plantilla: %w", err)
+	}
+	return buf.Bytes(), nil
 }
 
 // fichaImportIncident una fila del reporte de incidencias (evita funciones con demasiados parámetros).
@@ -441,7 +509,12 @@ func (r *fichaImportRunner) processRow(row []string) {
 	r.tryEnrollAprendiz(&p, personaID)
 }
 
-func (s *fichaImportService) ImportFromExcel(fileBytes []byte, filename string) (*FichaImportResult, error) {
+func (s *fichaImportService) ImportFromExcel(fileBytes []byte, filename string, tipoFormacion string) (*FichaImportResult, error) {
+	tipo, err := AllowTipoFormacionImportExport(tipoFormacion)
+	if err != nil {
+		return nil, err
+	}
+
 	rows, err := s.readExcelRows(fileBytes, filename)
 	if err != nil {
 		return nil, err
@@ -450,9 +523,13 @@ func (s *fichaImportService) ImportFromExcel(fileBytes []byte, filename string) 
 		return nil, fmt.Errorf("el archivo debe tener al menos cabecera y una fila de datos")
 	}
 
-	fichaCode, programName, err := extractFichaYProgramaDesdeRows(rows)
+	fichaCode, nombreFormacion, err := extractFichaYProgramaDesdeRows(rows)
 	if err != nil {
 		return nil, err
+	}
+	nombreFormacion = strings.TrimSpace(nombreFormacion)
+	if nombreFormacion == "" {
+		return nil, fmt.Errorf("indique el nombre de la formación tras el código (ej: 1234567 - NOMBRE DE LA FORMACION)")
 	}
 
 	dataStartRow, err := findFilaCabeceraAprendices(rows)
@@ -460,12 +537,7 @@ func (s *fichaImportService) ImportFromExcel(fileBytes []byte, filename string) 
 		return nil, err
 	}
 
-	programa, err := s.programaRepo.FindFirstByNombreContaining(programName)
-	if err != nil {
-		return nil, fmt.Errorf("programa de formación no encontrado por nombre: %q", programName)
-	}
-
-	ficha, fichaCreated, err := s.getOrCreateFicha(fichaCode, programa)
+	ficha, fichaCreated, err := s.getOrCreateFicha(fichaCode, nombreFormacion, tipo)
 	if err != nil {
 		return nil, err
 	}

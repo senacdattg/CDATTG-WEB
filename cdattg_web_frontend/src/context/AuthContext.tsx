@@ -15,6 +15,7 @@ interface AuthContextType {
   hasPermission: (permission: string) => boolean;
   login: (credentials: LoginRequest) => Promise<string>;
   logout: () => void;
+  refreshUser: () => Promise<UserResponse | null>;
   isAuthenticated: boolean;
   loading: boolean;
 }
@@ -93,6 +94,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return getHomeRouteForUser(nextRoles, nextPermissions);
   }, []);
 
+  const refreshUser = useCallback(async () => {
+    try {
+      const currentUser = await apiService.getCurrentUser();
+      setUser(currentUser);
+      localStorage.setItem('user', JSON.stringify(currentUser));
+      return currentUser;
+    } catch {
+      logout();
+      return null;
+    }
+  }, [logout]);
+
   const contextValue = useMemo(
     () => ({
       user,
@@ -102,10 +115,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       hasPermission,
       login,
       logout,
+      refreshUser,
       isAuthenticated: !!token,
       loading,
     }),
-    [user, token, roles, permissions, hasPermission, login, logout, loading],
+    [user, token, roles, permissions, hasPermission, login, logout, refreshUser, loading],
   );
 
   return (

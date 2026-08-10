@@ -1,6 +1,8 @@
 import { MagnifyingGlassIcon } from '@heroicons/react/24/outline';
 import { FichaCaracterizacionCard } from '../../components/FichaCaracterizacionCard';
+import { labelTipoFormacion } from '../../constants/tipoFormacion';
 import { formatRangoFechasVista } from '../../utils/formatFecha';
+import { tituloProgramaFicha } from '../../utils/fichaListDisplay';
 import { AsistenciaAprendicesListaSesion } from './AsistenciaAprendicesListaSesion';
 import { AsistenciaMetodosAccordion } from './AsistenciaMetodosAccordion';
 import { AsistenciaModals } from './AsistenciaModals';
@@ -98,7 +100,10 @@ export function AsistenciaTomarSesionView({ page }: Props) {
               {sesionSoloLectura ? 'Consultar asistencia' : 'Tomar asistencia'}
             </h1>
             <p className="mt-0.5 truncate text-sm text-gray-600 dark:text-gray-400">
-              Ficha {fichaSeleccionada.ficha} · {fichaSeleccionada.programa_formacion_nombre || 'Sin programa'}
+              Ficha {fichaSeleccionada.ficha} · {tituloProgramaFicha(fichaSeleccionada) || 'Sin programa'}
+              {fichaSeleccionada.tipo_formacion
+                ? ` · ${labelTipoFormacion(fichaSeleccionada.tipo_formacion)}`
+                : ''}
             </p>
             {sesionSoloLectura ? (
               <p className="mt-1 text-xs text-amber-700 dark:text-amber-300">

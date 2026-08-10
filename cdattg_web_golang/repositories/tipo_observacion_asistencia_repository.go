@@ -1,6 +1,8 @@
 package repositories
 
 import (
+	"strings"
+
 	"github.com/sena/cdattg-web-golang/database"
 	"github.com/sena/cdattg-web-golang/models"
 	"gorm.io/gorm"
@@ -9,6 +11,7 @@ import (
 type TipoObservacionAsistenciaRepository interface {
 	ListActivos() ([]models.TipoObservacionAsistencia, error)
 	FindByIDs(ids []uint) ([]models.TipoObservacionAsistencia, error)
+	FindByCodigo(codigo string) (*models.TipoObservacionAsistencia, error)
 	FindByID(id uint) (*models.TipoObservacionAsistencia, error)
 	Create(item *models.TipoObservacionAsistencia) error
 	Update(item *models.TipoObservacionAsistencia) error
@@ -39,6 +42,18 @@ func (r *tipoObservacionAsistenciaRepository) FindByIDs(ids []uint) ([]models.Ti
 		return nil, err
 	}
 	return list, nil
+}
+
+func (r *tipoObservacionAsistenciaRepository) FindByCodigo(codigo string) (*models.TipoObservacionAsistencia, error) {
+	codigo = strings.TrimSpace(codigo)
+	if codigo == "" {
+		return nil, gorm.ErrRecordNotFound
+	}
+	var item models.TipoObservacionAsistencia
+	if err := r.db.Where("codigo = ? AND activo = ?", codigo, true).First(&item).Error; err != nil {
+		return nil, err
+	}
+	return &item, nil
 }
 
 func (r *tipoObservacionAsistenciaRepository) FindByID(id uint) (*models.TipoObservacionAsistencia, error) {

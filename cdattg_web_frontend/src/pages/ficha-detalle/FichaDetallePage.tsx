@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
-import { useLocation, useParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useBreadcrumbOverride } from '../../navigation/breadcrumb';
 import { FichaFormModal } from '../../components/FichaFormModal';
 import { useAuth } from '../../context/AuthContext';
+import { fichasPaths } from '../../routes/paths';
 import { canGestionarAprendicesFicha } from '../../utils/aprendizFichaPermissions';
 import { canManageFichas } from '../../utils/fichaCaracterizacionForm';
 import { canProgramarInstructores } from '../../utils/programacionPermissions';
@@ -26,7 +27,9 @@ import { useFichaInstructores } from './hooks/useFichaInstructores';
 
 export function FichaDetallePage() {
   const { roles, hasPermission } = useAuth();
-  const { pathname } = useLocation();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const { pathname, search } = location;
   const { fichaId: fichaIdParam } = useParams<{ fichaId: string }>();
   const fichaId = fichaIdParam ? Number.parseInt(fichaIdParam, 10) : 0;
   const { setLabel, clearLabel } = useBreadcrumbOverride();
@@ -72,6 +75,15 @@ export function FichaDetallePage() {
     setLabel(pathname, `Ficha ${ficha.ficha}`);
     return () => clearLabel(pathname);
   }, [ficha?.ficha, pathname, setLabel, clearLabel]);
+
+  // Mantener el detalle dentro del submódulo correcto (Regular / Media Técnica / Complementaria).
+  useEffect(() => {
+    if (!ficha?.id) return;
+    const canonical = fichasPaths.detalle(ficha.id, ficha.tipo_formacion);
+    if (pathname !== canonical) {
+      navigate({ pathname: canonical, search }, { replace: true });
+    }
+  }, [ficha?.id, ficha?.tipo_formacion, pathname, search, navigate]);
 
   if (!isValidFichaId) {
     return <FichaDetalleInvalidIdState />;

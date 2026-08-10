@@ -18,7 +18,10 @@ import (
 	"gorm.io/gorm"
 )
 
-const errMsgInstructorParamInvalido = "ID de instructor inválido"
+const (
+	errMsgInstructorParamInvalido = "ID de instructor inválido"
+	contentTypeXLSX               = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+)
 
 type fichaExportSheetState struct {
 	originalFirst string
@@ -83,6 +86,7 @@ func (h *FichaHandler) GetAll(c *gin.Context) {
 	page, pageSize := parseFichaPagination(c)
 	programaID := parseUintQuery(c, "programa_id")
 	search := c.Query("q")
+	tipoFormacion := c.Query("tipo_formacion")
 	var instructorID *uint
 	if c.Query("mis_fichas") == "1" {
 		instructorID = h.instructorIDForMisFichas(c)
@@ -92,8 +96,12 @@ func (h *FichaHandler) GetAll(c *gin.Context) {
 			return
 		}
 	}
-	list, total, err := h.svc.FindAll(page, pageSize, programaID, instructorID, search)
+	list, total, err := h.svc.FindAll(page, pageSize, programaID, instructorID, search, tipoFormacion)
 	if err != nil {
+		if strings.Contains(err.Error(), "tipo de formación no válido") {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -344,8 +352,25 @@ func (h *FichaHandler) OcultarAprendicesEnAsistencia(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": msg})
 }
 
+// DownloadFichaImportTemplate descarga la plantilla Excel para importar fichas.
+func (h *FichaHandler) DownloadFichaImportTemplate(c *gin.Context) {
+	buf, err := h.importSvc.BuildImportTemplate()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error generando plantilla"})
+		return
+	}
+	c.Header("Content-Disposition", "attachment; filename=plantilla_importar_ficha.xlsx")
+	c.Data(http.StatusOK, contentTypeXLSX, buf)
+}
+
 // ImportFichas sube un Excel de reporte de aprendices (ficha de caracterización) e importa ficha y personas como aprendices.
+// Requiere campo form tipo_formacion (FORMACION_REGULAR, MEDIA_TECNICA o FORMACION_COMPLEMENTARIA).
 func (h *FichaHandler) ImportFichas(c *gin.Context) {
+	tipoFormacion, err := services.AllowTipoFormacionImportExport(c.PostForm("tipo_formacion"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
 	file, err := c.FormFile("file")
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Se requiere el archivo 'file'"})
@@ -375,7 +400,7 @@ func (h *FichaHandler) ImportFichas(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error leyendo el archivo"})
 		return
 	}
-	result, err := h.importSvc.ImportFromExcel(buf, file.Filename)
+	result, err := h.importSvc.ImportFromExcel(buf, file.Filename, tipoFormacion)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -384,9 +409,17 @@ func (h *FichaHandler) ImportFichas(c *gin.Context) {
 }
 
 // ExportAllExcel genera un archivo Excel con una hoja por ficha y su listado de aprendices activos.
+// Filtra por query tipo_formacion (FORMACION_REGULAR, MEDIA_TECNICA o FORMACION_COMPLEMENTARIA).
 func (h *FichaHandler) ExportAllExcel(c *gin.Context) {
+	tipoFormacion, err := services.AllowTipoFormacionImportExport(c.Query("tipo_formacion"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
 	var fichas []models.FichaCaracterizacion
 	if err := database.GetDB().
+		Where("tipo_formacion = ?", tipoFormacion).
 		Preload("ProgramaFormacion").
 		Preload("Aprendices", func(db *gorm.DB) *gorm.DB {
 			return aprendizorder.ScopeOrderByPersonaNombre(db.Where("estado = ?", true), false)
@@ -413,9 +446,24 @@ func (h *FichaHandler) ExportAllExcel(c *gin.Context) {
 		return
 	}
 
-	c.Header("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
-	c.Header("Content-Disposition", `attachment; filename="fichas_aprendices.xlsx"`)
-	c.Data(http.StatusOK, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", buffer.Bytes())
+	filename := "fichas_aprendices.xlsx"
+	switch tipoFormacion {
+	case models.TipoFormacionMediaTecnica:
+		filename = "fichas_media_tecnica.xlsx"
+	case models.TipoFormacionComplementaria:
+		filename = "fichas_formacion_complementaria.xlsx"
+	}
+
+	c.Header("Content-Type", contentTypeXLSX)
+	c.Header("Content-Disposition", `attachment; filename="`+filename+`"`)
+	c.Data(http.StatusOK, contentTypeXLSX, buffer.Bytes())
+}
+
+func nombreDisplayFichaExport(ficha models.FichaCaracterizacion) string {
+	if ficha.ProgramaFormacion != nil && strings.TrimSpace(ficha.ProgramaFormacion.Nombre) != "" {
+		return ficha.ProgramaFormacion.Nombre
+	}
+	return strings.TrimSpace(ficha.Nombre)
 }
 
 func appendFichaSheetToExport(xlsx *excelize.File, ficha models.FichaCaracterizacion, st *fichaExportSheetState) {
@@ -433,12 +481,8 @@ func appendFichaSheetToExport(xlsx *excelize.File, ficha models.FichaCaracteriza
 
 	_ = xlsx.SetCellValue(sheetName, "A1", "Ficha")
 	_ = xlsx.SetCellValue(sheetName, "B1", ficha.Ficha)
-	_ = xlsx.SetCellValue(sheetName, "A2", "Programa de formación")
-	if ficha.ProgramaFormacion != nil {
-		_ = xlsx.SetCellValue(sheetName, "B2", ficha.ProgramaFormacion.Nombre)
-	} else {
-		_ = xlsx.SetCellValue(sheetName, "B2", "")
-	}
+	_ = xlsx.SetCellValue(sheetName, "A2", "Nombre")
+	_ = xlsx.SetCellValue(sheetName, "B2", nombreDisplayFichaExport(ficha))
 
 	_ = xlsx.SetCellValue(sheetName, "A4", "Documento")
 	_ = xlsx.SetCellValue(sheetName, "B4", "Nombre completo")

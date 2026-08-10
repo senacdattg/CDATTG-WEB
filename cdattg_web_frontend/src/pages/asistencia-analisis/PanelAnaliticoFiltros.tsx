@@ -1,5 +1,6 @@
 import type { Dispatch, SetStateAction } from 'react';
 import type { RegionalItem, SedeItem } from '../../types';
+import { TIPO_FORMACION_OPTIONS } from '../../constants/tipoFormacion';
 
 export type EstadoFicha = 'activas' | 'inactivas' | 'todas';
 
@@ -7,6 +8,7 @@ export type FiltrosAplicados = {
   fechaDesde: string;
   fechaHasta: string;
   jornada: string;
+  tipoFormacion: string;
   fichaBusqueda: string;
   estadoFicha: EstadoFicha;
   regionalId: string;
@@ -93,6 +95,24 @@ export function PanelAnaliticoFiltros({
             {JORNADAS.filter(Boolean).map((j) => (
               <option key={j} value={j}>
                 {j}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label htmlFor="analisis-tipo" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            Tipo de formación
+          </label>
+          <select
+            id="analisis-tipo"
+            value={draft.tipoFormacion}
+            onChange={(e) => setDraft((p) => ({ ...p, tipoFormacion: e.target.value }))}
+            className={fieldCls}
+          >
+            <option value="">Todos</option>
+            {TIPO_FORMACION_OPTIONS.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
               </option>
             ))}
           </select>

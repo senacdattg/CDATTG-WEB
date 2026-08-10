@@ -17,6 +17,8 @@ var RoleNames = []string{
 	"PROVEEDOR",
 	// Rol especializado para oficina de bienestar al aprendiz (acceso a dashboard y casos de bienestar)
 	"BIENESTAR AL APRENDIZ",
+	// Rol solo para módulo FPI (Sofía / Betowa / complementarios)
+	"FPI",
 }
 
 // Permisos por objeto (obj). Se usan en Casbin como (roleName o userID, obj, act).
@@ -47,25 +49,32 @@ var (
 	}
 	// PermisosInventario desactivado: módulo inventario no en uso
 	PermisosInventario = []string{}
-	PermisosUsuario    = []string{
+	PermisosUsuario = []string{
 		"CREAR USUARIO", "ASIGNAR PERMISOS",
+	}
+	PermisosVigilancia = []string{
+		ActRegistrarAccesoSede,
+		ActVerAccesoSede,
 	}
 )
 
 // ObjPersona, ObjPrograma, ... nombres de objeto usados en rutas y Casbin.
 // ActVerPersona y demás act* son acciones Casbin (act) reutilizables en seed y middleware.
 const (
-	ActVerPersona      = "VER PERSONA"
-	ActEditarMiPersona = "EDITAR MI PERSONA"
+	ActVerPersona           = "VER PERSONA"
+	ActEditarMiPersona      = "EDITAR MI PERSONA"
+	ActRegistrarAccesoSede  = "REGISTRAR ACCESO SEDE"
+	ActVerAccesoSede        = "VER ACCESO SEDE"
 
-	ObjPersona    = "persona"
-	ObjPrograma   = "programa"
-	ObjFicha      = "ficha"
-	ObjAprendiz   = "aprendiz"
-	ObjInstructor = "instructor"
-	ObjAsistencia = "asistencia"
-	ObjEleccion   = "eleccion"
-	ObjUsuario    = "usuario"
+	ObjPersona     = "persona"
+	ObjPrograma    = "programa"
+	ObjFicha       = "ficha"
+	ObjAprendiz    = "aprendiz"
+	ObjInstructor  = "instructor"
+	ObjAsistencia  = "asistencia"
+	ObjEleccion    = "eleccion"
+	ObjUsuario     = "usuario"
+	ObjVigilancia  = "vigilancia"
 	ObjInventario = "inventario"
 	ObjProducto   = "producto"
 	ObjOrden      = "orden"
@@ -112,6 +121,9 @@ func AllPermissionPairs() []struct{ Obj, Act string } {
 	}
 	for _, act := range PermisosUsuario {
 		out = append(out, struct{ Obj, Act string }{ObjUsuario, act})
+	}
+	for _, act := range PermisosVigilancia {
+		out = append(out, struct{ Obj, Act string }{ObjVigilancia, act})
 	}
 	// Inventario desactivado: no se añaden permisos de inventario a AllPermissionPairs
 	return out

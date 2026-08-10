@@ -5,7 +5,9 @@ import { axiosErrorMessage } from '../../utils/httpError';
 import { useAuth } from '../../context/AuthContext';
 import { hasAnyRole } from '../../utils/roles';
 import { SelectSearchMulti } from '../../components/SelectSearchMulti';
+import { SelectSearchMultiString } from '../../components/SelectSearchMultiString';
 import type { SelectOption } from '../../components/SelectSearch';
+import { TIPO_FORMACION_OPTIONS, labelTipoFormacion } from '../../constants/tipoFormacion';
 import type {
   DiaSinFormacionFichaItem,
   DiaSinFormacionSedeItem,
@@ -15,6 +17,7 @@ import type {
 
 type FormSedeState = {
   sede_ids: number[];
+  tipos_formacion: string[];
   fecha_inicio: string;
   fecha_fin: string;
   motivo: string;
@@ -22,6 +25,7 @@ type FormSedeState = {
 
 type FormFichaState = {
   busqueda: string;
+  tipo_formacion: string;
   ficha_ids: number[];
   fecha_inicio: string;
   fecha_fin: string;
@@ -30,6 +34,7 @@ type FormFichaState = {
 
 const emptyFormSede = (): FormSedeState => ({
   sede_ids: [],
+  tipos_formacion: [],
   fecha_inicio: '',
   fecha_fin: '',
   motivo: '',
@@ -37,6 +42,7 @@ const emptyFormSede = (): FormSedeState => ({
 
 const emptyFormFicha = (): FormFichaState => ({
   busqueda: '',
+  tipo_formacion: '',
   ficha_ids: [],
   fecha_inicio: '',
   fecha_fin: '',
@@ -142,8 +148,9 @@ function cuerpoTablaFicha(
 }
 
 function etiquetaFichaOpcion(f: FichaCaracterizacionResponse): string {
-  const prog = f.programa_formacion_nombre?.trim();
-  return prog ? `${f.ficha} — ${prog}` : f.ficha;
+  const prog = f.programa_formacion_nombre?.trim() || f.nombre?.trim();
+  const tipo = labelTipoFormacion(f.tipo_formacion);
+  return prog ? `${f.ficha} — ${prog} (${tipo})` : `${f.ficha} (${tipo})`;
 }
 
 export function AdministracionDiasSinFormacionPage() {
@@ -165,6 +172,11 @@ export function AdministracionDiasSinFormacionPage() {
   const sedeOptions = useMemo<SelectOption[]>(
     () => sedes.map((s) => ({ value: s.id, label: s.nombre })),
     [sedes],
+  );
+
+  const tipoFormacionOptions = useMemo(
+    () => TIPO_FORMACION_OPTIONS.map((o) => ({ value: o.value, label: o.label })),
+    [],
   );
 
   const fichaOptions = useMemo<SelectOption[]>(
@@ -216,7 +228,14 @@ export function AdministracionDiasSinFormacionPage() {
     }
     setBuscandoFichas(true);
     try {
-      const res = await apiService.getFichasCaracterizacion(1, 50, undefined, undefined, q);
+      const res = await apiService.getFichasCaracterizacion(
+        1,
+        50,
+        undefined,
+        undefined,
+        q,
+        formFicha.tipo_formacion || undefined,
+      );
       setFichasEncontradas(res.data ?? []);
       setFormFicha((p) => ({ ...p, ficha_ids: [] }));
       if ((res.data ?? []).length === 0) {
@@ -241,14 +260,22 @@ export function AdministracionDiasSinFormacionPage() {
     }
     setSavingSede(true);
     try {
-      const payload = {
+      const payloadBase = {
         fecha_inicio: formSede.fecha_inicio,
         fecha_fin: formSede.fecha_fin,
         motivo: formSede.motivo.trim(),
       };
-      await Promise.all(
-        formSede.sede_ids.map((sede_id) => apiService.createDiaSinFormacion({ ...payload, sede_id })),
-      );
+      if (formSede.tipos_formacion.length > 0) {
+        await apiService.createDiaSinFormacionFicha({
+          ...payloadBase,
+          sede_ids: formSede.sede_ids,
+          tipos_formacion: formSede.tipos_formacion,
+        });
+      } else {
+        await Promise.all(
+          formSede.sede_ids.map((sede_id) => apiService.createDiaSinFormacion({ ...payloadBase, sede_id })),
+        );
+      }
       setFormSede(emptyFormSede());
       await load();
     } catch (err: unknown) {
@@ -381,6 +408,23 @@ export function AdministracionDiasSinFormacionPage() {
               />
             </div>
             <div>
+              <label htmlFor="dsf-tipo-formacion" className="mb-1 block text-xs text-gray-500">
+                Tipo de formación (opcional)
+              </label>
+              <SelectSearchMultiString
+                inputId="dsf-tipo-formacion"
+                options={tipoFormacionOptions}
+                value={formSede.tipos_formacion}
+                onChange={(tipos_formacion) => setFormSede({ ...formSede, tipos_formacion })}
+                placeholder="Todos los tipos (toda la sede)"
+                isDisabled={savingSede || loading}
+                ariaLabel="Tipos de formación del día sin formación"
+              />
+              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                Sin tipos: aplica a toda la sede. Con tipos: se registra por ficha de esos tipos.
+              </p>
+            </div>
+            <div className="md:col-span-2">
               <label htmlFor="dsf-motivo" className="mb-1 block text-xs text-gray-500">
                 Motivo (ej. PARO)
               </label>
@@ -479,6 +523,25 @@ export function AdministracionDiasSinFormacionPage() {
                 }}
                 placeholder="Ej. 3173334 o Análisis y desarrollo de software"
               />
+            </div>
+            <div>
+              <label htmlFor="dsf-ficha-tipo" className="mb-1 block text-xs text-gray-500">
+                Tipo de formación
+              </label>
+              <select
+                id="dsf-ficha-tipo"
+                className="input-field min-w-[12rem]"
+                value={formFicha.tipo_formacion}
+                onChange={(e) => setFormFicha({ ...formFicha, tipo_formacion: e.target.value })}
+                disabled={buscandoFichas || savingFicha}
+              >
+                <option value="">Todos</option>
+                {TIPO_FORMACION_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
             </div>
             <button
               type="button"

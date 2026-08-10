@@ -6,6 +6,7 @@ import (
 	"log"
 	"strconv"
 
+	casbin "github.com/casbin/casbin/v3"
 	"github.com/sena/cdattg-web-golang/authz"
 	"github.com/sena/cdattg-web-golang/models"
 	"github.com/sena/cdattg-web-golang/utils"
@@ -25,6 +26,13 @@ type UserSeed struct {
 	Role      string
 }
 
+// exclusiveSeedRoles: cuentas de módulo; no deben acumular APRENDIZ/INSTRUCTOR por sync de matrícula.
+var exclusiveSeedRoles = map[string]struct{}{
+	"FPI":                   {},
+	"VIGILANTE":             {},
+	"BIENESTAR AL APRENDIZ": {},
+}
+
 var userSeeds = []UserSeed{
 	{"info@dataguaviare.com.co", seedPasswordDefault, 1, "BOT"},
 	{"superadmin@dataguaviare.com.co", seedPasswordDefault, 2, "SUPER ADMINISTRADOR"},
@@ -36,6 +44,29 @@ var userSeeds = []UserSeed{
 	{"proveedor@dataguaviare.com.co", seedPasswordDefault, 8, "PROVEEDOR"},
 	// Usuario para oficina de bienestar al aprendiz (solo lectura de dashboards)
 	{"bienestar@dataguaviare.com.co", seedPasswordDefault, 9, "BIENESTAR AL APRENDIZ"},
+	// Usuario solo módulo FPI (Sofía Fase 1/2 y Betowa)
+	{"formacionprofesionalintegralcomplementaria@dataguaviare.com.co", seedPasswordDefault, 9100, "FPI"},
+	// Usuario módulo vigilancia (portería / accesos)
+	{"vigilanciasena@dataguaviare.com.co", seedPasswordDefault, 9101, "VIGILANTE"},
+}
+
+func isExclusiveSeedRole(role string) bool {
+	_, ok := exclusiveSeedRoles[role]
+	return ok
+}
+
+// skipExclusiveModuleUser evita que sync de aprendiz/instructor sume roles a cuentas de módulo.
+func skipExclusiveModuleUser(e *casbin.Enforcer, sub string) bool {
+	roles, err := authz.GetRolesForUser(e, sub)
+	if err != nil {
+		return false
+	}
+	for _, r := range roles {
+		if isExclusiveSeedRole(r) {
+			return true
+		}
+	}
+	return false
 }
 
 // upsertSeedUser crea o actualiza el usuario por email y devuelve el registro persistido (con ID).
@@ -88,6 +119,12 @@ func RunUsersSeeder(db *gorm.DB) error {
 		}
 
 		sub := strconv.FormatUint(uint64(user.ID), 10)
+		if isExclusiveSeedRole(u.Role) {
+			// Quita APRENDIZ/INSTRUCTOR u otros roles heredados de persona reciclada.
+			if _, err := authz.DeleteRolesForUser(e, sub); err != nil {
+				return fmt.Errorf("casbin DeleteRolesForUser(user=%s): %w", sub, err)
+			}
+		}
 		if _, err := authz.AddRoleForUser(e, sub, u.Role); err != nil {
 			return fmt.Errorf("casbin AddRoleForUser(user=%s, role=%s): %w", sub, u.Role, err)
 		}
@@ -98,4 +135,33 @@ func RunUsersSeeder(db *gorm.DB) error {
 	}
 	log.Println("UsersSeeder completado.")
 	return nil
+}
+
+// EnforceExclusiveSeedRoles deja solo el rol de módulo en cuentas seed exclusivas
+// (llamar después de SyncAprendiz/SyncInstructor para no recontaminar).
+func EnforceExclusiveSeedRoles(db *gorm.DB) error {
+	e, err := authz.GetEnforcer(db)
+	if err != nil {
+		return err
+	}
+	for _, u := range userSeeds {
+		if !isExclusiveSeedRole(u.Role) {
+			continue
+		}
+		var user models.User
+		if err := db.Where("email = ?", u.Email).First(&user).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				continue
+			}
+			return err
+		}
+		sub := strconv.FormatUint(uint64(user.ID), 10)
+		if _, err := authz.DeleteRolesForUser(e, sub); err != nil {
+			return err
+		}
+		if _, err := authz.AddRoleForUser(e, sub, u.Role); err != nil {
+			return err
+		}
+	}
+	return e.SavePolicy()
 }

@@ -27,8 +27,14 @@ export function FichaDetalleResumen({ ficha, diasLabel, puedeEditarFicha }: Fich
         <div className="flex gap-3">
           <BookOpenIcon className="h-5 w-5 shrink-0 text-gray-400" />
           <div>
-            <dt className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Programa</dt>
-            <dd className="text-sm text-gray-900 dark:text-gray-100">{ficha.programa_formacion_nombre || '—'}</dd>
+            <dt className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">
+              {ficha.tipo_formacion === 'MEDIA_TECNICA' || ficha.tipo_formacion === 'FORMACION_COMPLEMENTARIA'
+                ? 'Nombre'
+                : 'Programa'}
+            </dt>
+            <dd className="text-sm text-gray-900 dark:text-gray-100">
+              {ficha.nombre || ficha.programa_formacion_nombre || '—'}
+            </dd>
           </div>
         </div>
         <div className="flex gap-3 sm:col-span-2 lg:col-span-1">

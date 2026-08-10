@@ -64,11 +64,11 @@ type AsistenciaService interface {
 	ActualizarTipoObservacionAsistencia(id uint, req dto.TipoObservacionAsistenciaUpdateRequest) (*dto.TipoObservacionAsistenciaItem, error)
 	EliminarTipoObservacionAsistencia(id uint) error
 	EliminarRegistroAprendiz(asistenciaAprendizID uint) error
-	GetDashboard(sedeID *uint, fecha string) (*dto.AsistenciaDashboardResponse, error)
-	GetCasosBienestar(sedeID *uint, dias, minFallas int, instructorLiderID *uint) (*dto.CasosBienestarResponse, error)
+	GetDashboard(sedeID *uint, fecha, tipoFormacion, jornada string) (*dto.AsistenciaDashboardResponse, error)
+	GetCasosBienestar(sedeID *uint, dias, minFallas int, instructorLiderID *uint, tipoFormacion string) (*dto.CasosBienestarResponse, error)
 	GetDetalleInasistenciasAprendiz(fichaNumero string, aprendizID uint, dias int, sedeNombre string, instructorLiderID *uint) (*dto.CasoBienestarAprendizDetalleResponse, error)
-	GetMisInasistencias(personaID uint, dias int) (*dto.MisInasistenciasResponse, error)
-	GetSesionesSinAsistenciaTomada(userID uint, roles []string, dias int, regionalID, sedeID *uint) (*dto.SesionesSinAsistenciaTomadaResponse, error)
+	GetMisInasistencias(personaID uint, dias int, fichaID *uint, estadoFicha, tipoFormacion string) (*dto.MisInasistenciasResponse, error)
+	GetSesionesSinAsistenciaTomada(userID uint, roles []string, dias int, regionalID, sedeID *uint, tipoFormacion, jornada string) (*dto.SesionesSinAsistenciaTomadaResponse, error)
 	AjustarEstadoAprendiz(asistenciaAprendizID uint, estado, motivo string, instructorFichaIDRegistroSalida *uint) (*dto.AsistenciaAprendizResponse, error)
 	ListPendientesRevision(instructorID uint, fecha string) ([]dto.AsistenciaAprendizResponse, error)
 	RegistrarAsistenciaRetroactiva(req dto.AsistenciaRetroactivaRequest) (*dto.AsistenciaRetroactivaResponse, error)
@@ -784,7 +784,13 @@ func (s *asistenciaService) ListAprendicesEnSesion(asistenciaID uint) ([]dto.Asi
 	return resp, nil
 }
 
-func (s *asistenciaService) GetDashboard(sedeID *uint, fecha string) (*dto.AsistenciaDashboardResponse, error) {
+func (s *asistenciaService) GetDashboard(sedeID *uint, fecha, tipoFormacion, jornada string) (*dto.AsistenciaDashboardResponse, error) {
+	tipoFiltro, errTipo := normalizeTipoFormacionFilter(tipoFormacion)
+	if errTipo != nil {
+		return nil, errTipo
+	}
+	jornadaFiltro := strings.TrimSpace(jornada)
+
 	_, porFichaRaw, err := s.repo.GetDashboardResumen(sedeID, fecha)
 	if err != nil {
 		return nil, err
@@ -808,6 +814,13 @@ func (s *asistenciaService) GetDashboard(sedeID *uint, fecha string) (*dto.Asist
 	if errSinAct != nil {
 		return nil, errSinAct
 	}
+
+	porFichaActivas = filtrarDashboardPorFicha(porFichaActivas, tipoFiltro, jornadaFiltro)
+	porFicha = filtrarDashboardPorFicha(porFicha, tipoFiltro, jornadaFiltro)
+	sinSesionDTO = filtrarDashboardSinSesion(sinSesionDTO, tipoFiltro, jornadaFiltro)
+	sinSesionActivas = filtrarDashboardSinSesion(sinSesionActivas, tipoFiltro, jornadaFiltro)
+	totalEnFormacion = sumarEnFormacionDashboard(porFichaActivas)
+
 	var totalFichas int64
 	if n, errC := s.fichaRepo.CountAll(sedeID); errC == nil {
 		totalFichas = n
@@ -826,12 +839,15 @@ func (s *asistenciaService) GetDashboard(sedeID *uint, fecha string) (*dto.Asist
 		FichasConSesionHoy:             len(porFichaActivas),
 	}
 	for i := range porFicha {
+		tipo := tipoFormacionEfectivo(porFicha[i].TipoFormacion)
 		resp.PorFicha[i] = dto.AsistenciaDashboardPorFicha{
 			FichaID:             porFicha[i].FichaID,
 			FichaNumero:         porFicha[i].FichaNumero,
 			ProgramaNombre:      porFicha[i].ProgramaNombre,
 			JornadaNombre:       porFicha[i].JornadaNombre,
 			SedeNombre:          porFicha[i].SedeNombre,
+			TipoFormacion:       tipo,
+			TipoFormacionLabel:  labelTipoFormacionMisInasistencias(tipo),
 			CantidadVinieron:    porFicha[i].CantidadVinieron,
 			CantidadEnFormacion: porFicha[i].CantidadEnFormacion,
 			TotalAprendices:     porFicha[i].TotalAprendices,
@@ -840,9 +856,90 @@ func (s *asistenciaService) GetDashboard(sedeID *uint, fecha string) (*dto.Asist
 	return resp, nil
 }
 
-func (s *asistenciaService) GetCasosBienestar(sedeID *uint, dias, minFallas int, instructorLiderID *uint) (*dto.CasosBienestarResponse, error) {
+func filtrarDashboardPorFicha(rows []repositories.DashboardFichaRow, tipoFiltro, jornadaFiltro string) []repositories.DashboardFichaRow {
+	if tipoFiltro == "" && jornadaFiltro == "" {
+		return rows
+	}
+	out := make([]repositories.DashboardFichaRow, 0, len(rows))
+	for i := range rows {
+		if tipoFiltro != "" && tipoFormacionEfectivo(rows[i].TipoFormacion) != tipoFiltro {
+			continue
+		}
+		if jornadaFiltro != "" && !strings.EqualFold(strings.TrimSpace(rows[i].JornadaNombre), jornadaFiltro) {
+			continue
+		}
+		out = append(out, rows[i])
+	}
+	return out
+}
+
+func filtrarDashboardSinSesion(rows []dto.AsistenciaDashboardFichaSinSesion, tipoFiltro, jornadaFiltro string) []dto.AsistenciaDashboardFichaSinSesion {
+	if tipoFiltro == "" && jornadaFiltro == "" {
+		return rows
+	}
+	out := make([]dto.AsistenciaDashboardFichaSinSesion, 0, len(rows))
+	for i := range rows {
+		tipo := tipoFormacionEfectivo(rows[i].TipoFormacion)
+		if tipoFiltro != "" && tipo != tipoFiltro {
+			continue
+		}
+		if jornadaFiltro != "" && !strings.EqualFold(strings.TrimSpace(rows[i].JornadaNombre), jornadaFiltro) {
+			continue
+		}
+		out = append(out, rows[i])
+	}
+	return out
+}
+
+func sumarEnFormacionDashboard(rows []repositories.DashboardFichaRow) int {
+	total := 0
+	for i := range rows {
+		total += rows[i].CantidadEnFormacion
+	}
+	return total
+}
+
+func filtrarCasosBienestarPorTipo(rows []repositories.CasosBienestarRow, tipoFiltro string) []repositories.CasosBienestarRow {
+	if tipoFiltro == "" {
+		return rows
+	}
+	filtrados := make([]repositories.CasosBienestarRow, 0, len(rows))
+	for i := range rows {
+		if tipoFormacionEfectivo(rows[i].TipoFormacion) == tipoFiltro {
+			filtrados = append(filtrados, rows[i])
+		}
+	}
+	return filtrados
+}
+
+func casoBienestarItemFromRow(row repositories.CasosBienestarRow) dto.CasoBienestarItem {
+	return dto.CasoBienestarItem{
+		AprendizID:                row.AprendizID,
+		PersonaNombre:             row.PersonaNombre,
+		NumeroDocumento:           row.NumeroDocumento,
+		FichaNumero:               row.FichaNumero,
+		ProgramaNombre:            row.ProgramaNombre,
+		SedeNombre:                row.SedeNombre,
+		JornadaNombre:             row.JornadaNombre,
+		TipoFormacion:             tipoFormacionEfectivo(row.TipoFormacion),
+		TipoFormacionLabel:        labelTipoFormacionMisInasistencias(row.TipoFormacion),
+		InstructorNombre:          row.InstructorNombre,
+		AmbienteNombre:            row.AmbienteNombre,
+		ModalidadNombre:           row.ModalidadNombre,
+		TotalSesiones:             row.TotalSesiones,
+		AsistenciasEfectivas:      row.AsistenciasEfectivas,
+		Inasistencias:             row.Inasistencias,
+		InasistenciasJustificadas: row.InasistenciasJustificadas,
+	}
+}
+
+func (s *asistenciaService) GetCasosBienestar(sedeID *uint, dias, minFallas int, instructorLiderID *uint, tipoFormacion string) (*dto.CasosBienestarResponse, error) {
 	if minFallas <= 0 {
 		minFallas = 3
+	}
+	tipoFiltro, errTipo := normalizeTipoFormacionFilter(tipoFormacion)
+	if errTipo != nil {
+		return nil, errTipo
 	}
 	rango, err := resolverRangoCasosBienestar(s.repo, sedeID, dias)
 	if err != nil {
@@ -855,6 +952,7 @@ func (s *asistenciaService) GetCasosBienestar(sedeID *uint, dias, minFallas int,
 	if err != nil {
 		return nil, err
 	}
+	rows = filtrarCasosBienestarPorTipo(rows, tipoFiltro)
 	resp := &dto.CasosBienestarResponse{
 		DiasAnalizados: rango.DiasAnalizados,
 		MinFallas:      minFallas,
@@ -864,22 +962,7 @@ func (s *asistenciaService) GetCasosBienestar(sedeID *uint, dias, minFallas int,
 		Casos:          make([]dto.CasoBienestarItem, len(rows)),
 	}
 	for i := range rows {
-		resp.Casos[i] = dto.CasoBienestarItem{
-			AprendizID:                rows[i].AprendizID,
-			PersonaNombre:             rows[i].PersonaNombre,
-			NumeroDocumento:           rows[i].NumeroDocumento,
-			FichaNumero:               rows[i].FichaNumero,
-			ProgramaNombre:            rows[i].ProgramaNombre,
-			SedeNombre:                rows[i].SedeNombre,
-			JornadaNombre:             rows[i].JornadaNombre,
-			InstructorNombre:          rows[i].InstructorNombre,
-			AmbienteNombre:            rows[i].AmbienteNombre,
-			ModalidadNombre:           rows[i].ModalidadNombre,
-			TotalSesiones:             rows[i].TotalSesiones,
-			AsistenciasEfectivas:      rows[i].AsistenciasEfectivas,
-			Inasistencias:             rows[i].Inasistencias,
-			InasistenciasJustificadas: rows[i].InasistenciasJustificadas,
-		}
+		resp.Casos[i] = casoBienestarItemFromRow(rows[i])
 	}
 	// Resumen por instructor: solo para vista de oficina (sin alcance a líder de ficha).
 	if instructorLiderID == nil {
@@ -956,27 +1039,168 @@ func (s *asistenciaService) GetDetalleInasistenciasAprendiz(fichaNumero string, 
 }
 
 const errMsgAprendizActivoNoEncontrado = "no está matriculado como aprendiz activo"
+const errMsgAprendizFichaFiltroVacio = "no tiene fichas con los filtros seleccionados"
 
-func (s *asistenciaService) GetMisInasistencias(personaID uint, dias int) (*dto.MisInasistenciasResponse, error) {
+func labelTipoFormacionMisInasistencias(tipo string) string {
+	switch strings.TrimSpace(tipo) {
+	case models.TipoFormacionMediaTecnica:
+		return "Media Técnica"
+	case models.TipoFormacionComplementaria:
+		return "Formación Complementaria"
+	default:
+		return "Formación Regular"
+	}
+}
+
+func normalizarEstadoFichaMisInasistencias(v string) string {
+	switch strings.ToLower(strings.TrimSpace(v)) {
+	case "inactivas":
+		return "inactivas"
+	case "todas":
+		return "todas"
+	default:
+		return "activas"
+	}
+}
+
+// matriculaActivaMisInasistencias: matrícula activa y ficha vigente (si hay ficha).
+func matriculaActivaMisInasistencias(a models.Aprendiz) bool {
+	if !a.Estado {
+		return false
+	}
+	if a.FichaCaracterizacion == nil {
+		return true
+	}
+	return a.FichaCaracterizacion.Status
+}
+
+func matriculaCoincideEstadoMisInasistencias(activa bool, estado string) bool {
+	switch estado {
+	case "activas":
+		return activa
+	case "inactivas":
+		return !activa
+	default:
+		return true
+	}
+}
+
+func tipoFormacionMatriculaMisInasistencias(a models.Aprendiz) string {
+	if a.FichaCaracterizacion == nil || strings.TrimSpace(a.FichaCaracterizacion.TipoFormacion) == "" {
+		return models.TipoFormacionRegular
+	}
+	return tipoFormacionEfectivo(a.FichaCaracterizacion.TipoFormacion)
+}
+
+func matriculaPasaFiltrosMisInasistencias(a models.Aprendiz, estado, tipoFormacion string) bool {
+	if !matriculaCoincideEstadoMisInasistencias(matriculaActivaMisInasistencias(a), estado) {
+		return false
+	}
+	if tipoFormacion == "" {
+		return true
+	}
+	return tipoFormacionMatriculaMisInasistencias(a) == tipoFormacion
+}
+
+func filtrarMatriculasMisInasistencias(list []models.Aprendiz, estadoFicha, tipoFormacion string) []models.Aprendiz {
+	estado := normalizarEstadoFichaMisInasistencias(estadoFicha)
+	out := make([]models.Aprendiz, 0, len(list))
+	for i := range list {
+		if matriculaPasaFiltrosMisInasistencias(list[i], estado, tipoFormacion) {
+			out = append(out, list[i])
+		}
+	}
+	return out
+}
+
+func opcionFichaMisInasistencias(a models.Aprendiz) dto.MisInasistenciasFichaOpcion {
+	op := dto.MisInasistenciasFichaOpcion{
+		AprendizID: a.ID,
+		Activa:     matriculaActivaMisInasistencias(a),
+	}
+	if a.FichaCaracterizacion == nil {
+		return op
+	}
+	f := a.FichaCaracterizacion
+	op.FichaID = f.ID
+	op.FichaNumero = f.Ficha
+	op.ProgramaNombre = models.NombreProgramaDisplay(f)
+	op.TipoFormacion = f.TipoFormacion
+	if op.TipoFormacion == "" {
+		op.TipoFormacion = models.TipoFormacionRegular
+	}
+	op.TipoFormacionLabel = labelTipoFormacionMisInasistencias(op.TipoFormacion)
+	if f.Sede != nil {
+		op.SedeNombre = f.Sede.Nombre
+	}
+	return op
+}
+
+func seleccionarAprendizMisInasistencias(matriculas []models.Aprendiz, fichaID *uint) (*models.Aprendiz, error) {
+	if fichaID != nil && *fichaID > 0 {
+		for i := range matriculas {
+			if matriculas[i].FichaCaracterizacionID == *fichaID {
+				return &matriculas[i], nil
+			}
+		}
+		return nil, errors.New("no está matriculado en la ficha indicada con el filtro seleccionado")
+	}
+	return &matriculas[0], nil
+}
+
+func metaFichaMisInasistencias(aprendiz *models.Aprendiz) (fichaID uint, fichaNumero, programa, sede, tipo string) {
+	tipo = models.TipoFormacionRegular
+	if aprendiz == nil || aprendiz.FichaCaracterizacion == nil {
+		return 0, "", "", "", tipo
+	}
+	f := aprendiz.FichaCaracterizacion
+	fichaID = f.ID
+	fichaNumero = f.Ficha
+	programa = models.NombreProgramaDisplay(f)
+	if f.TipoFormacion != "" {
+		tipo = f.TipoFormacion
+	}
+	if f.Sede != nil {
+		sede = f.Sede.Nombre
+	}
+	return fichaID, fichaNumero, programa, sede, tipo
+}
+
+func (s *asistenciaService) GetMisInasistencias(personaID uint, dias int, fichaID *uint, estadoFicha, tipoFormacion string) (*dto.MisInasistenciasResponse, error) {
 	if personaID == 0 {
 		return nil, errors.New(errMsgAprendizActivoNoEncontrado)
 	}
-	aprendiz, err := s.aprendizRepo.FindActivoByPersonaID(personaID)
-	if err != nil || aprendiz == nil {
+	tipoFiltro, errTipo := normalizeTipoFormacionFilter(tipoFormacion)
+	if errTipo != nil {
+		return nil, errTipo
+	}
+	estado := normalizarEstadoFichaMisInasistencias(estadoFicha)
+	todas, err := s.aprendizRepo.FindAllByPersonaID(personaID)
+	if err != nil {
+		return nil, err
+	}
+	if len(todas) == 0 {
 		return nil, errors.New(errMsgAprendizActivoNoEncontrado)
 	}
-	fichaNumero := ""
-	programaNombre := ""
-	sedeNombre := ""
-	if aprendiz.FichaCaracterizacion != nil {
-		fichaNumero = aprendiz.FichaCaracterizacion.Ficha
-		if aprendiz.FichaCaracterizacion.ProgramaFormacion != nil {
-			programaNombre = aprendiz.FichaCaracterizacion.ProgramaFormacion.Nombre
+	matriculas := filtrarMatriculasMisInasistencias(todas, estado, tipoFiltro)
+	if len(matriculas) == 0 {
+		if estado == "activas" && tipoFiltro == "" {
+			return nil, errors.New(errMsgAprendizActivoNoEncontrado)
 		}
-		if aprendiz.FichaCaracterizacion.Sede != nil {
-			sedeNombre = aprendiz.FichaCaracterizacion.Sede.Nombre
-		}
+		return nil, errors.New(errMsgAprendizFichaFiltroVacio)
 	}
+
+	opciones := make([]dto.MisInasistenciasFichaOpcion, 0, len(matriculas))
+	for i := range matriculas {
+		opciones = append(opciones, opcionFichaMisInasistencias(matriculas[i]))
+	}
+
+	aprendiz, errSel := seleccionarAprendizMisInasistencias(matriculas, fichaID)
+	if errSel != nil {
+		return nil, errSel
+	}
+
+	fichaIDSel, fichaNumero, programaNombre, sedeNombre, tipoFormacion := metaFichaMisInasistencias(aprendiz)
 	if strings.TrimSpace(fichaNumero) == "" {
 		return nil, errors.New("ficha de caracterización no encontrada para el aprendiz")
 	}
@@ -986,8 +1210,11 @@ func (s *asistenciaService) GetMisInasistencias(personaID uint, dias int) (*dto.
 	}
 	return &dto.MisInasistenciasResponse{
 		AprendizID:                     aprendiz.ID,
+		FichaID:                        fichaIDSel,
 		FichaNumero:                    detalle.FichaNumero,
 		ProgramaNombre:                 programaNombre,
+		TipoFormacion:                  tipoFormacion,
+		TipoFormacionLabel:             labelTipoFormacionMisInasistencias(tipoFormacion),
 		SedeNombre:                     sedeNombre,
 		FechaInicio:                    detalle.FechaInicio,
 		FechaFin:                       detalle.FechaFin,
@@ -995,7 +1222,43 @@ func (s *asistenciaService) GetMisInasistencias(personaID uint, dias int) (*dto.
 		TotalInasistenciasJustificadas: len(detalle.InasistenciasJustificadas),
 		Inasistencias:                  detalle.Inasistencias,
 		InasistenciasJustificadas:      detalle.InasistenciasJustificadas,
+		Fichas:                         opciones,
 	}, nil
+}
+
+func filtrarSesionesSinAsistencia(rows []repositories.SesionSinAsistenciaTomadaRow, tipoFiltro, jornadaFiltro string) []repositories.SesionSinAsistenciaTomadaRow {
+	if tipoFiltro == "" && jornadaFiltro == "" {
+		return rows
+	}
+	filtrados := make([]repositories.SesionSinAsistenciaTomadaRow, 0, len(rows))
+	for i := range rows {
+		if tipoFiltro != "" && tipoFormacionEfectivo(rows[i].TipoFormacion) != tipoFiltro {
+			continue
+		}
+		if jornadaFiltro != "" && !strings.EqualFold(strings.TrimSpace(rows[i].JornadaNombre), jornadaFiltro) {
+			continue
+		}
+		filtrados = append(filtrados, rows[i])
+	}
+	return filtrados
+}
+
+func sesionSinAsistenciaItemFromRow(row repositories.SesionSinAsistenciaTomadaRow) dto.SesionSinAsistenciaTomadaItem {
+	return dto.SesionSinAsistenciaTomadaItem{
+		AsistenciaID:       row.AsistenciaID,
+		FichaNumero:        row.FichaNumero,
+		InstructorID:       row.InstructorID,
+		InstructorNombre:   row.InstructorNombre,
+		NumeroDocumento:    row.NumeroDocumento,
+		ProgramaNombre:     row.ProgramaNombre,
+		SedeNombre:         row.SedeNombre,
+		JornadaNombre:      row.JornadaNombre,
+		TipoFormacion:      tipoFormacionEfectivo(row.TipoFormacion),
+		TipoFormacionLabel: labelTipoFormacionMisInasistencias(row.TipoFormacion),
+		Fecha:              row.Fecha.Format(time.DateOnly),
+		SesionFinalizada:   row.IsFinished,
+		TipoIncumplimiento: row.TipoIncumplimiento,
+	}
 }
 
 func (s *asistenciaService) GetSesionesSinAsistenciaTomada(
@@ -1003,7 +1266,14 @@ func (s *asistenciaService) GetSesionesSinAsistenciaTomada(
 	roles []string,
 	dias int,
 	regionalID, sedeID *uint,
+	tipoFormacion, jornada string,
 ) (*dto.SesionesSinAsistenciaTomadaResponse, error) {
+	tipoFiltro, errTipo := normalizeTipoFormacionFilter(tipoFormacion)
+	if errTipo != nil {
+		return nil, errTipo
+	}
+	jornadaFiltro := strings.TrimSpace(jornada)
+
 	scopeSvc := NewDashboardScopeService()
 	scope, err := scopeSvc.Resolve(userID, roles)
 	if err != nil {
@@ -1024,21 +1294,23 @@ func (s *asistenciaService) GetSesionesSinAsistenciaTomada(
 	fechaInicioStr := rango.FechaInicio.Format(time.DateOnly)
 	fechaFinStr := rango.FechaFin.Format(time.DateOnly)
 
+	empty := &dto.SesionesSinAsistenciaTomadaResponse{
+		DiasAnalizados: rango.DiasAnalizados,
+		FechaInicio:    fechaInicioStr,
+		FechaFin:       fechaFinStr,
+		Historico:      rango.Historico,
+		Total:          0,
+		Sesiones:       []dto.SesionSinAsistenciaTomadaItem{},
+	}
 	if restrictedEmpty {
-		return &dto.SesionesSinAsistenciaTomadaResponse{
-			DiasAnalizados: rango.DiasAnalizados,
-			FechaInicio:    fechaInicioStr,
-			FechaFin:       fechaFinStr,
-			Historico:      rango.Historico,
-			Total:          0,
-			Sesiones:       []dto.SesionSinAsistenciaTomadaItem{},
-		}, nil
+		return empty, nil
 	}
 
 	rows, err := NewCasosBienestarCalculator().ListSesionesSinAsistenciaTomada(sedeIDs, fechaInicioStr, fechaFinStr)
 	if err != nil {
 		return nil, err
 	}
+	rows = filtrarSesionesSinAsistencia(rows, tipoFiltro, jornadaFiltro)
 	resp := &dto.SesionesSinAsistenciaTomadaResponse{
 		DiasAnalizados: rango.DiasAnalizados,
 		FechaInicio:    fechaInicioStr,
@@ -1048,19 +1320,7 @@ func (s *asistenciaService) GetSesionesSinAsistenciaTomada(
 		Sesiones:       make([]dto.SesionSinAsistenciaTomadaItem, len(rows)),
 	}
 	for i := range rows {
-		resp.Sesiones[i] = dto.SesionSinAsistenciaTomadaItem{
-			AsistenciaID:       rows[i].AsistenciaID,
-			FichaNumero:        rows[i].FichaNumero,
-			InstructorID:       rows[i].InstructorID,
-			InstructorNombre:   rows[i].InstructorNombre,
-			NumeroDocumento:    rows[i].NumeroDocumento,
-			ProgramaNombre:     rows[i].ProgramaNombre,
-			SedeNombre:         rows[i].SedeNombre,
-			JornadaNombre:      rows[i].JornadaNombre,
-			Fecha:              rows[i].Fecha.Format(time.DateOnly),
-			SesionFinalizada:   rows[i].IsFinished,
-			TipoIncumplimiento: rows[i].TipoIncumplimiento,
-		}
+		resp.Sesiones[i] = sesionSinAsistenciaItemFromRow(rows[i])
 	}
 	return resp, nil
 }

@@ -27,7 +27,17 @@ export const programasPaths = {
 
 export const fichasPaths = {
   index: '/fichas',
-  detalle: (fichaId: number | string) => `/fichas/${fichaId}`,
+  mediaTecnica: '/fichas/media-tecnica',
+  complementaria: '/fichas/complementaria',
+  /** Listado según tipo de formación (submódulo del menú). */
+  listado: (tipoFormacion?: string | null) => {
+    if (tipoFormacion === 'MEDIA_TECNICA') return '/fichas/media-tecnica';
+    if (tipoFormacion === 'FORMACION_COMPLEMENTARIA') return '/fichas/complementaria';
+    return '/fichas';
+  },
+  /** Detalle anidado en el mismo submódulo del listado. */
+  detalle: (fichaId: number | string, tipoFormacion?: string | null) =>
+    `${fichasPaths.listado(tipoFormacion)}/${fichaId}`,
 } as const;
 
 export const asistenciaPaths = {
@@ -50,6 +60,7 @@ export type BienestarCasosQuery = {
   dias?: number;
   min_fallas?: number;
   sede?: string;
+  tipo_formacion?: string;
 };
 
 export const bienestarPaths = {
@@ -63,6 +74,7 @@ export const bienestarPaths = {
       if (query.dias != null) params.set('dias', String(query.dias));
       if (query.min_fallas != null) params.set('min_fallas', String(query.min_fallas));
       if (query.sede) params.set('sede', query.sede);
+      if (query.tipo_formacion) params.set('tipo_formacion', query.tipo_formacion);
       const qs = params.toString();
       return qs ? `${base}?${qs}` : base;
     },
@@ -81,6 +93,8 @@ export const inventarioPaths = {
 } as const;
 
 export const vigilanciaPaths = {
+  porteria: '/vigilancia/porteria',
+  reporte: '/vigilancia/accesos',
   ambientes: '/vigilancia/ambientes',
 } as const;
 
@@ -107,4 +121,11 @@ export const administracionPaths = {
 
 export const eleccionAprendizPaths = {
   index: '/eleccion-aprendices',
+} as const;
+
+export const complementariosPaths = {
+  index: '/complementarios',
+  betowa: '/complementarios/betowa',
+  consultarRegistro: '/complementarios/consultar-registro',
+  inscripciones: '/complementarios/inscripciones',
 } as const;

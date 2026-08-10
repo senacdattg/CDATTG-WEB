@@ -26,6 +26,8 @@ export interface UserResponse {
   full_name: string;
   status: boolean;
   persona_id?: number;
+  perfil_completo?: boolean;
+  campos_faltantes?: string[];
 }
 
 export interface PersonaRequest {
@@ -410,8 +412,10 @@ export interface BloqueResponse {
 
 // Fichas de caracterización
 export interface FichaCaracterizacionRequest {
-  programa_formacion_id: number;
+  programa_formacion_id?: number | null;
+  nombre?: string;
   ficha: string;
+  tipo_formacion?: string;
   instructor_id?: number | null;
   fecha_inicio?: string;
   fecha_fin?: string;
@@ -431,9 +435,11 @@ export interface FichaCaracterizacionRequest {
 
 export interface FichaCaracterizacionResponse {
   id: number;
-  programa_formacion_id: number;
+  programa_formacion_id?: number | null;
+  nombre?: string;
   programa_formacion_nombre?: string;
   ficha: string;
+  tipo_formacion?: string;
   instructor_id?: number;
   instructor_nombre?: string;
   fecha_inicio?: string;
@@ -560,7 +566,10 @@ export interface AsistenciaRequest {
 export interface AsistenciaRetroactivaRequest {
   instructor_ficha_id: number;
   fecha: string;
-  aprendiz_ids: number[];
+  /** Aprendices presentes */
+  aprendiz_ids?: number[];
+  /** Aprendices con inasistencia justificada */
+  justificados_ids?: number[];
   motivo: string;
 }
 
@@ -633,6 +642,8 @@ export interface AsistenciaDashboardFichaSinSesion {
   programa_nombre?: string;
   jornada_nombre?: string;
   sede_nombre?: string;
+  tipo_formacion?: string;
+  tipo_formacion_label?: string;
   instructor_nombre?: string;
   instructor_id?: number;
   total_aprendices: number;
@@ -868,10 +879,25 @@ export interface CasoBienestarAprendizDetalleResponse {
   inasistencias_justificadas?: InasistenciaDetalleItem[];
 }
 
-export interface MisInasistenciasResponse {
+export interface MisInasistenciasFichaOpcion {
   aprendiz_id: number;
+  ficha_id: number;
   ficha_numero: string;
   programa_nombre?: string;
+  tipo_formacion?: string;
+  tipo_formacion_label?: string;
+  sede_nombre?: string;
+  /** Matrícula y ficha vigentes. */
+  activa?: boolean;
+}
+
+export interface MisInasistenciasResponse {
+  aprendiz_id: number;
+  ficha_id?: number;
+  ficha_numero: string;
+  programa_nombre?: string;
+  tipo_formacion?: string;
+  tipo_formacion_label?: string;
   sede_nombre?: string;
   fecha_inicio: string;
   fecha_fin: string;
@@ -880,6 +906,8 @@ export interface MisInasistenciasResponse {
   total_inasistencias_justificadas?: number;
   inasistencias: InasistenciaDetalleItem[];
   inasistencias_justificadas?: InasistenciaDetalleItem[];
+  /** Fichas del aprendiz según filtro estado_ficha. */
+  fichas?: MisInasistenciasFichaOpcion[];
 }
 
 export interface SesionSinAsistenciaTomadaItem {
@@ -891,6 +919,8 @@ export interface SesionSinAsistenciaTomadaItem {
   programa_nombre: string;
   sede_nombre: string;
   jornada_nombre: string;
+  tipo_formacion?: string;
+  tipo_formacion_label?: string;
   fecha: string;
   sesion_finalizada: boolean;
   tipo_incumplimiento: 'sesion_sin_marcas' | 'dia_sin_sesion';
@@ -913,6 +943,8 @@ export interface CasoBienestarItem {
   programa_nombre?: string;
   sede_nombre: string;
   jornada_nombre?: string;
+  tipo_formacion?: string;
+  tipo_formacion_label?: string;
   instructor_nombre?: string;
   ambiente_nombre?: string;
   modalidad_formacion_nombre?: string;
@@ -929,6 +961,8 @@ export interface AsistenciaDashboardPorFicha {
   programa_nombre: string;
   sede_nombre: string;
   jornada_nombre?: string;
+  tipo_formacion?: string;
+  tipo_formacion_label?: string;
   cantidad_vinieron: number;
   /** Aprendices con ingreso y sin salida registrada (en formación ahora) */
   cantidad_en_formacion?: number;
@@ -1105,4 +1139,246 @@ export interface UsuarioPermisosResponse {
 export interface DefinicionesPermisosResponse {
   roles: string[];
   permisos: PermisoPair[];
+}
+
+/** Portería / control de acceso sede */
+export type AccesoMetodoRegistro = 'LASER' | 'CAMARA' | 'MANUAL';
+export type AccesoTipoPersona = 'APRENDIZ' | 'INSTRUCTOR' | 'ADMINISTRATIVO' | 'VISITANTE';
+export type AccesoMotivoSalida =
+  | 'DESCANSO'
+  | 'CAFETERIA'
+  | 'FIN_JORNADA'
+  | 'CITA_MEDICA'
+  | 'NOVEDAD_FAMILIAR'
+  | 'COMISION_INSTITUCIONAL'
+  | 'OTRO';
+
+export interface AccesoPersonaFicha {
+  persona_id: number;
+  numero_documento: string;
+  tipo_documento_id?: number;
+  primer_nombre: string;
+  segundo_nombre: string;
+  primer_apellido: string;
+  segundo_apellido: string;
+  nombre_completo: string;
+  email: string;
+  celular: string;
+  telefono: string;
+  es_nueva: boolean;
+  perfil_completo: boolean;
+  tipo_sugerido: string;
+  /** Todos los roles detectados (ej. aprendiz e instructor a la vez). */
+  tipos?: string[];
+}
+
+export interface AccesoVisitaAbierta {
+  id: number;
+  tipo_persona: string;
+  timestamp_entrada: string;
+  metodo_registro: string;
+}
+
+/** Ficha activa relacionada a la persona (solo se envía si status=true). */
+export interface AccesoFichaResumen {
+  id: number;
+  numero: string;
+  programa_nombre: string;
+  tipo_formacion?: string;
+  tipo_formacion_label?: string;
+  jornada_nombre: string;
+  sede_nombre: string;
+  activa: boolean;
+}
+
+export type AccesoModo = 'ENTRADA' | 'SALIDA';
+
+export interface AccesoLookupResponse {
+  persona: AccesoPersonaFicha;
+  dentro: boolean;
+  accion_sugerida: 'INGRESO' | 'SALIDA';
+  visita_abierta?: AccesoVisitaAbierta;
+  ficha?: AccesoFichaResumen;
+  fichas?: AccesoFichaResumen[];
+  sede_id: number;
+  tipos_persona: string[];
+  motivos_salida: string[];
+  puede_confirmar: boolean;
+  alerta?: string;
+  permite_salida_sin_ingreso: boolean;
+}
+
+export interface AccesoRegistroResponse {
+  persona: AccesoPersonaFicha;
+  accion: 'INGRESO' | 'SALIDA';
+  visita_id: number;
+  dentro: boolean;
+  mensaje: string;
+  visita_abierta?: AccesoVisitaAbierta;
+  ficha?: AccesoFichaResumen;
+  fichas?: AccesoFichaResumen[];
+  sede_id: number;
+  salida_sin_ingreso?: boolean;
+}
+
+export interface AccesoDentroItem {
+  visita_id: number;
+  persona: AccesoPersonaFicha;
+  tipo_persona: string;
+  timestamp_entrada: string;
+  metodo_registro: string;
+}
+
+export interface AccesoHistorialItem {
+  visita_id: number;
+  persona: AccesoPersonaFicha;
+  tipo_persona: string;
+  sede_id: number;
+  sede_nombre: string;
+  regional_id?: number;
+  regional_nombre?: string;
+  timestamp_entrada: string;
+  timestamp_salida?: string;
+  metodo_registro: string;
+  motivo_salida?: string;
+  observacion_salida?: string;
+  salida_sin_ingreso: boolean;
+  estado: 'abierto' | 'cerrado';
+}
+
+export interface AccesoHistorialResponse {
+  items: AccesoHistorialItem[];
+  total: number;
+  page: number;
+  page_size: number;
+  fecha_desde?: string;
+  fecha_hasta?: string;
+}
+
+export interface AccesoHoraBucket {
+  hora: number;
+  n: number;
+}
+
+export interface AccesoEstadisticasResponse {
+  fecha_desde: string;
+  fecha_hasta: string;
+  total_ingresos: number;
+  total_salidas: number;
+  dentro_ahora: number;
+  salidas_sin_ingreso: number;
+  visitas_abiertas_periodo: number;
+  visitas_cerradas_periodo: number;
+  indice_salida_ingreso: number;
+  hora_pico_ingreso?: number;
+  hora_pico_salida?: number;
+  por_tipo_persona: Record<string, number>;
+  por_motivo_salida: Record<string, number>;
+  por_metodo: Record<string, number>;
+  ingresos_por_hora: AccesoHoraBucket[];
+  salidas_por_hora: AccesoHoraBucket[];
+}
+
+export interface AccesoHistorialParams {
+  regional_id?: number;
+  sede_id?: number;
+  fecha_desde?: string;
+  fecha_hasta?: string;
+  tipo_persona?: string;
+  documento?: string;
+  estado?: string;
+  motivo_salida?: string;
+  salida_sin_ingreso?: boolean;
+  page?: number;
+  page_size?: number;
+}
+
+// —— Complementarios (FPI): verificación de aspirantes en SofiaPlus ——
+export type VerificacionEstado = 'REGISTRADO' | 'NO_REGISTRADO' | 'NO_VERIFICADO';
+
+export interface VerificarAspiranteRequest {
+  numero_documento: string;
+  tipo_documento?: string;
+}
+
+export interface VerificarAspiranteResponse {
+  numero_documento: string;
+  estado: VerificacionEstado;
+  tipo_encontrado?: string;
+  nombre?: string;
+  nombres?: string;
+  primer_apellido?: string;
+  segundo_apellido?: string;
+  detalle?: string;
+  mensaje?: string;
+}
+
+export interface VerificarLoteResponse {
+  total: number;
+  registrados: number;
+  no_registrados: number;
+  no_verificados: number;
+  resultados: VerificarAspiranteResponse[];
+}
+
+// Respuesta inmediata de POST /verificar-lote: el escaneo corre en segundo plano.
+export interface LoteIniciadoResponse {
+  lote_id: string;
+  total: number;
+}
+
+// Avance en vivo del lote (polling GET /verificar-lote/progreso/:lote_id).
+export interface ProgresoLoteResponse {
+  lote_id: string;
+  fase?: string;
+  total: number;
+  procesados: number;
+  actual_doc?: string;
+  estado_actual?: string;
+  terminado: boolean;
+  error?: string;
+}
+
+export interface GuardarCredencialSofiaRequest {
+  tipo_documento: string;
+  usuario: string;
+  password: string;
+  rol?: string;
+}
+
+export interface CredencialSofiaEstado {
+  tiene: boolean;
+  tipo_documento?: string;
+  usuario?: string;
+  rol?: string;
+  actualizada_en?: string;
+}
+
+export interface ConsultarInscripcionesRequest {
+  numero_documento: string;
+  programa: string;
+  tipo_documento?: string;
+}
+
+export interface RegistroInscripcionFicha {
+  ficha: string;
+  programa: string;
+  estado: string;
+}
+
+export interface ConsultarInscripcionesResponse {
+  numero_documento: string;
+  programa_consultado: string;
+  estado: string;
+  tipo_encontrado?: string;
+  registros: RegistroInscripcionFicha[];
+  mensaje?: string;
+}
+
+export interface ConsultarInscripcionesLoteResponse {
+  total: number;
+  encontrados: number;
+  no_encontrados: number;
+  no_verificados: number;
+  resultados: ConsultarInscripcionesResponse[];
 }

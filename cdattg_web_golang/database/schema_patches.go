@@ -188,6 +188,53 @@ func patchAutoMigrateEleccionModels() error {
 	return nil
 }
 
+func patchPersonaIngresoSalidaSalidaSinIngreso() error {
+	return execSchemaPatch(
+		"Esquema: columna persona_ingreso_salida.salida_sin_ingreso verificada",
+		`ALTER TABLE persona_ingreso_salida
+		ADD COLUMN IF NOT EXISTS salida_sin_ingreso BOOLEAN NOT NULL DEFAULT false`,
+	)
+}
+
+func patchFichaTipoFormacion() error {
+	if err := execSchemaPatch(
+		"Esquema: columna fichas_caracterizacion.tipo_formacion verificada",
+		`ALTER TABLE fichas_caracterizacion
+		ADD COLUMN IF NOT EXISTS tipo_formacion VARCHAR(40) NOT NULL DEFAULT 'FORMACION_REGULAR'`,
+	); err != nil {
+		return err
+	}
+	return execSchemaPatch(
+		"Datos: fichas sin tipo_formacion → FORMACION_REGULAR",
+		`UPDATE fichas_caracterizacion
+		SET tipo_formacion = 'FORMACION_REGULAR'
+		WHERE tipo_formacion IS NULL OR TRIM(tipo_formacion) = ''`,
+	)
+}
+
+func patchFichaNombreYProgramaOpcional() error {
+	if err := execSchemaPatch(
+		"Esquema: columna fichas_caracterizacion.nombre",
+		`ALTER TABLE fichas_caracterizacion
+		ADD COLUMN IF NOT EXISTS nombre VARCHAR(255) NOT NULL DEFAULT ''`,
+	); err != nil {
+		return err
+	}
+	return execSchemaPatch(
+		"Esquema: programa_formacion_id opcional en fichas",
+		`ALTER TABLE fichas_caracterizacion
+		ALTER COLUMN programa_formacion_id DROP NOT NULL`,
+	)
+}
+
+func patchAutoMigrateSofiaCredencial() error {
+	if err := DB.AutoMigrate(&models.SofiaCredencial{}); err != nil {
+		return err
+	}
+	log.Println("Esquema: tabla sofia_credenciales verificada")
+	return nil
+}
+
 // EnsureSchemaPatches aplica cambios incrementales de esquema sin ejecutar Migrate() completo.
 func EnsureSchemaPatches() error {
 	if DB == nil {
@@ -202,6 +249,10 @@ func EnsureSchemaPatches() error {
 		patchFichaDiasFueraDePlantillaJornada,
 		patchAutoMigrateDashboardModels,
 		patchAutoMigrateEleccionModels,
+		patchPersonaIngresoSalidaSalidaSinIngreso,
+		patchFichaTipoFormacion,
+		patchFichaNombreYProgramaOpcional,
+		patchAutoMigrateSofiaCredencial,
 	}
 	for _, patch := range patches {
 		if err := patch(); err != nil {

@@ -80,6 +80,7 @@ func (h *StatsHandler) GetAsistenciaAnalisis(c *gin.Context) {
 		FechaHasta:    c.Query("fecha_hasta"),
 		Jornada:       c.Query("jornada"),
 		EstadoFicha:   c.Query("estado_ficha"),
+		TipoFormacion: c.Query("tipo_formacion"),
 		FichaBusqueda: strings.TrimSpace(c.Query("ficha")),
 	}
 	if v := c.Query("regional_id"); v != "" {

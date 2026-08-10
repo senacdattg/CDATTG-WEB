@@ -7,6 +7,15 @@ import type {
 } from '../types';
 import { horariosFromFicha, validarSinSolape } from './fichaCaracterizacionHorarios';
 import { MSG_INSTRUCTOR_LIDER_OBLIGATORIO } from '../constants/instructorLiderLabels';
+import {
+  normalizeTipoFormacion,
+  TIPO_FORMACION,
+} from '../constants/tipoFormacion';
+
+function esTipoSinPrograma(tipo?: string | null): boolean {
+  const t = normalizeTipoFormacion(tipo);
+  return t === TIPO_FORMACION.MEDIA_TECNICA || t === TIPO_FORMACION.COMPLEMENTARIA;
+}
 
 function sliceHoraInput(value?: string | null): string | undefined {
   if (value == null || value === '') return undefined;
@@ -48,9 +57,12 @@ export function normalizeDiaIds(ids?: (number | string)[] | null): number[] {
 
 export function formStateFromFicha(item: FichaCaracterizacionResponse): FichaCaracterizacionRequest {
   const horarios = horariosFromFicha(item);
+  const tipo = normalizeTipoFormacion(item.tipo_formacion);
   return {
-    programa_formacion_id: item.programa_formacion_id,
+    programa_formacion_id: item.programa_formacion_id ?? null,
+    nombre: item.nombre || item.programa_formacion_nombre || '',
     ficha: item.ficha,
+    tipo_formacion: tipo,
     instructor_id: item.instructor_id,
     fecha_inicio: toDateInputString(item.fecha_inicio),
     fecha_fin: toDateInputString(item.fecha_fin),
@@ -76,6 +88,17 @@ export function validarFormFicha(
   if (!form.ficha?.trim()) {
     return 'El número de ficha es obligatorio.';
   }
+  if (!form.tipo_formacion?.trim()) {
+    return 'Seleccione el tipo de formación.';
+  }
+  const tipo = normalizeTipoFormacion(form.tipo_formacion);
+  if (esTipoSinPrograma(tipo)) {
+    if (!form.nombre?.trim()) {
+      return 'El nombre es obligatorio.';
+    }
+  } else if (!form.programa_formacion_id) {
+    return 'Seleccione el programa de formación.';
+  }
   const horarios = form.horarios ?? form.dias_formacion ?? [];
   if (horarios.length === 0) {
     return 'Debe configurar al menos un bloque horario de formación.';
@@ -96,12 +119,18 @@ export function construirPayloadFicha(
   const fechaFin =
     (form.fecha_fin?.trim() && toDateInputString(form.fecha_fin.trim())) ||
     (editing ? toDateInputString(editing.fecha_fin) : undefined);
-  const programaFormacionId = form.programa_formacion_id || programas[0]?.id || 0;
+  const tipo = normalizeTipoFormacion(form.tipo_formacion);
+  const sinPrograma = esTipoSinPrograma(tipo);
+  const programaFormacionId = sinPrograma
+    ? null
+    : form.programa_formacion_id || programas[0]?.id || null;
   const horariosPayload = buildDiasFormacionPayload(horarios);
 
   return {
     programa_formacion_id: programaFormacionId,
+    nombre: sinPrograma ? (form.nombre?.trim() ?? '') : '',
     ficha: form.ficha.trim(),
+    tipo_formacion: tipo,
     instructor_id: form.instructor_id ?? null,
     fecha_inicio: fechaInicio,
     fecha_fin: fechaFin,

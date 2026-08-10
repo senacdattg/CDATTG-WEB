@@ -49,8 +49,10 @@ export function CasosBienestarPage() {
       <CasosBienestarCriteriosCard
         dias={page.dias}
         minFallas={page.minFallas}
+        tipoFormacion={page.tipoFormacion}
         onDiasChange={page.setDias}
         onMinFallasChange={page.setMinFallas}
+        onTipoFormacionChange={page.setTipoFormacion}
       />
 
       {!page.loading && page.data && page.data.casos.length > 0 && (
@@ -95,6 +97,7 @@ export function CasosBienestarPage() {
               grupos={page.gruposFiltrados}
               dias={page.dias}
               minFallas={page.minFallas}
+              tipoFormacion={page.tipoFormacion}
               hayCasosEnApi={page.data.casos.length > 0}
               sinResultadosFiltro={page.data.casos.length > 0 && page.gruposFiltrados.length === 0}
             />

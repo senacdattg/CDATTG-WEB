@@ -20,6 +20,7 @@ export function useCasosBienestarFichaDetalle() {
   const dias = parseDiasCasosBienestarParam(diasParam);
   const minFallas = Number.isFinite(minFallasParam) && minFallasParam > 0 ? minFallasParam : 3;
   const sedeNombreParam = searchParams.get('sede') || '';
+  const tipoFormacion = searchParams.get('tipo_formacion') || '';
 
   const setDias = useCallback(
     (value: number) => {
@@ -49,6 +50,21 @@ export function useCasosBienestarFichaDetalle() {
     [setSearchParams],
   );
 
+  const setTipoFormacion = useCallback(
+    (value: string) => {
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev);
+          if (value) next.set('tipo_formacion', value);
+          else next.delete('tipo_formacion');
+          return next;
+        },
+        { replace: true },
+      );
+    },
+    [setSearchParams],
+  );
+
   const [searchQuery, setSearchQuery] = useState('');
   const [aprendizDetalle, setAprendizDetalle] = useState<CasoBienestarItem | null>(null);
   const [detalleLoading, setDetalleLoading] = useState(false);
@@ -67,6 +83,7 @@ export function useCasosBienestarFichaDetalle() {
     enabled: canView && Boolean(fichaNumero),
     dias,
     minFallas,
+    tipoFormacion,
   });
 
   useEffect(() => {
@@ -190,6 +207,8 @@ export function useCasosBienestarFichaDetalle() {
     setDias,
     minFallas,
     setMinFallas,
+    tipoFormacion,
+    setTipoFormacion,
     sedeNombre,
     searchQuery,
     setSearchQuery,

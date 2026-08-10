@@ -39,6 +39,9 @@ func RunSyncAprendizRolesSeeder(db *gorm.DB) error {
 			continue
 		}
 		sub := strconv.FormatUint(uint64(user.ID), 10)
+		if skipExclusiveModuleUser(e, sub) {
+			continue
+		}
 		_, _ = authz.AddRoleForUser(e, sub, "APRENDIZ")
 	}
 	_ = e.SavePolicy()

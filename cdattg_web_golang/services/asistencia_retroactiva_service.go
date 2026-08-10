@@ -37,7 +37,7 @@ func (s *asistenciaService) RegistrarAsistenciaRetroactiva(req dto.AsistenciaRet
 		return nil, err
 	}
 	registrados, omitidos, err := s.registrarAprendicesRetroactivos(
-		asist, ctx.ifc, req.AprendizIDs, ctx.horaInicio, ctx.horaFin, ctx.motivo,
+		asist, ctx.ifc, req.AprendizIDs, req.JustificadosIDs, ctx.horaInicio, ctx.horaFin, ctx.motivo,
 	)
 	if err != nil {
 		return nil, err
@@ -65,6 +65,9 @@ func (s *asistenciaService) prepararAsistenciaRetroactiva(
 	motivo := strings.TrimSpace(req.Motivo)
 	if motivo == "" {
 		return nil, errors.New("el motivo es obligatorio")
+	}
+	if len(req.AprendizIDs) == 0 && len(req.JustificadosIDs) == 0 {
+		return nil, errors.New("indique al menos un aprendiz presente o con inasistencia justificada")
 	}
 	fecha, err := time.ParseInLocation(time.DateOnly, req.Fecha, time.Local)
 	if err != nil {
@@ -198,43 +201,151 @@ func observacionRetroactiva(motivo string) string {
 	return fmt.Sprintf("%s Motivo: %s", prefijoObservacionRetroactiva, motivo)
 }
 
+func mapEstadosRetroactivos(presentesIDs, justificadosIDs []uint) (map[uint]string, error) {
+	vistos := make(map[uint]string, len(presentesIDs)+len(justificadosIDs))
+	for _, id := range presentesIDs {
+		if id == 0 {
+			continue
+		}
+		vistos[id] = "presente"
+	}
+	for _, id := range justificadosIDs {
+		if id == 0 {
+			continue
+		}
+		if prev, ok := vistos[id]; ok && prev == "presente" {
+			return nil, fmt.Errorf("el aprendiz %d no puede marcarse presente y justificado a la vez", id)
+		}
+		vistos[id] = "justificado"
+	}
+	return vistos, nil
+}
+
+func aplicarEstadoRetroactivoAprendiz(
+	aa *models.AsistenciaAprendiz,
+	ifcID uint,
+	modo string,
+	horaInicio, horaFin time.Time,
+	motivo string,
+) {
+	if modo == "presente" {
+		hi := horaInicio
+		hf := horaFin
+		aa.InstructorFichaIDRegistroIngreso = &ifcID
+		aa.InstructorFichaIDRegistroSalida = &ifcID
+		aa.HoraIngreso = &hi
+		aa.HoraSalida = &hf
+		aa.Estado = "ASISTENCIA_COMPLETA"
+		return
+	}
+	aa.Observaciones = "Inasistencia justificada (carga retroactiva). " + motivo
+}
+
+func (s *asistenciaService) resolverTipoJustificadaRetroactiva(justificadosIDs []uint) (*models.TipoObservacionAsistencia, error) {
+	tipoJustificada, errTipo := s.tipoObsRepo.FindByCodigo("INASISTENCIA_JUSTIFICADA")
+	if errTipo == nil && tipoJustificada != nil {
+		return tipoJustificada, nil
+	}
+	if len(justificadosIDs) > 0 {
+		return nil, errors.New("no está configurado el tipo de observación «Inasistencia justificada»")
+	}
+	return nil, nil
+}
+
+type registroRetroactivoCtx struct {
+	asist           *models.Asistencia
+	fichaID         uint
+	ifcID           uint
+	horaInicio      time.Time
+	horaFin         time.Time
+	motivo          string
+	motivoAjuste    string
+	tipoJustificada *models.TipoObservacionAsistencia
+}
+
+func (s *asistenciaService) registrarUnAprendizRetroactivo(
+	ctx registroRetroactivoCtx,
+	aprendizID uint,
+	modo string,
+) (omitido bool, err error) {
+	if err := s.validarAprendizEnFicha(ctx.fichaID, aprendizID); err != nil {
+		return false, err
+	}
+	if err := s.validarAprendizPuedeTomarAsistencia(aprendizID); err != nil {
+		return false, err
+	}
+	previo, _ := s.repoAA.FindByAsistenciaIDAndAprendizID(ctx.asist.ID, aprendizID)
+	if previo != nil {
+		return true, nil
+	}
+
+	ifcID := ctx.ifcID
+	aa := models.AsistenciaAprendiz{
+		AsistenciaID:      ctx.asist.ID,
+		InstructorFichaID: &ifcID,
+		AprendizFichaID:   aprendizID,
+		RequiereRevision:  false,
+		MotivoAjuste:      ctx.motivoAjuste,
+	}
+	aplicarEstadoRetroactivoAprendiz(&aa, ifcID, modo, ctx.horaInicio, ctx.horaFin, ctx.motivo)
+	if err := s.repoAA.Create(&aa); err != nil {
+		return false, fmt.Errorf("error al registrar aprendiz %d: %w", aprendizID, err)
+	}
+	if err := s.aplicarTipoJustificadaRetroactiva(&aa, modo, ctx.tipoJustificada, aprendizID); err != nil {
+		return false, err
+	}
+	return false, nil
+}
+
+func (s *asistenciaService) aplicarTipoJustificadaRetroactiva(
+	aa *models.AsistenciaAprendiz,
+	modo string,
+	tipoJustificada *models.TipoObservacionAsistencia,
+	aprendizID uint,
+) error {
+	if modo != "justificado" || tipoJustificada == nil {
+		return nil
+	}
+	if err := s.repoAA.ReplaceTiposObservacion(aa, []models.TipoObservacionAsistencia{*tipoJustificada}); err != nil {
+		return fmt.Errorf("error al marcar justificación del aprendiz %d: %w", aprendizID, err)
+	}
+	return nil
+}
+
 func (s *asistenciaService) registrarAprendicesRetroactivos(
 	asist *models.Asistencia,
 	ifc *models.InstructorFichaCaracterizacion,
-	aprendizIDs []uint,
+	presentesIDs, justificadosIDs []uint,
 	horaInicio, horaFin time.Time,
 	motivo string,
 ) (registrados, omitidos int, err error) {
-	ifcID := ifc.ID
-	motivoAjuste := fmt.Sprintf("%s. %s", motivoAjusteRetroactivo, motivo)
-	for _, aprendizID := range aprendizIDs {
-		if err := s.validarAprendizEnFicha(ifc.FichaID, aprendizID); err != nil {
-			return registrados, omitidos, err
+	tipoJustificada, errTipo := s.resolverTipoJustificadaRetroactiva(justificadosIDs)
+	if errTipo != nil {
+		return 0, 0, errTipo
+	}
+	vistos, errMap := mapEstadosRetroactivos(presentesIDs, justificadosIDs)
+	if errMap != nil {
+		return 0, 0, errMap
+	}
+
+	ctx := registroRetroactivoCtx{
+		asist:           asist,
+		fichaID:         ifc.FichaID,
+		ifcID:           ifc.ID,
+		horaInicio:      horaInicio,
+		horaFin:         horaFin,
+		motivo:          motivo,
+		motivoAjuste:    fmt.Sprintf("%s. %s", motivoAjusteRetroactivo, motivo),
+		tipoJustificada: tipoJustificada,
+	}
+	for aprendizID, modo := range vistos {
+		omitido, errReg := s.registrarUnAprendizRetroactivo(ctx, aprendizID, modo)
+		if errReg != nil {
+			return registrados, omitidos, errReg
 		}
-		if err := s.validarAprendizPuedeTomarAsistencia(aprendizID); err != nil {
-			return registrados, omitidos, err
-		}
-		previo, _ := s.repoAA.FindByAsistenciaIDAndAprendizID(asist.ID, aprendizID)
-		if previo != nil {
+		if omitido {
 			omitidos++
 			continue
-		}
-		hi := horaInicio
-		hf := horaFin
-		aa := models.AsistenciaAprendiz{
-			AsistenciaID:                     asist.ID,
-			InstructorFichaID:                &ifcID,
-			InstructorFichaIDRegistroIngreso: &ifcID,
-			InstructorFichaIDRegistroSalida:  &ifcID,
-			AprendizFichaID:                  aprendizID,
-			HoraIngreso:                      &hi,
-			HoraSalida:                       &hf,
-			Estado:                           "ASISTENCIA_COMPLETA",
-			RequiereRevision:                 false,
-			MotivoAjuste:                     motivoAjuste,
-		}
-		if err := s.repoAA.Create(&aa); err != nil {
-			return registrados, omitidos, fmt.Errorf("error al registrar aprendiz %d: %w", aprendizID, err)
 		}
 		registrados++
 	}

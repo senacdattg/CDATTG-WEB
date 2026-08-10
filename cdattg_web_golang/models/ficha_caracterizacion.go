@@ -5,19 +5,33 @@ import (
 )
 
 // FichaCaracterizacion representa una ficha de caracterización
+// Tipos de formación de ficha (canónicos).
+const (
+	TipoFormacionRegular        = "FORMACION_REGULAR"
+	TipoFormacionMediaTecnica   = "MEDIA_TECNICA"
+	TipoFormacionComplementaria = "FORMACION_COMPLEMENTARIA"
+)
+
+// TipoFormacionSinPrograma indica Media Técnica / Complementaria (nombre libre, sin catálogo de programas).
+func TipoFormacionSinPrograma(tipo string) bool {
+	return tipo == TipoFormacionMediaTecnica || tipo == TipoFormacionComplementaria
+}
+
 type FichaCaracterizacion struct {
 	UserAuditModel
-	ProgramaFormacionID uint       `gorm:"column:programa_formacion_id;not null" json:"programa_formacion_id"`
-	Ficha               string     `gorm:"size:50;not null" json:"ficha"`
-	InstructorID        *uint      `gorm:"column:instructor_id" json:"instructor_id"`
-	FechaInicio         *time.Time `gorm:"column:fecha_inicio" json:"fecha_inicio"`
-	FechaFin            *time.Time `gorm:"column:fecha_fin" json:"fecha_fin"`
-	AmbienteID          *uint      `gorm:"column:ambiente_id" json:"ambiente_id"`
-	ModalidadFormacionID *uint     `gorm:"column:modalidad_formacion_id" json:"modalidad_formacion_id"`
-	SedeID              *uint      `gorm:"column:sede_id" json:"sede_id"`
-	JornadaID           *uint      `gorm:"column:jornada_id" json:"jornada_id"`
-	TotalHoras          *int       `gorm:"column:total_horas" json:"total_horas"`
-	Status              bool       `gorm:"default:true" json:"status"`
+	ProgramaFormacionID  *uint      `gorm:"column:programa_formacion_id" json:"programa_formacion_id"`
+	Nombre               string     `gorm:"column:nombre;size:255" json:"nombre"`
+	Ficha                string     `gorm:"size:50;not null" json:"ficha"`
+	TipoFormacion        string     `gorm:"column:tipo_formacion;size:40;not null;default:FORMACION_REGULAR;index" json:"tipo_formacion"`
+	InstructorID         *uint      `gorm:"column:instructor_id" json:"instructor_id"`
+	FechaInicio          *time.Time `gorm:"column:fecha_inicio" json:"fecha_inicio"`
+	FechaFin             *time.Time `gorm:"column:fecha_fin" json:"fecha_fin"`
+	AmbienteID           *uint      `gorm:"column:ambiente_id" json:"ambiente_id"`
+	ModalidadFormacionID *uint      `gorm:"column:modalidad_formacion_id" json:"modalidad_formacion_id"`
+	SedeID               *uint      `gorm:"column:sede_id" json:"sede_id"`
+	JornadaID            *uint      `gorm:"column:jornada_id" json:"jornada_id"`
+	TotalHoras           *int       `gorm:"column:total_horas" json:"total_horas"`
+	Status               bool       `gorm:"default:true" json:"status"`
 	
 	// Relaciones
 	ProgramaFormacion   *ProgramaFormacion   `gorm:"foreignKey:ProgramaFormacionID" json:"programa_formacion,omitempty"`

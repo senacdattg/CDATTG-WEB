@@ -79,7 +79,7 @@ export function useCasosBienestarFichaDetalle() {
   const [pdfDescargandoId, setPdfDescargandoId] = useState<number | null>(null);
   const [pdfError, setPdfError] = useState('');
 
-  const { data, loading, error, setError, setLoading } = useCasosBienestar({
+  const { data, loading, error, setError, setLoading, setData } = useCasosBienestar({
     enabled: canView && Boolean(fichaNumero),
     dias,
     minFallas,
@@ -97,6 +97,41 @@ export function useCasosBienestarFichaDetalle() {
       setError('Ficha no especificada.');
     }
   }, [canView, fichaNumero, setError, setLoading]);
+
+  const sincronizarConteosCaso = useCallback(
+    (aprendizId: number, sinJustificar: number, justificadas: number) => {
+      setData((prev) => {
+        if (!prev?.casos) return prev;
+        let changed = false;
+        const casos = prev.casos.map((c) => {
+          if (c.aprendiz_id !== aprendizId || c.ficha_numero !== fichaNumero) return c;
+          if (
+            c.inasistencias === sinJustificar &&
+            (c.inasistencias_justificadas ?? 0) === justificadas
+          ) {
+            return c;
+          }
+          changed = true;
+          return {
+            ...c,
+            inasistencias: sinJustificar,
+            inasistencias_justificadas: justificadas,
+          };
+        });
+        return changed ? { ...prev, casos } : prev;
+      });
+      setAprendizDetalle((prev) =>
+        prev && prev.aprendiz_id === aprendizId
+          ? {
+              ...prev,
+              inasistencias: sinJustificar,
+              inasistencias_justificadas: justificadas,
+            }
+          : prev,
+      );
+    },
+    [fichaNumero, setData],
+  );
 
   const casosFichaRaw = useMemo(
     () =>
@@ -134,18 +169,21 @@ export function useCasosBienestarFichaDetalle() {
       try {
         const res = await apiService.getCasoBienestarAprendizDetalle(fichaNumero, aprendiz.aprendiz_id, {
           dias,
-          sede: sedeNombreParam || undefined,
         });
-        setDetalleInasistencias(res.inasistencias ?? []);
-        setDetalleInasistenciasJustificadas(res.inasistencias_justificadas ?? []);
+        const sinJustificar = res.inasistencias ?? [];
+        const justificadas = res.inasistencias_justificadas ?? [];
+        setDetalleInasistencias(sinJustificar);
+        setDetalleInasistenciasJustificadas(justificadas);
         setDetallePeriodo({ fecha_inicio: res.fecha_inicio, fecha_fin: res.fecha_fin });
+        // El detalle es la fuente de verdad al abrir el modal; alinea cabecera y tabla.
+        sincronizarConteosCaso(aprendiz.aprendiz_id, sinJustificar.length, justificadas.length);
       } catch (e: unknown) {
         setDetalleError(axiosErrorMessage(e, 'No se pudo cargar el detalle de inasistencias.'));
       } finally {
         setDetalleLoading(false);
       }
     },
-    [fichaNumero, dias, sedeNombreParam],
+    [fichaNumero, dias, sincronizarConteosCaso],
   );
 
   const cerrarDetalleAprendiz = useCallback(() => {
@@ -173,7 +211,6 @@ export function useCasosBienestarFichaDetalle() {
         if (!inasistencias) {
           const res = await apiService.getCasoBienestarAprendizDetalle(fichaNumero, aprendiz.aprendiz_id, {
             dias,
-            sede: sedeNombreParam || undefined,
           });
           inasistencias = res.inasistencias ?? [];
           inasistenciasJustificadas = res.inasistencias_justificadas ?? [];
@@ -196,7 +233,7 @@ export function useCasosBienestarFichaDetalle() {
         setPdfDescargandoId(null);
       }
     },
-    [fichaNumero, dias, minFallas, sedeNombreParam, pdfDescargandoId],
+    [fichaNumero, dias, minFallas, pdfDescargandoId],
   );
 
   return {

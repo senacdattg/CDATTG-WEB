@@ -47,5 +47,5 @@ export function useCasosBienestar({ enabled, dias, minFallas, tipoFormacion = ''
     void fetchCasos();
   }, [enabled, fetchCasos]);
 
-  return { data, loading, error, fetchCasos, setError, setLoading };
+  return { data, loading, error, fetchCasos, setData, setError, setLoading };
 }

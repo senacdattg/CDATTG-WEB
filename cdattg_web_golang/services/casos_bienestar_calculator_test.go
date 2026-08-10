@@ -246,16 +246,53 @@ func TestClasificarInasistenciasDetalle_separaJustificadas(t *testing.T) {
 		asistio:     map[uint]map[uint]bool{7: {12: true}},
 		justificada: map[uint]map[uint]bool{7: {10: true}},
 	}
+	// Meta solo enriquece observaciones; no reclasifica frente al mapa del consolidado.
 	meta := map[uint]repositories.DetalleSesionCasosBienestarRaw{
 		11: {AsistenciaID: 11, Fecha: fecha, Justificada: true, Observaciones: "excusa"},
 	}
 
 	sinJustificar, justificadas := clasificarInasistenciasDetalle(prep, 1, 7, meta)
-	if len(sinJustificar) != 0 {
-		t.Fatalf("sin justificar: got %d want 0", len(sinJustificar))
+	if len(sinJustificar) != 1 {
+		t.Fatalf("sin justificar: got %d want 1 (meta.Justificada no debe reclasificar)", len(sinJustificar))
 	}
-	if len(justificadas) != 2 {
-		t.Fatalf("justificadas: got %d want 2", len(justificadas))
+	if len(justificadas) != 1 {
+		t.Fatalf("justificadas: got %d want 1", len(justificadas))
+	}
+	if sinJustificar[0].Observaciones != "excusa" {
+		t.Fatalf("meta debe enriquecer observaciones: got %q", sinJustificar[0].Observaciones)
+	}
+}
+
+func TestClasificarInasistenciasDetalle_coincideConConsolidadoAunqueMetaDigaJustificada(t *testing.T) {
+	fecha := time.Date(2026, 6, 10, 0, 0, 0, 0, time.UTC)
+	slots := slotsIndividuales([]uint{10, 11, 12}, fecha)
+	asistio := map[uint]map[uint]bool{7: {12: true}}
+	justificada := map[uint]map[uint]bool{7: {10: true}}
+	ap := repositories.AprendizCasosBienestarRaw{AprendizID: 7}
+	row, ok := inasistenciasAprendiz(ap, slots, asistio, justificada, 0)
+	if !ok {
+		t.Fatal("esperaba fila de consolidado")
+	}
+
+	prep := &casosBienestarRangoPreparado{
+		slotsPorFicha: map[uint][]sesionDiaBienestar{1: slots},
+		validaPorID: map[uint]repositories.SesionCasosBienestarRaw{
+			10: {AsistenciaID: 10, Fecha: fecha},
+			11: {AsistenciaID: 11, Fecha: fecha},
+			12: {AsistenciaID: 12, Fecha: fecha},
+		},
+		asistio:     asistio,
+		justificada: justificada,
+	}
+	meta := map[uint]repositories.DetalleSesionCasosBienestarRaw{
+		11: {AsistenciaID: 11, Fecha: fecha, Justificada: true},
+	}
+	sinJustificar, justificadas := clasificarInasistenciasDetalle(prep, 1, 7, meta)
+	if len(sinJustificar) != row.Inasistencias {
+		t.Fatalf("sin justificar detalle %d != consolidado %d", len(sinJustificar), row.Inasistencias)
+	}
+	if len(justificadas) != row.InasistenciasJustificadas {
+		t.Fatalf("justificadas detalle %d != consolidado %d", len(justificadas), row.InasistenciasJustificadas)
 	}
 }
 

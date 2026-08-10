@@ -150,17 +150,16 @@ func aprendizAsistioEnSlot(aprendizID uint, slot sesionDiaBienestar, asistio map
 	return false
 }
 
+// aprendizJustificadoEnSlot usa solo el mapa de justificadas del consolidado
+// (ListInasistenciasJustificadasEnSesiones). El meta del detalle no reclasifica:
+// así el conteo del modal coincide con la lista de casos.
 func aprendizJustificadoEnSlot(
 	aprendizID uint,
 	slot sesionDiaBienestar,
 	justificada map[uint]map[uint]bool,
-	metaPorID map[uint]repositories.DetalleSesionCasosBienestarRaw,
 ) bool {
 	for _, sid := range slot.AsistenciaIDs {
 		if justificada[aprendizID][sid] {
-			return true
-		}
-		if meta, ok := metaPorID[sid]; ok && meta.Justificada {
 			return true
 		}
 	}
@@ -186,7 +185,7 @@ func inasistenciasAprendiz(
 			efectivas++
 			continue
 		}
-		if aprendizJustificadoEnSlot(ap.AprendizID, slot, justificada, nil) {
+		if aprendizJustificadoEnSlot(ap.AprendizID, slot, justificada) {
 			justificadas++
 		} else {
 			sinJustificar++
@@ -368,7 +367,7 @@ func clasificarInasistenciasDetalle(
 			continue
 		}
 		item := buildInasistenciaDetalleItemDesdeSlot(prep, slot, metaPorID)
-		if aprendizJustificadoEnSlot(aprendizID, slot, prep.justificada, metaPorID) {
+		if aprendizJustificadoEnSlot(aprendizID, slot, prep.justificada) {
 			justificadas = append(justificadas, item)
 			continue
 		}
@@ -387,7 +386,6 @@ func (c *CasosBienestarCalculator) CalcularDetalle(
 	fichaNumero string,
 	aprendizID uint,
 	fechaInicio, fechaFin string,
-	sedeNombre string,
 ) (sinJustificar, justificadas []repositories.InasistenciaDetalleRow, err error) {
 	fichaNumero = strings.TrimSpace(fichaNumero)
 	if fichaNumero == "" || aprendizID == 0 {
@@ -399,12 +397,14 @@ func (c *CasosBienestarCalculator) CalcularDetalle(
 		return nil, nil, err
 	}
 
+	// La ficha se resuelve solo por número: la sede de origen no limita el análisis
+	// (puede haber formación o práctica en otras sedes).
 	ficha, err := c.fichaRepo.FindByFicha(fichaNumero)
 	if err != nil || ficha == nil {
 		return nil, nil, fmt.Errorf("ficha no encontrada")
 	}
 
-	metaRows, err := c.repo.ListDetalleSesionesCasosBienestar(fichaNumero, aprendizID, fechaInicio, fechaFin, strings.TrimSpace(sedeNombre))
+	metaRows, err := c.repo.ListDetalleSesionesCasosBienestar(fichaNumero, aprendizID, fechaInicio, fechaFin, "")
 	if err != nil {
 		return nil, nil, err
 	}

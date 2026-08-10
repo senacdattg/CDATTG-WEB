@@ -66,7 +66,7 @@ type AsistenciaService interface {
 	EliminarRegistroAprendiz(asistenciaAprendizID uint) error
 	GetDashboard(sedeID *uint, fecha, tipoFormacion, jornada string) (*dto.AsistenciaDashboardResponse, error)
 	GetCasosBienestar(sedeID *uint, dias, minFallas int, instructorLiderID *uint, tipoFormacion string) (*dto.CasosBienestarResponse, error)
-	GetDetalleInasistenciasAprendiz(fichaNumero string, aprendizID uint, dias int, sedeNombre string, instructorLiderID *uint) (*dto.CasoBienestarAprendizDetalleResponse, error)
+	GetDetalleInasistenciasAprendiz(fichaNumero string, aprendizID uint, dias int, instructorLiderID *uint) (*dto.CasoBienestarAprendizDetalleResponse, error)
 	GetMisInasistencias(personaID uint, dias int, fichaID *uint, estadoFicha, tipoFormacion string) (*dto.MisInasistenciasResponse, error)
 	GetSesionesSinAsistenciaTomada(userID uint, roles []string, dias int, regionalID, sedeID *uint, tipoFormacion, jornada string) (*dto.SesionesSinAsistenciaTomadaResponse, error)
 	AjustarEstadoAprendiz(asistenciaAprendizID uint, estado, motivo string, instructorFichaIDRegistroSalida *uint) (*dto.AsistenciaAprendizResponse, error)
@@ -989,7 +989,7 @@ func (s *asistenciaService) esInstructorLiderDeFicha(instructorID uint, fichaNum
 	return f.InstructorID != nil && *f.InstructorID == instructorID, nil
 }
 
-func (s *asistenciaService) GetDetalleInasistenciasAprendiz(fichaNumero string, aprendizID uint, dias int, sedeNombre string, instructorLiderID *uint) (*dto.CasoBienestarAprendizDetalleResponse, error) {
+func (s *asistenciaService) GetDetalleInasistenciasAprendiz(fichaNumero string, aprendizID uint, dias int, instructorLiderID *uint) (*dto.CasoBienestarAprendizDetalleResponse, error) {
 	if strings.TrimSpace(fichaNumero) == "" || aprendizID == 0 {
 		return nil, errors.New("ficha y aprendiz son requeridos")
 	}
@@ -1009,7 +1009,7 @@ func (s *asistenciaService) GetDetalleInasistenciasAprendiz(fichaNumero string, 
 	fechaInicioStr := rango.FechaInicio.Format(time.DateOnly)
 	fechaFinStr := rango.FechaFin.Format(time.DateOnly)
 
-	sinJustificar, justificadas, err := NewCasosBienestarCalculator().CalcularDetalle(fichaNumero, aprendizID, fechaInicioStr, fechaFinStr, sedeNombre)
+	sinJustificar, justificadas, err := NewCasosBienestarCalculator().CalcularDetalle(fichaNumero, aprendizID, fechaInicioStr, fechaFinStr)
 	if err != nil {
 		return nil, err
 	}
@@ -1204,7 +1204,7 @@ func (s *asistenciaService) GetMisInasistencias(personaID uint, dias int, fichaI
 	if strings.TrimSpace(fichaNumero) == "" {
 		return nil, errors.New("ficha de caracterización no encontrada para el aprendiz")
 	}
-	detalle, err := s.GetDetalleInasistenciasAprendiz(fichaNumero, aprendiz.ID, dias, sedeNombre, nil)
+	detalle, err := s.GetDetalleInasistenciasAprendiz(fichaNumero, aprendiz.ID, dias, nil)
 	if err != nil {
 		return nil, err
 	}

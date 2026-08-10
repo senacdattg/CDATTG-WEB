@@ -994,7 +994,7 @@ class ApiService {
   async getCasoBienestarAprendizDetalle(
     fichaNumero: string,
     aprendizId: number,
-    params?: { dias?: number; sede?: string }
+    params?: { dias?: number }
   ): Promise<CasoBienestarAprendizDetalleResponse> {
     const response = await this.api.get<CasoBienestarAprendizDetalleResponse>(
       `/asistencias/dashboard/casos-bienestar/ficha/${encodeURIComponent(fichaNumero)}/aprendiz/${aprendizId}/detalle`,

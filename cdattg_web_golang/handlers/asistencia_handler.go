@@ -650,7 +650,6 @@ func (h *AsistenciaHandler) GetDetalleInasistenciasAprendiz(c *gin.Context) {
 		fichaNumero,
 		uint(aprendizID64),
 		parseDiasAnalisisQuery(c),
-		c.Query("sede"),
 		instructorLiderID,
 	)
 	if err != nil {

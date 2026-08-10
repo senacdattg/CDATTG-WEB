@@ -6,6 +6,12 @@ docs/deployment/conexiones-externas.md
 *.log
 .cursor/
 .vscode/
+.scannerwork/
+coverage/
+**/coverage.out
+**/coverage.sonar.out
+**/coverage_jornada.out
+cdattg_web_golang/coverage
 
 # Excel temporales / datos locales
 *.xlsx

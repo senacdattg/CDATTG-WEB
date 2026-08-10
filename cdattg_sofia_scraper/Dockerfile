@@ -1,4 +1,4 @@
-FROM pyd4vinci/scrapling:latest
+FROM pyd4vinci/scrapling:0.4.13
 
 # La imagen base instala Scrapling en /app; no sobrescribir ese directorio.
 WORKDIR /srv/sofia-scraper
@@ -16,6 +16,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 COPY requirements.txt .
 RUN uv pip install --python /app/.venv/bin/python --no-cache-dir -r requirements.txt
+
+# Instalar el binario de Chromium que espera el patchright del venv.
+# La imagen base puede traer una revisión distinta (skew de versiones) y sin
+# esto el scraper falla con "Executable doesn't exist at .../chromium-<rev>".
+RUN /app/.venv/bin/python -m patchright install chromium
 
 COPY app ./app
 COPY entrypoint.sh ./entrypoint.sh

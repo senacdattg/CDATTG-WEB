@@ -160,7 +160,7 @@ export function extraerMensajeErrorRegistroAsistencia(e: unknown): string {
 
 function detalleConSegundosSalida(detalle: string, segundos?: number): string {
   if ((segundos ?? 0) <= 0) return detalle;
-  if (/\d+\s*segundos?/i.test(detalle)) return detalle;
+  if (detalle.toLowerCase().includes('segundo')) return detalle;
   return `${detalle} Faltan aproximadamente ${segundos} s.`;
 }
 

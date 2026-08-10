@@ -31,7 +31,7 @@ type Registro = AnalisisRegistrosAprendizResponse['aprendices'][number]['registr
 const PLACEHOLDER_BUSCAR = 'Buscar por código de ficha o programa';
 const PLACEHOLDER_FILTRO_APRENDIZ = 'Buscar por nombre o documento';
 
-function toFichaCard(f: FichaExplorar): FichaCaracterizacionResponse {
+export function toFichaCard(f: FichaExplorar): FichaCaracterizacionResponse {
   return {
     id: f.ficha_id,
     programa_formacion_id: 0,
@@ -47,7 +47,7 @@ function toFichaCard(f: FichaExplorar): FichaCaracterizacionResponse {
   };
 }
 
-function formatFechaLarga(iso: string): string {
+export function formatFechaLarga(iso: string): string {
   const [y, m, d] = iso.split('-').map(Number);
   if (!y || !m || !d) return iso;
   return new Date(y, m - 1, d).toLocaleDateString('es-CO', {
@@ -58,7 +58,7 @@ function formatFechaLarga(iso: string): string {
   });
 }
 
-function HistorialIngresoSalida({
+export function HistorialIngresoSalida({
   aprendiz,
   fichaNumero,
   registros,
@@ -218,6 +218,306 @@ function HistorialIngresoSalida({
   );
 }
 
+export function filtroInicialAprendiz(f: FichaExplorar, queryAplicada: string): string | undefined {
+  if (f.coincidencias_aprendiz > 0 && queryAplicada) return queryAplicada;
+  return undefined;
+}
+
+export function FichaExplorarExtra({
+  ficha,
+  queryAplicada,
+}: Readonly<{ ficha: FichaExplorar; queryAplicada: string }>) {
+  if (ficha.coincidencias_aprendiz <= 0) return null;
+  return (
+    <p className="text-xs text-amber-700 dark:text-amber-300">
+      {ficha.coincidencias_aprendiz} coincidencia(s) con «{queryAplicada}»
+    </p>
+  );
+}
+
+export function BusquedaFichasStep({
+  query,
+  queryAplicada,
+  loading,
+  error,
+  fichas,
+  onQueryChange,
+  onExplorar,
+  onLimpiar,
+  onAbrirFicha,
+}: Readonly<{
+  query: string;
+  queryAplicada: string;
+  loading: boolean;
+  error: string;
+  fichas: FichaExplorar[];
+  onQueryChange: (value: string) => void;
+  onExplorar: () => void;
+  onLimpiar: () => void;
+  onAbrirFicha: (f: FichaExplorar) => void;
+}>) {
+  const mostrarQuitar = Boolean(query.trim() || queryAplicada || fichas.length > 0);
+
+  return (
+    <>
+      <div className="space-y-1">
+        <label htmlFor="reg-q" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+          Buscar ficha, programa, nombre o documento
+        </label>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+          <div className="relative min-w-0 flex-1">
+            <MagnifyingGlassIcon className="pointer-events-none absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" />
+            <input
+              id="reg-q"
+              type="text"
+              value={query}
+              onChange={(e) => onQueryChange(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key !== 'Enter') return;
+                e.preventDefault();
+                onExplorar();
+              }}
+              placeholder={PLACEHOLDER_BUSCAR}
+              className="h-10 w-full rounded-lg border border-gray-300 bg-gray-50 py-2 pl-10 pr-4 text-sm transition-shadow focus:border-primary-500 focus:ring-2 focus:ring-primary-500 dark:border-gray-600 dark:bg-gray-900 dark:text-white"
+            />
+          </div>
+          <button
+            type="button"
+            onClick={onExplorar}
+            disabled={loading}
+            className="inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-lg bg-primary-600 px-4 text-sm font-medium text-white hover:bg-primary-700 disabled:opacity-60"
+          >
+            <MagnifyingGlassIcon className="w-4 h-4" aria-hidden />
+            {loading ? 'Buscando…' : 'Buscar'}
+          </button>
+          {mostrarQuitar ? (
+            <button
+              type="button"
+              onClick={onLimpiar}
+              disabled={loading}
+              className="inline-flex h-10 shrink-0 items-center justify-center rounded-lg border border-gray-300 px-4 text-sm font-medium text-gray-700 hover:bg-gray-100 disabled:opacity-60 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
+            >
+              Quitar
+            </button>
+          ) : null}
+        </div>
+        <p className="text-xs text-gray-500 dark:text-gray-400">
+          Ej. 3173334 o Análisis y desarrollo de software
+        </p>
+      </div>
+
+      {error ? (
+        <p role="alert" className="text-sm text-red-600 dark:text-red-400">
+          {error}
+        </p>
+      ) : null}
+
+      {fichas.length > 0 ? (
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {fichas.map((f) => (
+            <FichaCaracterizacionCard
+              key={f.ficha_id}
+              ficha={toFichaCard(f)}
+              showStatusBadge
+              footerLeft={
+                <span className="inline-flex items-center gap-1.5 text-sm font-medium text-primary-700 dark:text-primary-300">
+                  <UsersIcon className="h-4 w-4" aria-hidden />
+                  {f.cantidad_aprendices} aprendices
+                </span>
+              }
+              extra={<FichaExplorarExtra ficha={f} queryAplicada={queryAplicada} />}
+              actions={
+                <button
+                  type="button"
+                  onClick={() => onAbrirFicha(f)}
+                  className="inline-flex items-center gap-2 rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700"
+                >
+                  Ver aprendices
+                </button>
+              }
+            />
+          ))}
+        </div>
+      ) : null}
+    </>
+  );
+}
+
+export function AprendicesFichaStep({
+  ficha,
+  filtroAprendiz,
+  loading,
+  error,
+  aprendices,
+  onFiltroChange,
+  onFiltrar,
+  onVolver,
+  onVerRegistros,
+}: Readonly<{
+  ficha: FichaExplorar;
+  filtroAprendiz: string;
+  loading: boolean;
+  error: string;
+  aprendices: AprendizResumen[];
+  onFiltroChange: (value: string) => void;
+  onFiltrar: () => void;
+  onVolver: () => void;
+  onVerRegistros: (ap: AprendizResumen) => void;
+}>) {
+  const sinAprendices = !loading && aprendices.length === 0;
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <button
+          type="button"
+          onClick={onVolver}
+          className="inline-flex items-center gap-1.5 text-sm font-medium text-primary-600 hover:text-primary-700 dark:text-primary-400"
+        >
+          <ArrowLeftIcon className="w-4 h-4" aria-hidden />
+          Volver a fichas
+        </button>
+        <p className="text-sm text-gray-600 dark:text-gray-400">
+          Ficha <strong>{ficha.ficha_numero}</strong>
+          {ficha.programa_nombre ? ` — ${ficha.programa_nombre}` : ''}
+        </p>
+      </div>
+
+      <div className="flex flex-col sm:flex-row gap-3">
+        <input
+          type="text"
+          value={filtroAprendiz}
+          onChange={(e) => onFiltroChange(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key !== 'Enter') return;
+            e.preventDefault();
+            onFiltrar();
+          }}
+          placeholder={PLACEHOLDER_FILTRO_APRENDIZ}
+          className="flex-1 rounded-lg border border-gray-300 bg-gray-50 px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-900 dark:text-white"
+        />
+        <button
+          type="button"
+          onClick={onFiltrar}
+          disabled={loading}
+          className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
+        >
+          Filtrar
+        </button>
+      </div>
+
+      {error ? (
+        <p role="alert" className="text-sm text-red-600 dark:text-red-400">
+          {error}
+        </p>
+      ) : null}
+
+      <div className="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-700">
+        <table className="min-w-full text-sm divide-y divide-gray-200 dark:divide-gray-700">
+          <thead className="bg-gray-50 dark:bg-gray-900/50">
+            <tr>
+              <th className="px-3 py-2 text-left font-medium text-gray-500">Documento</th>
+              <th className="px-3 py-2 text-left font-medium text-gray-500">Nombre</th>
+              <th className="px-3 py-2 text-right font-medium text-gray-500">Registros</th>
+              <th className="px-3 py-2 text-right font-medium text-gray-500">Acción</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
+            {aprendices.map((ap) => (
+              <tr key={ap.aprendiz_id} className="hover:bg-gray-50 dark:hover:bg-gray-900/40">
+                <td className="px-3 py-2 tabular-nums">{ap.numero_documento || '—'}</td>
+                <td className="px-3 py-2 font-medium text-gray-900 dark:text-white">
+                  {ap.nombre_completo}
+                </td>
+                <td className="px-3 py-2 text-right tabular-nums">{ap.total_registros}</td>
+                <td className="px-3 py-2 text-right">
+                  <button
+                    type="button"
+                    onClick={() => onVerRegistros(ap)}
+                    className="text-sm font-medium text-primary-600 hover:text-primary-700 dark:text-primary-400"
+                  >
+                    Ver ingresos/salidas
+                  </button>
+                </td>
+              </tr>
+            ))}
+            {sinAprendices ? (
+              <tr>
+                <td colSpan={4} className="px-3 py-8 text-center text-gray-500">
+                  No hay aprendices para mostrar.
+                </td>
+              </tr>
+            ) : null}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+export function panelStepContent(args: {
+  fichaSel: FichaExplorar | null;
+  aprendizSel: AprendizResumen | null;
+  listaRegistros: Registro[];
+  loading: boolean;
+  error: string;
+  query: string;
+  queryAplicada: string;
+  fichas: FichaExplorar[];
+  filtroAprendiz: string;
+  aprendices: AprendizResumen[];
+  onQueryChange: (value: string) => void;
+  onExplorar: () => void;
+  onLimpiar: () => void;
+  onAbrirFicha: (f: FichaExplorar) => void;
+  onFiltroChange: (value: string) => void;
+  onFiltrar: () => void;
+  onVolverFichas: () => void;
+  onVerRegistros: (ap: AprendizResumen) => void;
+  onVolverAprendices: () => void;
+}) {
+  if (args.fichaSel && args.aprendizSel) {
+    return (
+      <HistorialIngresoSalida
+        aprendiz={args.aprendizSel}
+        fichaNumero={args.fichaSel.ficha_numero}
+        registros={args.listaRegistros}
+        loading={args.loading}
+        error={args.error}
+        onVolver={args.onVolverAprendices}
+      />
+    );
+  }
+  if (args.fichaSel) {
+    return (
+      <AprendicesFichaStep
+        ficha={args.fichaSel}
+        filtroAprendiz={args.filtroAprendiz}
+        loading={args.loading}
+        error={args.error}
+        aprendices={args.aprendices}
+        onFiltroChange={args.onFiltroChange}
+        onFiltrar={args.onFiltrar}
+        onVolver={args.onVolverFichas}
+        onVerRegistros={args.onVerRegistros}
+      />
+    );
+  }
+  return (
+    <BusquedaFichasStep
+      query={args.query}
+      queryAplicada={args.queryAplicada}
+      loading={args.loading}
+      error={args.error}
+      fichas={args.fichas}
+      onQueryChange={args.onQueryChange}
+      onExplorar={args.onExplorar}
+      onLimpiar={args.onLimpiar}
+      onAbrirFicha={args.onAbrirFicha}
+    />
+  );
+}
+
 export function RegistrosAprendizPanel({ fechaDesde, fechaHasta, regionalId, sedeId }: Props) {
   const [query, setQuery] = useState('');
   const [queryAplicada, setQueryAplicada] = useState('');
@@ -293,8 +593,7 @@ export function RegistrosAprendizPanel({ fechaDesde, fechaHasta, regionalId, sed
     setRegistros(null);
     setFiltroAprendiz('');
     try {
-      const filtroInicial =
-        f.coincidencias_aprendiz > 0 && queryAplicada ? queryAplicada : undefined;
+      const filtroInicial = filtroInicialAprendiz(f, queryAplicada);
       const res = await apiService.getAsistenciaAnalisisAprendicesFicha({
         ficha: f.ficha_numero,
         q: filtroInicial,
@@ -363,6 +662,36 @@ export function RegistrosAprendizPanel({ fechaDesde, fechaHasta, regionalId, sed
     setRegistros(null);
   };
 
+  const step = panelStepContent({
+    fichaSel,
+    aprendizSel,
+    listaRegistros,
+    loading,
+    error,
+    query,
+    queryAplicada,
+    fichas,
+    filtroAprendiz,
+    aprendices,
+    onQueryChange: setQuery,
+    onExplorar: () => {
+      void explorar();
+    },
+    onLimpiar: limpiarBusqueda,
+    onAbrirFicha: (f) => {
+      void abrirFicha(f);
+    },
+    onFiltroChange: setFiltroAprendiz,
+    onFiltrar: () => {
+      void filtrarAprendicesLocal();
+    },
+    onVolverFichas: volverAFichas,
+    onVerRegistros: (ap) => {
+      void verRegistros(ap);
+    },
+    onVolverAprendices: volverAAprendices,
+  });
+
   return (
     <section className="space-y-4">
       <div className="flex items-center gap-2">
@@ -377,196 +706,7 @@ export function RegistrosAprendizPanel({ fechaDesde, fechaHasta, regionalId, sed
       </p>
 
       <div className="rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-600 dark:bg-gray-800 space-y-4">
-        {!fichaSel ? (
-          <>
-            <div className="space-y-1">
-              <label htmlFor="reg-q" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                Buscar ficha, programa, nombre o documento
-              </label>
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-                <div className="relative min-w-0 flex-1">
-                  <MagnifyingGlassIcon className="pointer-events-none absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" />
-                  <input
-                    id="reg-q"
-                    type="text"
-                    value={query}
-                    onChange={(e) => setQuery(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        e.preventDefault();
-                        void explorar();
-                      }
-                    }}
-                    placeholder={PLACEHOLDER_BUSCAR}
-                    className="h-10 w-full rounded-lg border border-gray-300 bg-gray-50 py-2 pl-10 pr-4 text-sm transition-shadow focus:border-primary-500 focus:ring-2 focus:ring-primary-500 dark:border-gray-600 dark:bg-gray-900 dark:text-white"
-                  />
-                </div>
-                <button
-                  type="button"
-                  onClick={() => void explorar()}
-                  disabled={loading}
-                  className="inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-lg bg-primary-600 px-4 text-sm font-medium text-white hover:bg-primary-700 disabled:opacity-60"
-                >
-                  <MagnifyingGlassIcon className="w-4 h-4" aria-hidden />
-                  {loading ? 'Buscando…' : 'Buscar'}
-                </button>
-                {query.trim() || queryAplicada || fichas.length > 0 ? (
-                  <button
-                    type="button"
-                    onClick={limpiarBusqueda}
-                    disabled={loading}
-                    className="inline-flex h-10 shrink-0 items-center justify-center rounded-lg border border-gray-300 px-4 text-sm font-medium text-gray-700 hover:bg-gray-100 disabled:opacity-60 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
-                  >
-                    Quitar
-                  </button>
-                ) : null}
-              </div>
-              <p className="text-xs text-gray-500 dark:text-gray-400">
-                Ej. 3173334 o Análisis y desarrollo de software
-              </p>
-            </div>
-
-            {error ? (
-              <p role="alert" className="text-sm text-red-600 dark:text-red-400">
-                {error}
-              </p>
-            ) : null}
-
-            {fichas.length > 0 ? (
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-                {fichas.map((f) => (
-                  <FichaCaracterizacionCard
-                    key={f.ficha_id}
-                    ficha={toFichaCard(f)}
-                    showStatusBadge
-                    footerLeft={
-                      <span className="inline-flex items-center gap-1.5 text-sm font-medium text-primary-700 dark:text-primary-300">
-                        <UsersIcon className="h-4 w-4" aria-hidden />
-                        {f.cantidad_aprendices} aprendices
-                      </span>
-                    }
-                    extra={
-                      f.coincidencias_aprendiz > 0 ? (
-                        <p className="text-xs text-amber-700 dark:text-amber-300">
-                          {f.coincidencias_aprendiz} coincidencia(s) con «{queryAplicada}»
-                        </p>
-                      ) : null
-                    }
-                    actions={
-                      <button
-                        type="button"
-                        onClick={() => void abrirFicha(f)}
-                        className="inline-flex items-center gap-2 rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700"
-                      >
-                        Ver aprendices
-                      </button>
-                    }
-                  />
-                ))}
-              </div>
-            ) : null}
-          </>
-        ) : null}
-
-        {fichaSel && !aprendizSel ? (
-          <div className="space-y-4">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <button
-                type="button"
-                onClick={volverAFichas}
-                className="inline-flex items-center gap-1.5 text-sm font-medium text-primary-600 hover:text-primary-700 dark:text-primary-400"
-              >
-                <ArrowLeftIcon className="w-4 h-4" aria-hidden />
-                Volver a fichas
-              </button>
-              <p className="text-sm text-gray-600 dark:text-gray-400">
-                Ficha <strong>{fichaSel.ficha_numero}</strong>
-                {fichaSel.programa_nombre ? ` — ${fichaSel.programa_nombre}` : ''}
-              </p>
-            </div>
-
-            <div className="flex flex-col sm:flex-row gap-3">
-              <input
-                type="text"
-                value={filtroAprendiz}
-                onChange={(e) => setFiltroAprendiz(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    e.preventDefault();
-                    void filtrarAprendicesLocal();
-                  }
-                }}
-                placeholder={PLACEHOLDER_FILTRO_APRENDIZ}
-                className="flex-1 rounded-lg border border-gray-300 bg-gray-50 px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-900 dark:text-white"
-              />
-              <button
-                type="button"
-                onClick={() => void filtrarAprendicesLocal()}
-                disabled={loading}
-                className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
-              >
-                Filtrar
-              </button>
-            </div>
-
-            {error ? (
-              <p role="alert" className="text-sm text-red-600 dark:text-red-400">
-                {error}
-              </p>
-            ) : null}
-
-            <div className="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-700">
-              <table className="min-w-full text-sm divide-y divide-gray-200 dark:divide-gray-700">
-                <thead className="bg-gray-50 dark:bg-gray-900/50">
-                  <tr>
-                    <th className="px-3 py-2 text-left font-medium text-gray-500">Documento</th>
-                    <th className="px-3 py-2 text-left font-medium text-gray-500">Nombre</th>
-                    <th className="px-3 py-2 text-right font-medium text-gray-500">Registros</th>
-                    <th className="px-3 py-2 text-right font-medium text-gray-500">Acción</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
-                  {aprendices.map((ap) => (
-                    <tr key={ap.aprendiz_id} className="hover:bg-gray-50 dark:hover:bg-gray-900/40">
-                      <td className="px-3 py-2 tabular-nums">{ap.numero_documento || '—'}</td>
-                      <td className="px-3 py-2 font-medium text-gray-900 dark:text-white">
-                        {ap.nombre_completo}
-                      </td>
-                      <td className="px-3 py-2 text-right tabular-nums">{ap.total_registros}</td>
-                      <td className="px-3 py-2 text-right">
-                        <button
-                          type="button"
-                          onClick={() => void verRegistros(ap)}
-                          className="text-sm font-medium text-primary-600 hover:text-primary-700 dark:text-primary-400"
-                        >
-                          Ver ingresos/salidas
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                  {!loading && aprendices.length === 0 ? (
-                    <tr>
-                      <td colSpan={4} className="px-3 py-8 text-center text-gray-500">
-                        No hay aprendices para mostrar.
-                      </td>
-                    </tr>
-                  ) : null}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        ) : null}
-
-        {fichaSel && aprendizSel ? (
-          <HistorialIngresoSalida
-            aprendiz={aprendizSel}
-            fichaNumero={fichaSel.ficha_numero}
-            registros={listaRegistros}
-            loading={loading}
-            error={error}
-            onVolver={volverAAprendices}
-          />
-        ) : null}
+        {step}
       </div>
     </section>
   );

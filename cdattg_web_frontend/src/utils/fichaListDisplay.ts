@@ -20,7 +20,7 @@ export function toDisplayTitle(text: string | undefined | null): string {
   return text
     .trim()
     .toLowerCase()
-    .replace(/(^|[\s(/-])(\p{L})/gu, (_, sep: string, c: string) => `${sep}${c.toUpperCase()}`);
+    .replaceAll(/(^|[\s(/-])(\p{L})/gu, (_, sep: string, c: string) => `${sep}${c.toUpperCase()}`);
 }
 
 function abbrDia(nombre: string): string {

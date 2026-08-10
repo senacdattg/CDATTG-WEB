@@ -74,9 +74,9 @@ function tablaDetalleInasistencias(
 function sanitizarNombreArchivo(texto: string): string {
   return texto
     .normalize('NFD')
-    .replace(/\p{M}/gu, '')
-    .replace(/[^\w.-]+/g, '_')
-    .replace(/_+/g, '_')
+    .replaceAll(/\p{M}/gu, '')
+    .replaceAll(/[^\w.-]+/g, '_')
+    .replaceAll(/_+/g, '_')
     .slice(0, 80);
 }
 

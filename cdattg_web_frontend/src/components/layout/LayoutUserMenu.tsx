@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ChevronDownIcon, KeyIcon, ArrowRightOnRectangleIcon, UserCircleIcon } from '@heroicons/react/24/outline';
+import { ChevronDownIcon, HomeIcon, KeyIcon, ArrowRightStartOnRectangleIcon, UserCircleIcon } from '@heroicons/react/24/outline';
 import { DASHBOARD_PATH, PERFIL_PATH } from '../../routes/paths';
 
 type LayoutUserMenuProps = Readonly<{
@@ -108,9 +108,7 @@ export function LayoutUserMenu({
                 className="flex flex-col items-center gap-1 px-2 py-1 text-xs font-medium text-gray-600 hover:text-primary-600 dark:text-gray-300 dark:hover:text-primary-400"
                 onClick={close}
               >
-                <span className="text-lg leading-none" aria-hidden>
-                  ⌂
-                </span>
+                <HomeIcon className="h-5 w-5" aria-hidden />
                 Inicio
               </Link>
               <button
@@ -147,7 +145,7 @@ export function LayoutUserMenu({
                 onLogout();
               }}
             >
-              <ArrowRightOnRectangleIcon className="h-4 w-4" aria-hidden />
+              <ArrowRightStartOnRectangleIcon className="h-4 w-4" aria-hidden />
               Salir
             </button>
           </div>

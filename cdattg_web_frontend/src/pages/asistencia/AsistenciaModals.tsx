@@ -23,6 +23,16 @@ export function AsistenciaModals({ page, estadoFieldIds = ASIST_MODAL_IDS }: Mod
     handleGuardarEstado,
   } = page;
 
+  const onGuardarObservaciones = () => {
+    Promise.resolve(handleGuardarObservaciones()).catch(() => undefined);
+  };
+  const onGuardarObservacionesSesion = () => {
+    Promise.resolve(handleGuardarObservacionesSesion()).catch(() => undefined);
+  };
+  const onGuardarEstado = () => {
+    Promise.resolve(handleGuardarEstado()).catch(() => undefined);
+  };
+
   return (
     <>
       {observacionesModal && (
@@ -89,7 +99,7 @@ export function AsistenciaModals({ page, estadoFieldIds = ASIST_MODAL_IDS }: Mod
               <button type="button" onClick={() => setObservacionesModal(null)} className="btn-secondary" disabled={observacionesGuardando}>
                 Cancelar
               </button>
-              <button type="button" onClick={() => void handleGuardarObservaciones()} className="btn-primary" disabled={observacionesGuardando}>
+              <button type="button" onClick={onGuardarObservaciones} className="btn-primary" disabled={observacionesGuardando}>
                 {observacionesGuardando ? 'Guardando…' : 'Guardar'}
               </button>
             </div>
@@ -114,7 +124,7 @@ export function AsistenciaModals({ page, estadoFieldIds = ASIST_MODAL_IDS }: Mod
               <button type="button" className="btn-secondary" onClick={() => setObservacionesSesionModal(null)}>
                 Cancelar
               </button>
-              <button type="button" className="btn-primary" onClick={() => void handleGuardarObservacionesSesion()} disabled={observacionesSesionGuardando}>
+              <button type="button" className="btn-primary" onClick={onGuardarObservacionesSesion} disabled={observacionesSesionGuardando}>
                 Guardar
               </button>
             </div>
@@ -151,7 +161,7 @@ export function AsistenciaModals({ page, estadoFieldIds = ASIST_MODAL_IDS }: Mod
               <button type="button" className="btn-secondary" onClick={() => setEstadoModal(null)}>
                 Cancelar
               </button>
-              <button type="button" className="btn-primary" onClick={() => void handleGuardarEstado()} disabled={estadoGuardando}>
+              <button type="button" className="btn-primary" onClick={onGuardarEstado} disabled={estadoGuardando}>
                 Guardar estado
               </button>
             </div>

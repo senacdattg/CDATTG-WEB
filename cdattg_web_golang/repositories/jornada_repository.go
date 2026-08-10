@@ -6,6 +6,8 @@ import (
 	"gorm.io/gorm"
 )
 
+const whereJornadaID = "jornada_id = ?"
+
 // JornadaRepository CRUD de plantillas de jornada.
 type JornadaRepository interface {
 	List() ([]models.Jornada, error)
@@ -62,13 +64,13 @@ func (r *jornadaRepository) Delete(id uint) error {
 
 func (r *jornadaRepository) CountFichasByJornadaID(jornadaID uint) (int64, error) {
 	var n int64
-	err := r.db.Model(&models.FichaCaracterizacion{}).Where("jornada_id = ?", jornadaID).Count(&n).Error
+	err := r.db.Model(&models.FichaCaracterizacion{}).Where(whereJornadaID, jornadaID).Count(&n).Error
 	return n, err
 }
 
 func (r *jornadaRepository) CountFichaDiasByJornadaID(jornadaID uint) (int64, error) {
 	var n int64
-	err := r.db.Model(&models.FichaDiasFormacion{}).Where("jornada_id = ?", jornadaID).Count(&n).Error
+	err := r.db.Model(&models.FichaDiasFormacion{}).Where(whereJornadaID, jornadaID).Count(&n).Error
 	return n, err
 }
 
@@ -89,7 +91,7 @@ func NewJornadaBloqueRepository() JornadaBloqueRepository {
 
 func (r *jornadaBloqueRepository) FindByJornadaID(jornadaID uint) ([]models.JornadaBloque, error) {
 	var list []models.JornadaBloque
-	err := r.db.Where("jornada_id = ?", jornadaID).
+	err := r.db.Where(whereJornadaID, jornadaID).
 		Preload("DiaFormacion").
 		Order("dia_formacion_id, orden, id").
 		Find(&list).Error
@@ -98,7 +100,7 @@ func (r *jornadaBloqueRepository) FindByJornadaID(jornadaID uint) ([]models.Jorn
 
 func (r *jornadaBloqueRepository) ReplaceByJornadaID(jornadaID uint, bloques []models.JornadaBloque) error {
 	return r.db.Transaction(func(tx *gorm.DB) error {
-		if err := tx.Unscoped().Where("jornada_id = ?", jornadaID).Delete(&models.JornadaBloque{}).Error; err != nil {
+		if err := tx.Unscoped().Where(whereJornadaID, jornadaID).Delete(&models.JornadaBloque{}).Error; err != nil {
 			return err
 		}
 		for i := range bloques {
@@ -113,5 +115,5 @@ func (r *jornadaBloqueRepository) ReplaceByJornadaID(jornadaID uint, bloques []m
 }
 
 func (r *jornadaBloqueRepository) DeleteByJornadaID(jornadaID uint) error {
-	return r.db.Unscoped().Where("jornada_id = ?", jornadaID).Delete(&models.JornadaBloque{}).Error
+	return r.db.Unscoped().Where(whereJornadaID, jornadaID).Delete(&models.JornadaBloque{}).Error
 }

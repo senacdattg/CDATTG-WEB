@@ -9,6 +9,14 @@ import (
 	"github.com/sena/cdattg-web-golang/repositories"
 )
 
+const (
+	errMsgProveedorNoEncontrado           = "proveedor no encontrado"
+	errMsgCategoriaNoEncontrada           = "categoría no encontrada"
+	errMsgMarcaNoEncontrada               = "marca no encontrada"
+	errMsgContratoConvenioNoEncontrado    = "contrato/convenio no encontrado"
+	errFmtNoEliminarConProductosAsociados = "no se puede eliminar: tiene %d producto(s) asociado(s)"
+)
+
 // ProveedorService CRUD con regla: no eliminar si tiene productos (o contratos) asociados
 type ProveedorService interface {
 	List(limit, offset int) ([]dto.ProveedorResponse, int64, error)
@@ -41,7 +49,7 @@ func (s *proveedorService) List(limit, offset int) ([]dto.ProveedorResponse, int
 func (s *proveedorService) GetByID(id uint) (*dto.ProveedorResponse, error) {
 	p, err := s.repo.FindByID(id)
 	if err != nil || p == nil {
-		return nil, errors.New("proveedor no encontrado")
+		return nil, errors.New(errMsgProveedorNoEncontrado)
 	}
 	return &dto.ProveedorResponse{ID: p.ID, Name: p.Name, NIT: p.NIT, Status: p.Status}, nil
 }
@@ -61,7 +69,7 @@ func (s *proveedorService) Create(req dto.ProveedorCreateRequest) (*dto.Proveedo
 func (s *proveedorService) Update(id uint, req dto.ProveedorUpdateRequest) (*dto.ProveedorResponse, error) {
 	p, err := s.repo.FindByID(id)
 	if err != nil || p == nil {
-		return nil, errors.New("proveedor no encontrado")
+		return nil, errors.New(errMsgProveedorNoEncontrado)
 	}
 	p.Name = req.Name
 	p.NIT = req.NIT
@@ -77,11 +85,11 @@ func (s *proveedorService) Update(id uint, req dto.ProveedorUpdateRequest) (*dto
 func (s *proveedorService) Delete(id uint) error {
 	p, err := s.repo.FindByID(id)
 	if err != nil || p == nil {
-		return errors.New("proveedor no encontrado")
+		return errors.New(errMsgProveedorNoEncontrado)
 	}
 	n, _ := s.repo.CountProductos(id)
 	if n > 0 {
-		return fmt.Errorf("no se puede eliminar: tiene %d producto(s) asociado(s)", n)
+		return fmt.Errorf(errFmtNoEliminarConProductosAsociados, n)
 	}
 	return s.repo.Delete(p)
 }
@@ -118,7 +126,7 @@ func (s *categoriaService) List() ([]dto.CategoriaResponse, error) {
 func (s *categoriaService) GetByID(id uint) (*dto.CategoriaResponse, error) {
 	c, err := s.repo.FindByID(id)
 	if err != nil || c == nil {
-		return nil, errors.New("categoría no encontrada")
+		return nil, errors.New(errMsgCategoriaNoEncontrada)
 	}
 	return &dto.CategoriaResponse{ID: c.ID, Name: c.Name, Status: c.Status}, nil
 }
@@ -138,7 +146,7 @@ func (s *categoriaService) Create(req dto.CategoriaCreateRequest) (*dto.Categori
 func (s *categoriaService) Update(id uint, req dto.CategoriaUpdateRequest) (*dto.CategoriaResponse, error) {
 	c, err := s.repo.FindByID(id)
 	if err != nil || c == nil {
-		return nil, errors.New("categoría no encontrada")
+		return nil, errors.New(errMsgCategoriaNoEncontrada)
 	}
 	c.Name = req.Name
 	if req.Status != nil {
@@ -153,11 +161,11 @@ func (s *categoriaService) Update(id uint, req dto.CategoriaUpdateRequest) (*dto
 func (s *categoriaService) Delete(id uint) error {
 	c, err := s.repo.FindByID(id)
 	if err != nil || c == nil {
-		return errors.New("categoría no encontrada")
+		return errors.New(errMsgCategoriaNoEncontrada)
 	}
 	n, _ := s.repo.CountProductos(id)
 	if n > 0 {
-		return fmt.Errorf("no se puede eliminar: tiene %d producto(s) asociado(s)", n)
+		return fmt.Errorf(errFmtNoEliminarConProductosAsociados, n)
 	}
 	return s.repo.Delete(c)
 }
@@ -194,7 +202,7 @@ func (s *marcaService) List() ([]dto.MarcaResponse, error) {
 func (s *marcaService) GetByID(id uint) (*dto.MarcaResponse, error) {
 	m, err := s.repo.FindByID(id)
 	if err != nil || m == nil {
-		return nil, errors.New("marca no encontrada")
+		return nil, errors.New(errMsgMarcaNoEncontrada)
 	}
 	return &dto.MarcaResponse{ID: m.ID, Name: m.Name, Status: m.Status}, nil
 }
@@ -214,7 +222,7 @@ func (s *marcaService) Create(req dto.MarcaCreateRequest) (*dto.MarcaResponse, e
 func (s *marcaService) Update(id uint, req dto.MarcaUpdateRequest) (*dto.MarcaResponse, error) {
 	m, err := s.repo.FindByID(id)
 	if err != nil || m == nil {
-		return nil, errors.New("marca no encontrada")
+		return nil, errors.New(errMsgMarcaNoEncontrada)
 	}
 	m.Name = req.Name
 	if req.Status != nil {
@@ -229,11 +237,11 @@ func (s *marcaService) Update(id uint, req dto.MarcaUpdateRequest) (*dto.MarcaRe
 func (s *marcaService) Delete(id uint) error {
 	m, err := s.repo.FindByID(id)
 	if err != nil || m == nil {
-		return errors.New("marca no encontrada")
+		return errors.New(errMsgMarcaNoEncontrada)
 	}
 	n, _ := s.repo.CountProductos(id)
 	if n > 0 {
-		return fmt.Errorf("no se puede eliminar: tiene %d producto(s) asociado(s)", n)
+		return fmt.Errorf(errFmtNoEliminarConProductosAsociados, n)
 	}
 	return s.repo.Delete(m)
 }
@@ -277,7 +285,7 @@ func (s *contratoConvenioService) List(limit, offset int) ([]dto.ContratoConveni
 func (s *contratoConvenioService) GetByID(id uint) (*dto.ContratoConvenioResponse, error) {
 	c, err := s.repo.FindByID(id)
 	if err != nil || c == nil {
-		return nil, errors.New("contrato/convenio no encontrado")
+		return nil, errors.New(errMsgContratoConvenioNoEncontrado)
 	}
 	return &dto.ContratoConvenioResponse{
 		ID:             c.ID,
@@ -317,7 +325,7 @@ func (s *contratoConvenioService) Create(req dto.ContratoConvenioCreateRequest) 
 func (s *contratoConvenioService) Update(id uint, req dto.ContratoConvenioUpdateRequest) (*dto.ContratoConvenioResponse, error) {
 	c, err := s.repo.FindByID(id)
 	if err != nil || c == nil {
-		return nil, errors.New("contrato/convenio no encontrado")
+		return nil, errors.New(errMsgContratoConvenioNoEncontrado)
 	}
 	c.NumeroContrato = req.NumeroContrato
 	c.Nombre = req.Nombre
@@ -342,11 +350,11 @@ func (s *contratoConvenioService) Update(id uint, req dto.ContratoConvenioUpdate
 func (s *contratoConvenioService) Delete(id uint) error {
 	c, err := s.repo.FindByID(id)
 	if err != nil || c == nil {
-		return errors.New("contrato/convenio no encontrado")
+		return errors.New(errMsgContratoConvenioNoEncontrado)
 	}
 	n, _ := s.repo.CountProductos(id)
 	if n > 0 {
-		return fmt.Errorf("no se puede eliminar: tiene %d producto(s) asociado(s)", n)
+		return fmt.Errorf(errFmtNoEliminarConProductosAsociados, n)
 	}
 	return s.repo.Delete(c)
 }

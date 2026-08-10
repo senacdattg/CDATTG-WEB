@@ -7,24 +7,29 @@ import (
 	"github.com/sena/cdattg-web-golang/authz"
 )
 
+const (
+	actVerMiAgenda   = "VER MI AGENDA"
+	actVerAsistencia = "VER ASISTENCIA"
+)
+
 func TestCasbinRoleAndDirectPermissions(t *testing.T) {
 	e, err := casbin.NewEnforcer("model.conf")
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, _ = e.AddPolicy("INSTRUCTOR", "asistencia", "VER MI AGENDA")
-	_, _ = e.AddPolicy("INSTRUCTOR", "asistencia", "VER ASISTENCIA")
+	_, _ = e.AddPolicy("INSTRUCTOR", authz.ObjAsistencia, actVerMiAgenda)
+	_, _ = e.AddPolicy("INSTRUCTOR", authz.ObjAsistencia, actVerAsistencia)
 	_, _ = e.AddGroupingPolicy("5", "INSTRUCTOR")
-	_, _ = authz.AddPermissionForUser(e, "99", "asistencia", "VER MI AGENDA")
+	_, _ = authz.AddPermissionForUser(e, "99", authz.ObjAsistencia, actVerMiAgenda)
 
 	for _, tc := range []struct {
 		sub, obj, act string
 		want          bool
 	}{
-		{"5", "asistencia", "VER MI AGENDA", true},
-		{"5", "asistencia", "VER ASISTENCIA", true},
-		{"99", "asistencia", "VER MI AGENDA", true},
-		{"99", "asistencia", "VER ASISTENCIA", false},
+		{"5", authz.ObjAsistencia, actVerMiAgenda, true},
+		{"5", authz.ObjAsistencia, actVerAsistencia, true},
+		{"99", authz.ObjAsistencia, actVerMiAgenda, true},
+		{"99", authz.ObjAsistencia, actVerAsistencia, false},
 	} {
 		ok, errEnf := authz.Enforce(e, tc.sub, tc.obj, tc.act)
 		if errEnf != nil {

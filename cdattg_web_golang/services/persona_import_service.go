@@ -14,12 +14,12 @@ import (
 
 // ImportProgress se envía durante la importación por streaming (estadísticas en tiempo real).
 type ImportProgress struct {
-	Total     int    `json:"total"`
-	Current   int    `json:"current"`
-	Processed int    `json:"processed"`
-	Duplicates int   `json:"duplicates"`
-	Errors    int    `json:"errors"`
-	Type      string `json:"type,omitempty"` // "progress" | "done"
+	Total      int    `json:"total"`
+	Current    int    `json:"current"`
+	Processed  int    `json:"processed"`
+	Duplicates int    `json:"duplicates"`
+	Errors     int    `json:"errors"`
+	Type       string `json:"type,omitempty"` // "progress" | "done"
 }
 
 // Códigos cortos de tipo de documento (como vienen en el Excel) -> nombre en BD
@@ -34,22 +34,31 @@ var tipoDocCodigoANombre = map[string]string{
 
 // Headers esperados en la primera fila del Excel (sin importar mayúsculas/espacios)
 var importHeaders = map[string]string{
-	"tipo_documento":   "tipo_documento",
-	"tipo documento":   "tipo_documento",
-	"numero_documento": "numero_documento",
+	"tipo_documento":      "tipo_documento",
+	"tipo documento":      "tipo_documento",
+	"numero_documento":    "numero_documento",
 	"número de documento": "numero_documento",
-	"numero documento": "numero_documento",
-	"primer_nombre":    "primer_nombre",
-	"primer nombre":    "primer_nombre",
-	"segundo_nombre":   "segundo_nombre",
-	"segundo nombre":   "segundo_nombre",
-	"primer_apellido":  "primer_apellido",
-	"primer apellido":  "primer_apellido",
-	"segundo_apellido": "segundo_apellido",
-	"segundo apellido": "segundo_apellido",
-	"correo":           "correo",
-	"email":            "correo",
-	"celular":          "celular",
+	"numero documento":    "numero_documento",
+	"primer_nombre":       "primer_nombre",
+	"primer nombre":       "primer_nombre",
+	"segundo_nombre":      "segundo_nombre",
+	"segundo nombre":      "segundo_nombre",
+	"primer_apellido":     "primer_apellido",
+	"primer apellido":     "primer_apellido",
+	"segundo_apellido":    "segundo_apellido",
+	"segundo apellido":    "segundo_apellido",
+	"correo":              "correo",
+	"email":               "correo",
+	"celular":             "celular",
+}
+
+var requiredImportColumns = []struct {
+	key string
+	msg string
+}{
+	{"numero_documento", "falta la columna 'numero_documento' (o 'número de documento')"},
+	{"primer_nombre", "falta la columna 'primer_nombre' (o 'primer nombre')"},
+	{"primer_apellido", "falta la columna 'primer_apellido' (o 'primer apellido')"},
 }
 
 type PersonaImportService interface {
@@ -114,23 +123,73 @@ func (s *personaImportService) ListImports(limit int) ([]ImportLogItem, error) {
 }
 
 func (s *personaImportService) ImportFromExcel(fileBytes []byte, filename string, userID uint) (*ImportResult, error) {
+	return s.ImportFromExcelWithProgress(fileBytes, filename, userID, nil)
+}
+
+// ImportFromExcelWithProgress igual que ImportFromExcel pero invoca onProgress tras cada fila (para streaming).
+func (s *personaImportService) ImportFromExcelWithProgress(fileBytes []byte, filename string, userID uint, onProgress func(ImportProgress)) (*ImportResult, error) {
+	rows, colIndex, err := openPersonaImportWorkbook(fileBytes)
+	if err != nil {
+		return nil, err
+	}
+	tipoByName := s.loadTipoDocumentoLookup()
+
+	total := len(rows) - 1
+	emitProgress(onProgress, ImportProgress{Total: total, Type: "progress"})
+
+	processed, duplicates, errors, createdPersonaIDs := s.importPersonaRows(rows, colIndex, tipoByName, total, onProgress)
+
+	if len(createdPersonaIDs) > 0 {
+		_ = s.personaService.EnsureUsersForPersonas(createdPersonaIDs)
+	}
+
+	_ = s.logRepo.Create(&models.PersonaImportLog{
+		Filename:        filename,
+		UserID:          userID,
+		ProcessedCount:  processed,
+		DuplicatesCount: duplicates,
+		ErrorCount:      errors,
+		Status:          "completado",
+		CreatedAt:       time.Now(),
+	})
+
+	result := &ImportResult{
+		ProcessedCount:  processed,
+		DuplicatesCount: duplicates,
+		ErrorCount:      errors,
+		Status:          "completado",
+	}
+	emitProgress(onProgress, ImportProgress{
+		Total: total, Current: total, Processed: processed, Duplicates: duplicates, Errors: errors, Type: "done",
+	})
+	return result, nil
+}
+
+func openPersonaImportWorkbook(fileBytes []byte) (rows [][]string, colIndex map[string]int, err error) {
 	f, err := excelize.OpenReader(bytes.NewReader(fileBytes))
 	if err != nil {
-		return nil, fmt.Errorf("archivo Excel inválido: %w", err)
+		return nil, nil, fmt.Errorf("archivo Excel inválido: %w", err)
 	}
 	defer f.Close()
 
 	sheetName := f.GetSheetName(0)
 	if sheetName == "" {
-		return nil, fmt.Errorf("el archivo no contiene hojas")
+		return nil, nil, fmt.Errorf("el archivo no contiene hojas")
 	}
 
-	rows, err := f.GetRows(sheetName)
+	rows, err = f.GetRows(sheetName)
 	if err != nil || len(rows) < 2 {
-		return nil, fmt.Errorf("el archivo debe tener al menos encabezados y una fila de datos")
+		return nil, nil, fmt.Errorf("el archivo debe tener al menos encabezados y una fila de datos")
 	}
 
-	headerRow := rows[0]
+	colIndex = buildImportColIndex(rows[0])
+	if err = validateRequiredImportColumns(colIndex); err != nil {
+		return nil, nil, err
+	}
+	return rows, colIndex, nil
+}
+
+func buildImportColIndex(headerRow []string) map[string]int {
 	colIndex := make(map[string]int)
 	for i, cell := range headerRow {
 		key := strings.TrimSpace(strings.ToLower(cell))
@@ -138,18 +197,21 @@ func (s *personaImportService) ImportFromExcel(fileBytes []byte, filename string
 			colIndex[canonical] = i
 		}
 	}
-	if _, hasDoc := colIndex["numero_documento"]; !hasDoc {
-		return nil, fmt.Errorf("falta la columna 'numero_documento' (o 'número de documento')")
-	}
-	if _, hasPrimerNombre := colIndex["primer_nombre"]; !hasPrimerNombre {
-		return nil, fmt.Errorf("falta la columna 'primer_nombre' (o 'primer nombre')")
-	}
-	if _, hasPrimerApellido := colIndex["primer_apellido"]; !hasPrimerApellido {
-		return nil, fmt.Errorf("falta la columna 'primer_apellido' (o 'primer apellido')")
-	}
+	return colIndex
+}
 
+func validateRequiredImportColumns(colIndex map[string]int) error {
+	for _, req := range requiredImportColumns {
+		if _, ok := colIndex[req.key]; !ok {
+			return fmt.Errorf("%s", req.msg)
+		}
+	}
+	return nil
+}
+
+func (s *personaImportService) loadTipoDocumentoLookup() map[string]uint {
 	tiposDoc, _ := s.catalogoRepo.FindTiposDocumento()
-	tipoByName := make(map[string]uint)
+	tipoByName := make(map[string]uint, len(tiposDoc)+len(tipoDocCodigoANombre))
 	for _, t := range tiposDoc {
 		nombreNorm := strings.TrimSpace(strings.ToLower(t.Nombre))
 		tipoByName[nombreNorm] = t.ID
@@ -161,121 +223,38 @@ func (s *personaImportService) ImportFromExcel(fileBytes []byte, filename string
 			tipoByName[strings.ToLower(codigo)] = id
 		}
 	}
-
-	var processed, duplicates, errors int
-	var createdPersonaIDs []uint
-	for i := 1; i < len(rows); i++ {
-		row := rows[i]
-		req := s.rowToPersonaRequest(row, colIndex, tipoByName)
-		if req == nil {
-			continue
-		}
-		resp, err := s.personaService.CreateWithoutUser(*req)
-		if err != nil {
-			msg := err.Error()
-			if strings.Contains(msg, "ya está registrado") || strings.Contains(msg, "ya registrado") {
-				duplicates++
-			} else {
-				errors++
-			}
-			continue
-		}
-		processed++
-		createdPersonaIDs = append(createdPersonaIDs, resp.ID)
-	}
-
-	if len(createdPersonaIDs) > 0 {
-		_ = s.personaService.EnsureUsersForPersonas(createdPersonaIDs)
-	}
-
-	logEntry := &models.PersonaImportLog{
-		Filename:        filename,
-		UserID:          userID,
-		ProcessedCount:  processed,
-		DuplicatesCount: duplicates,
-		ErrorCount:      errors,
-		Status:          "completado",
-		CreatedAt:       time.Now(),
-	}
-	_ = s.logRepo.Create(logEntry)
-
-	return &ImportResult{
-		ProcessedCount:  processed,
-		DuplicatesCount: duplicates,
-		ErrorCount:      errors,
-		Status:          "completado",
-	}, nil
+	return tipoByName
 }
 
-// ImportFromExcelWithProgress igual que ImportFromExcel pero invoca onProgress tras cada fila (para streaming).
-func (s *personaImportService) ImportFromExcelWithProgress(fileBytes []byte, filename string, userID uint, onProgress func(ImportProgress)) (*ImportResult, error) {
-	f, err := excelize.OpenReader(bytes.NewReader(fileBytes))
-	if err != nil {
-		return nil, fmt.Errorf("archivo Excel inválido: %w", err)
-	}
-	defer f.Close()
-
-	sheetName := f.GetSheetName(0)
-	if sheetName == "" {
-		return nil, fmt.Errorf("el archivo no contiene hojas")
-	}
-
-	rows, err := f.GetRows(sheetName)
-	if err != nil || len(rows) < 2 {
-		return nil, fmt.Errorf("el archivo debe tener al menos encabezados y una fila de datos")
-	}
-
-	headerRow := rows[0]
-	colIndex := make(map[string]int)
-	for i, cell := range headerRow {
-		key := strings.TrimSpace(strings.ToLower(cell))
-		if canonical, ok := importHeaders[key]; ok {
-			colIndex[canonical] = i
-		}
-	}
-	if _, hasDoc := colIndex["numero_documento"]; !hasDoc {
-		return nil, fmt.Errorf("falta la columna 'numero_documento' (o 'número de documento')")
-	}
-	if _, hasPrimerNombre := colIndex["primer_nombre"]; !hasPrimerNombre {
-		return nil, fmt.Errorf("falta la columna 'primer_nombre' (o 'primer nombre')")
-	}
-	if _, hasPrimerApellido := colIndex["primer_apellido"]; !hasPrimerApellido {
-		return nil, fmt.Errorf("falta la columna 'primer_apellido' (o 'primer apellido')")
-	}
-
-	tiposDoc, _ := s.catalogoRepo.FindTiposDocumento()
-	tipoByName := make(map[string]uint)
-	for _, t := range tiposDoc {
-		nombreNorm := strings.TrimSpace(strings.ToLower(t.Nombre))
-		tipoByName[nombreNorm] = t.ID
-	}
-	for codigo, nombreCompleto := range tipoDocCodigoANombre {
-		nombreNorm := strings.TrimSpace(strings.ToLower(nombreCompleto))
-		if id, has := tipoByName[nombreNorm]; has {
-			tipoByName[strings.ToLower(codigo)] = id
-		}
-	}
-
-	total := len(rows) - 1
+func emitProgress(onProgress func(ImportProgress), p ImportProgress) {
 	if onProgress != nil {
-		onProgress(ImportProgress{Total: total, Type: "progress"})
+		onProgress(p)
 	}
+}
 
-	var processed, duplicates, errors int
-	var createdPersonaIDs []uint
+func isDuplicatePersonaError(err error) bool {
+	msg := err.Error()
+	return strings.Contains(msg, "ya está registrado") || strings.Contains(msg, "ya registrado")
+}
+
+func (s *personaImportService) importPersonaRows(
+	rows [][]string,
+	colIndex map[string]int,
+	tipoByName map[string]uint,
+	total int,
+	onProgress func(ImportProgress),
+) (processed, duplicates, errors int, createdPersonaIDs []uint) {
 	for i := 1; i < len(rows); i++ {
-		row := rows[i]
-		req := s.rowToPersonaRequest(row, colIndex, tipoByName)
+		req := s.rowToPersonaRequest(rows[i], colIndex, tipoByName)
 		if req == nil {
-			if onProgress != nil {
-				onProgress(ImportProgress{Total: total, Current: i, Processed: processed, Duplicates: duplicates, Errors: errors, Type: "progress"})
-			}
+			emitProgress(onProgress, ImportProgress{
+				Total: total, Current: i, Processed: processed, Duplicates: duplicates, Errors: errors, Type: "progress",
+			})
 			continue
 		}
 		resp, err := s.personaService.CreateWithoutUser(*req)
 		if err != nil {
-			msg := err.Error()
-			if strings.Contains(msg, "ya está registrado") || strings.Contains(msg, "ya registrado") {
+			if isDuplicatePersonaError(err) {
 				duplicates++
 			} else {
 				errors++
@@ -284,36 +263,11 @@ func (s *personaImportService) ImportFromExcelWithProgress(fileBytes []byte, fil
 			processed++
 			createdPersonaIDs = append(createdPersonaIDs, resp.ID)
 		}
-		if onProgress != nil {
-			onProgress(ImportProgress{Total: total, Current: i, Processed: processed, Duplicates: duplicates, Errors: errors, Type: "progress"})
-		}
+		emitProgress(onProgress, ImportProgress{
+			Total: total, Current: i, Processed: processed, Duplicates: duplicates, Errors: errors, Type: "progress",
+		})
 	}
-
-	if len(createdPersonaIDs) > 0 {
-		_ = s.personaService.EnsureUsersForPersonas(createdPersonaIDs)
-	}
-
-	logEntry := &models.PersonaImportLog{
-		Filename:        filename,
-		UserID:          userID,
-		ProcessedCount:  processed,
-		DuplicatesCount: duplicates,
-		ErrorCount:      errors,
-		Status:          "completado",
-		CreatedAt:       time.Now(),
-	}
-	_ = s.logRepo.Create(logEntry)
-
-	result := &ImportResult{
-		ProcessedCount:  processed,
-		DuplicatesCount: duplicates,
-		ErrorCount:      errors,
-		Status:          "completado",
-	}
-	if onProgress != nil {
-		onProgress(ImportProgress{Total: total, Current: total, Processed: processed, Duplicates: duplicates, Errors: errors, Type: "done"})
-	}
-	return result, nil
+	return processed, duplicates, errors, createdPersonaIDs
 }
 
 func (s *personaImportService) rowToPersonaRequest(row []string, colIndex map[string]int, tipoByName map[string]uint) *dto.PersonaRequest {

@@ -27,36 +27,45 @@ func validarHorarioConExtension(j *models.Jornada, now time.Time) bool {
 	if j == nil {
 		return true
 	}
-	if j.ID > 0 {
-		bloques, err := repositories.NewJornadaBloqueRepository().FindByJornadaID(j.ID)
-		if err == nil && len(bloques) > 0 {
-			extMin := extensionMinutosFromJornada(j)
-			inputs := make([]HorarioBloqueInput, len(bloques))
-			for i, b := range bloques {
-				inputs[i] = HorarioBloqueInput{
-					DiaFormacionID: b.DiaFormacionID,
-					HoraInicio:     normalizeHoraMM(b.HoraInicio),
-					HoraFin:        normalizeHoraMM(b.HoraFin),
-				}
-			}
-			diaHoy := WeekdayToDiaFormacionID(now.Weekday())
-			var hoy []HorarioBloqueInput
-			for _, in := range inputs {
-				if in.DiaFormacionID == diaHoy {
-					hoy = append(hoy, in)
-				}
-			}
-			if len(hoy) > 0 {
-				return MomentoEnAlgunBloque(hoy, extMin, now)
-			}
-			return false
-		}
+	if ok, handled := validarHorarioPorBloquesJornada(j, now); handled {
+		return ok
 	}
 	inicio, fin := normalizeHoraMM(j.HoraInicio), normalizeHoraMM(j.HoraFin)
 	if inicio == "" || fin == "" {
 		return true
 	}
 	return validarHorarioRango(inicio, fin, extensionMinutosFromJornada(j), now)
+}
+
+// validarHorarioPorBloquesJornada usa bloques por día si existen. handled=false → caer a cabecera legacy.
+func validarHorarioPorBloquesJornada(j *models.Jornada, now time.Time) (ok bool, handled bool) {
+	if j.ID == 0 {
+		return false, false
+	}
+	bloques, err := repositories.NewJornadaBloqueRepository().FindByJornadaID(j.ID)
+	if err != nil || len(bloques) == 0 {
+		return false, false
+	}
+	hoy := bloquesDelDia(bloques, WeekdayToDiaFormacionID(now.Weekday()))
+	if len(hoy) == 0 {
+		return false, true
+	}
+	return MomentoEnAlgunBloque(hoy, extensionMinutosFromJornada(j), now), true
+}
+
+func bloquesDelDia(bloques []models.JornadaBloque, diaHoy uint) []HorarioBloqueInput {
+	hoy := make([]HorarioBloqueInput, 0, len(bloques))
+	for _, b := range bloques {
+		if b.DiaFormacionID != diaHoy {
+			continue
+		}
+		hoy = append(hoy, HorarioBloqueInput{
+			DiaFormacionID: b.DiaFormacionID,
+			HoraInicio:     normalizeHoraMM(b.HoraInicio),
+			HoraFin:        normalizeHoraMM(b.HoraFin),
+		})
+	}
+	return hoy
 }
 
 func extensionMinutosFromJornada(j *models.Jornada) int {
@@ -115,33 +124,40 @@ func normalizeHoraMM(s string) string {
 	if s == "" {
 		return ""
 	}
-	if t, err := parseHora(s); err == nil {
-		return t.Format("15:04")
-	}
-	if idx := strings.Index(s, "T"); idx >= 0 {
-		rest := s[idx+1:]
-		if len(rest) >= 8 && rest[2] == ':' {
-			if t, err := parseHora(rest[:8]); err == nil {
-				return t.Format("15:04")
-			}
-		}
-		if len(rest) >= 5 && rest[2] == ':' {
-			if t, err := parseHora(rest[:5]); err == nil {
-				return t.Format("15:04")
-			}
-		}
-	}
-	if len(s) >= 8 && s[2] == ':' {
-		if t, err := parseHora(s[:8]); err == nil {
-			return t.Format("15:04")
-		}
-	}
-	if len(s) >= 5 && s[2] == ':' {
-		if t, err := parseHora(s[:5]); err == nil {
-			return t.Format("15:04")
+	for _, candidate := range horaMMCandidates(s) {
+		if out := formatHoraMM(candidate); out != "" {
+			return out
 		}
 	}
 	return ""
+}
+
+func formatHoraMM(s string) string {
+	t, err := parseHora(s)
+	if err != nil {
+		return ""
+	}
+	return t.Format("15:04")
+}
+
+func horaMMCandidates(s string) []string {
+	out := []string{s}
+	if idx := strings.Index(s, "T"); idx >= 0 {
+		out = append(out, timePrefixes(s[idx+1:])...)
+	}
+	out = append(out, timePrefixes(s)...)
+	return out
+}
+
+func timePrefixes(s string) []string {
+	var out []string
+	if len(s) >= 8 && s[2] == ':' {
+		out = append(out, s[:8])
+	}
+	if len(s) >= 5 && s[2] == ':' {
+		out = append(out, s[:5])
+	}
+	return out
 }
 
 // HoraInicioMasMinutos devuelve el instante (en la zona de dia) de hora_inicio del día dado más los minutos indicados.

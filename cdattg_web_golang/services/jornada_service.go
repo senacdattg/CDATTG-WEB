@@ -11,6 +11,8 @@ import (
 	"gorm.io/gorm"
 )
 
+const errMsgJornadaNoEncontrada = "jornada no encontrada"
+
 type JornadaService struct {
 	jornadaRepo   repositories.JornadaRepository
 	bloqueRepo    repositories.JornadaBloqueRepository
@@ -75,19 +77,14 @@ func (s *JornadaService) Create(req dto.JornadaCreateRequest) (*dto.JornadaAdmin
 func (s *JornadaService) Update(id uint, req dto.JornadaUpdateRequest) (*dto.JornadaUpdateResponse, error) {
 	j, err := s.jornadaRepo.FindByID(id)
 	if err != nil {
-		return nil, errors.New("jornada no encontrada")
+		return nil, errors.New(errMsgJornadaNoEncontrada)
 	}
 	oldPlantilla, err := s.bloqueRepo.FindByJornadaID(id)
 	if err != nil {
 		return nil, err
 	}
-	nombre := strings.TrimSpace(req.Nombre)
-	if nombre == "" {
-		return nil, errors.New("el nombre es obligatorio")
-	}
-	if other, err := s.jornadaRepo.FindByNombre(nombre); err == nil && other.ID != id {
-		return nil, errors.New("ya existe otra jornada con ese nombre")
-	} else if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+	nombre, err := s.nombreJornadaParaUpdate(id, req.Nombre)
+	if err != nil {
 		return nil, err
 	}
 	inputs, err := bloquesDTOToInput(req.Bloques)
@@ -111,19 +108,45 @@ func (s *JornadaService) Update(id uint, req dto.JornadaUpdateRequest) (*dto.Jor
 		return nil, err
 	}
 	resp := &dto.JornadaUpdateResponse{JornadaAdminItem: *item}
-	if req.PropagarFichas == nil || *req.PropagarFichas {
-		prop, propErr := s.propagarPlantilla(id, oldPlantilla)
-		if propErr != nil {
-			return nil, propErr
-		}
-		resp.Propagacion = &prop
+	if err := s.applyPropagacionIfRequested(id, oldPlantilla, req.PropagarFichas, resp); err != nil {
+		return nil, err
 	}
 	return resp, nil
 }
 
+func (s *JornadaService) nombreJornadaParaUpdate(id uint, nombreRaw string) (string, error) {
+	nombre := strings.TrimSpace(nombreRaw)
+	if nombre == "" {
+		return "", errors.New("el nombre es obligatorio")
+	}
+	if other, err := s.jornadaRepo.FindByNombre(nombre); err == nil && other.ID != id {
+		return "", errors.New("ya existe otra jornada con ese nombre")
+	} else if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+		return "", err
+	}
+	return nombre, nil
+}
+
+func (s *JornadaService) applyPropagacionIfRequested(
+	id uint,
+	oldPlantilla []models.JornadaBloque,
+	propagar *bool,
+	resp *dto.JornadaUpdateResponse,
+) error {
+	if propagar != nil && !*propagar {
+		return nil
+	}
+	prop, err := s.propagarPlantilla(id, oldPlantilla)
+	if err != nil {
+		return err
+	}
+	resp.Propagacion = &prop
+	return nil
+}
+
 func (s *JornadaService) Propagar(id uint) (*dto.JornadaPropagateResult, error) {
 	if _, err := s.jornadaRepo.FindByID(id); err != nil {
-		return nil, errors.New("jornada no encontrada")
+		return nil, errors.New(errMsgJornadaNoEncontrada)
 	}
 	plantilla, err := s.bloqueRepo.FindByJornadaID(id)
 	if err != nil {
@@ -156,7 +179,7 @@ func (s *JornadaService) propagarPlantilla(jornadaID uint, oldPlantilla []models
 
 func (s *JornadaService) Delete(id uint) error {
 	if _, err := s.jornadaRepo.FindByID(id); err != nil {
-		return errors.New("jornada no encontrada")
+		return errors.New(errMsgJornadaNoEncontrada)
 	}
 	nFichas, err := s.jornadaRepo.CountFichasByJornadaID(id)
 	if err != nil {

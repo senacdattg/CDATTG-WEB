@@ -10,6 +10,8 @@ import (
 	"github.com/sena/cdattg-web-golang/repositories"
 )
 
+const errMsgProgramaFormacionNoEncontrado = "programa de formación no encontrado"
+
 type ProgramaFormacionService interface {
 	FindAll(page, pageSize int, search string) ([]dto.ProgramaFormacionResponse, int64, error)
 	FindByID(id uint) (*dto.ProgramaFormacionResponse, error)
@@ -41,7 +43,7 @@ func (s *programaFormacionService) FindAll(page, pageSize int, search string) ([
 func (s *programaFormacionService) FindByID(id uint) (*dto.ProgramaFormacionResponse, error) {
 	p, err := s.repo.FindByID(id)
 	if err != nil {
-		return nil, errors.New("programa de formación no encontrado")
+		return nil, errors.New(errMsgProgramaFormacionNoEncontrado)
 	}
 	r := s.toResponse(*p, 0)
 	return &r, nil
@@ -73,7 +75,7 @@ func (s *programaFormacionService) Create(req dto.ProgramaFormacionRequest) (*dt
 func (s *programaFormacionService) Update(id uint, req dto.ProgramaFormacionRequest) (*dto.ProgramaFormacionResponse, error) {
 	p, err := s.repo.FindByID(id)
 	if err != nil {
-		return nil, errors.New("programa de formación no encontrado")
+		return nil, errors.New(errMsgProgramaFormacionNoEncontrado)
 	}
 	codigo := strings.TrimSpace(strings.ToUpper(req.Codigo))
 	if s.repo.ExistsByCodigoExcludingID(codigo, id) {
@@ -99,7 +101,7 @@ func (s *programaFormacionService) Update(id uint, req dto.ProgramaFormacionRequ
 
 func (s *programaFormacionService) Delete(id uint) error {
 	if _, err := s.repo.FindByID(id); err != nil {
-		return errors.New("programa de formación no encontrado")
+		return errors.New(errMsgProgramaFormacionNoEncontrado)
 	}
 	return s.repo.Delete(id)
 }

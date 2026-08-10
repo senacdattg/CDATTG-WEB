@@ -8,7 +8,7 @@ function basePage(overrides: Partial<AsistenciaModalsModel> = {}): AsistenciaMod
   return {
     observacionesModal: null,
     setObservacionesModal: vi.fn(),
-    tiposObservacionCatalog: [{ id: 1, nombre: 'Retardo' }],
+    tiposObservacionCatalog: [{ id: 1, codigo: 'RETARDO', nombre: 'Retardo' }],
     observacionesGuardando: false,
     handleGuardarObservaciones: vi.fn(async () => undefined),
     observacionesSesionModal: null,

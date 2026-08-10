@@ -19,8 +19,8 @@ describe('AsistenciaCollapsibleCard', () => {
           description: 'Escanear',
           open: false,
           onToggle: vi.fn(),
+          children: 'contenido',
         },
-        'contenido',
       ),
     );
     expect(html).toContain('aria-expanded="false"');
@@ -32,18 +32,15 @@ describe('AsistenciaCollapsibleCard', () => {
 
   it('renderiza abierto con badge, icono y children', () => {
     const html = renderToStaticMarkup(
-      createElement(
-        AsistenciaCollapsibleCard,
-        {
-          title: 'Manual',
-          description: 'Por documento',
-          badge: '3',
-          icon: createElement('span', null, 'I'),
-          open: true,
-          onToggle: vi.fn(),
-        },
-        'panel-body',
-      ),
+      createElement(AsistenciaCollapsibleCard, {
+        title: 'Manual',
+        description: 'Por documento',
+        badge: '3',
+        icon: createElement('span', null, 'I'),
+        open: true,
+        onToggle: vi.fn(),
+        children: 'panel-body',
+      }),
     );
     expect(html).toContain('aria-expanded="true"');
     expect(html).toContain('id="asistencia-panel-manual"');

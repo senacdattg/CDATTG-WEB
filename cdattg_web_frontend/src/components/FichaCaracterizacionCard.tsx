@@ -10,9 +10,10 @@ import {
   UsersIcon,
 } from '@heroicons/react/24/outline';
 import { LABEL_INSTRUCTOR_LIDER } from '../constants/instructorLiderLabels';
+import { labelTipoFormacion } from '../constants/tipoFormacion';
 import type { FichaCaracterizacionResponse } from '../types';
 import { getHorarioHoy } from '../utils/fichaHorario';
-import { toDisplayTitle } from '../utils/fichaListDisplay';
+import { tituloProgramaFicha, toDisplayTitle } from '../utils/fichaListDisplay';
 
 type Props = Readonly<{
   ficha: FichaCaracterizacionResponse;
@@ -41,6 +42,9 @@ function FichaCardHeaderBadges({
 }: Readonly<{ ficha: FichaCaracterizacionResponse; showStatusBadge: boolean }>) {
   return (
     <div className="flex shrink-0 flex-col items-end gap-1">
+      <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-700 dark:bg-slate-700/60 dark:text-slate-200">
+        {labelTipoFormacion(ficha.tipo_formacion)}
+      </span>
       {showStatusBadge ? (
         <span
           className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
@@ -191,9 +195,10 @@ export function FichaCaracterizacionCard({
   const borderClass =
     collapsible && open ? 'border-primary-300 dark:border-primary-600' : 'border-gray-200 dark:border-gray-600';
 
+  const titulo = tituloProgramaFicha(ficha);
   const headerTitle = (
     <h3 className="text-sm font-bold leading-tight text-gray-900 dark:text-white">
-      {toDisplayTitle(ficha.programa_formacion_nombre) || 'Sin programa'}
+      {titulo ? toDisplayTitle(titulo) : 'Sin programa'}
     </h3>
   );
   const headerBadges = <FichaCardHeaderBadges ficha={ficha} showStatusBadge={showStatusBadge} />;

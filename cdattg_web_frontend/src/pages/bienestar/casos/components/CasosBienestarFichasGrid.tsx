@@ -8,6 +8,7 @@ type CasosBienestarFichasGridProps = Readonly<{
   grupos: GrupoCasosPorFicha[];
   dias: number;
   minFallas: number;
+  tipoFormacion?: string;
   sinResultadosFiltro: boolean;
   hayCasosEnApi: boolean;
 }>;
@@ -16,6 +17,7 @@ export function CasosBienestarFichasGrid({
   grupos,
   dias,
   minFallas,
+  tipoFormacion = '',
   sinResultadosFiltro,
   hayCasosEnApi,
 }: CasosBienestarFichasGridProps) {
@@ -67,6 +69,7 @@ export function CasosBienestarFichasGrid({
                 sede: grupo.sede_nombre || '',
                 dias,
                 min_fallas: minFallas,
+                tipo_formacion: tipoFormacion || undefined,
               })}
               className="inline-flex items-center gap-2 rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700"
             >

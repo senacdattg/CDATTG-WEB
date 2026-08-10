@@ -31,7 +31,7 @@ export function getHomeRouteForUser(roles: string[], permissions: string[]): str
     return '/dashboard';
   }
   if (normalized.includes('VIGILANTE')) {
-    return '/vigilancia/ambientes';
+    return '/vigilancia/porteria';
   }
   if (normalized.includes('INSTRUCTOR')) {
     if (permissions.includes('*') || permissions.includes(PERM_VER_MI_AGENDA)) {

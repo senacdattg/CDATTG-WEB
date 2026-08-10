@@ -8,9 +8,10 @@ type UseCasosBienestarParams = Readonly<{
   enabled: boolean;
   dias: number;
   minFallas: number;
+  tipoFormacion?: string;
 }>;
 
-export function useCasosBienestar({ enabled, dias, minFallas }: UseCasosBienestarParams) {
+export function useCasosBienestar({ enabled, dias, minFallas, tipoFormacion = '' }: UseCasosBienestarParams) {
   const [data, setData] = useState<CasosBienestarResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -20,7 +21,11 @@ export function useCasosBienestar({ enabled, dias, minFallas }: UseCasosBienesta
     setLoading(true);
     setError('');
     try {
-      const res = await apiService.getCasosBienestar({ dias, min_fallas: minFallas });
+      const res = await apiService.getCasosBienestar({
+        dias,
+        min_fallas: minFallas,
+        tipo_formacion: tipoFormacion || undefined,
+      });
       setData(res);
     } catch (e: unknown) {
       const status = (e as { response?: { status?: number } }).response?.status;
@@ -32,7 +37,7 @@ export function useCasosBienestar({ enabled, dias, minFallas }: UseCasosBienesta
     } finally {
       setLoading(false);
     }
-  }, [enabled, dias, minFallas]);
+  }, [enabled, dias, minFallas, tipoFormacion]);
 
   useEffect(() => {
     if (!enabled) {

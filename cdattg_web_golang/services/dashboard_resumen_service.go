@@ -277,7 +277,7 @@ func (s *dashboardResumenService) buildRiesgoStats(singleSede *uint, sedeIDs []u
 
 func countCasosBienestarScoped(svc AsistenciaService, singleSede *uint, sedeIDs []uint) int {
 	if len(sedeIDs) <= 1 {
-		if resp, err := svc.GetCasosBienestar(singleSede, 30, 3, nil); err == nil && resp != nil {
+		if resp, err := svc.GetCasosBienestar(singleSede, 30, 3, nil, ""); err == nil && resp != nil {
 			return len(resp.Casos)
 		}
 		return 0
@@ -286,7 +286,7 @@ func countCasosBienestarScoped(svc AsistenciaService, singleSede *uint, sedeIDs 
 	total := 0
 	for _, sid := range sedeIDs {
 		id := sid
-		resp, err := svc.GetCasosBienestar(&id, 30, 3, nil)
+		resp, err := svc.GetCasosBienestar(&id, 30, 3, nil, "")
 		if err != nil || resp == nil {
 			continue
 		}

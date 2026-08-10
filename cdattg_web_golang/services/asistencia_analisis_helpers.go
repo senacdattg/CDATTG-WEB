@@ -116,6 +116,20 @@ func filtrarFichasPorIDs(fichas []models.FichaCaracterizacion, fichaIDs []uint) 
 	return out
 }
 
+func filtrarFichasPorTipoFormacion(fichas []models.FichaCaracterizacion, tipoFormacion string) []models.FichaCaracterizacion {
+	tipo := strings.TrimSpace(tipoFormacion)
+	if tipo == "" {
+		return fichas
+	}
+	out := make([]models.FichaCaracterizacion, 0, len(fichas))
+	for i := range fichas {
+		if tipoFormacionEfectivo(fichas[i].TipoFormacion) == tipo {
+			out = append(out, fichas[i])
+		}
+	}
+	return out
+}
+
 func fichaPasaFiltroIDs(fichaID uint, fichaIDs []uint) bool {
 	if len(fichaIDs) == 0 {
 		return true
@@ -140,6 +154,7 @@ func fichaPasaFiltrosAnalisis(
 	d time.Time,
 	fichaIDs []uint,
 	jornada string,
+	tipoFormacion string,
 	s *asistenciaAnalisisService,
 ) bool {
 	if !fichaPasaFiltroIDs(f.ID, fichaIDs) {
@@ -148,17 +163,18 @@ func fichaPasaFiltrosAnalisis(
 	if jornada != "" && (f.Jornada == nil || f.Jornada.Nombre != jornada) {
 		return false
 	}
+	if tipo := strings.TrimSpace(tipoFormacion); tipo != "" && tipoFormacionEfectivo(f.TipoFormacion) != tipo {
+		return false
+	}
 	return s.fichaTieneFormacionEnDia(f, d)
 }
 
 func nombresFichaCumplimiento(f *models.FichaCaracterizacion) (programa, jornada, sede string) {
-	if f.ProgramaFormacion != nil {
-		programa = f.ProgramaFormacion.Nombre
-	}
-	if f.Jornada != nil {
+	programa = models.NombreProgramaDisplay(f)
+	if f != nil && f.Jornada != nil {
 		jornada = f.Jornada.Nombre
 	}
-	if f.Sede != nil {
+	if f != nil && f.Sede != nil {
 		sede = f.Sede.Nombre
 	}
 	return programa, jornada, sede
@@ -298,7 +314,7 @@ func agregarPorJornadaSemana(
 	fichas []models.FichaCaracterizacion,
 	d time.Time,
 	fichaIDs []uint,
-	jornada string,
+	filtros repositories.AnalisisSesionFiltros,
 	s *asistenciaAnalisisService,
 	visibles map[uint]int,
 	vinieron map[uint]int,
@@ -306,7 +322,7 @@ func agregarPorJornadaSemana(
 	agg := make(map[string]struct{ esperados, vinieron int })
 	for i := range fichas {
 		f := &fichas[i]
-		if !fichaPasaFiltrosAnalisis(f, d, fichaIDs, jornada, s) {
+		if !fichaPasaFiltrosAnalisis(f, d, fichaIDs, filtros.Jornada, filtros.TipoFormacion, s) {
 			continue
 		}
 		esp := visibles[f.ID]
@@ -353,6 +369,7 @@ func (s *asistenciaAnalisisService) procesarDiaSemanaAnterior(
 	jornada string,
 	fichaIDs []uint,
 	estadoFicha string,
+	tipoFormacion string,
 ) (semanaDiaResult, error) {
 	diaID := int(WeekdayToDiaFormacionID(d.Weekday()))
 	fechaStr := d.Format(time.DateOnly)
@@ -369,10 +386,11 @@ func (s *asistenciaAnalisisService) procesarDiaSemanaAnterior(
 	}
 	fichas = filtrarFichasPorSedes(fichas, sedeIDs)
 	fichas = filtrarFichasPorIDs(fichas, fichaIDs)
+	fichas = filtrarFichasPorTipoFormacion(fichas, tipoFormacion)
 
 	fichaIDsDia := make([]uint, 0, len(fichas))
 	for i := range fichas {
-		if fichaPasaFiltrosAnalisis(&fichas[i], d, nil, jornada, s) {
+		if fichaPasaFiltrosAnalisis(&fichas[i], d, nil, jornada, tipoFormacion, s) {
 			fichaIDsDia = append(fichaIDsDia, fichas[i].ID)
 		}
 	}
@@ -389,7 +407,10 @@ func (s *asistenciaAnalisisService) procesarDiaSemanaAnterior(
 		return semanaDiaResult{}, err
 	}
 
-	agg := agregarPorJornadaSemana(fichas, d, nil, jornada, s, visibles, mapVinieronPorFicha(porFichaDia))
+	agg := agregarPorJornadaSemana(fichas, d, nil, repositories.AnalisisSesionFiltros{
+		Jornada:       jornada,
+		TipoFormacion: tipoFormacion,
+	}, s, visibles, mapVinieronPorFicha(porFichaDia))
 	filas, diaEsp, diaVin := filasDesdeAggSemana(fechaStr, diaID, agg)
 	if diaEsp == 0 {
 		return semanaDiaResult{filas: filas}, nil

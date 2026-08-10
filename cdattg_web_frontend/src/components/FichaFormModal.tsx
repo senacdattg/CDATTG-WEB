@@ -8,6 +8,7 @@ import {
   labelBotonGuardarFicha,
   validarFormFicha,
 } from '../utils/fichaCaracterizacionForm';
+import { normalizeTipoFormacion, type TipoFormacion } from '../constants/tipoFormacion';
 import { toDisplayTitle } from '../utils/fichaListDisplay';
 import { FichaFormModalFields } from './FichaFormModalFields';
 import type {
@@ -21,9 +22,11 @@ import type {
   SedeItem,
 } from '../types';
 
-const emptyForm = (programaId = 0): FichaCaracterizacionRequest => ({
-  programa_formacion_id: programaId,
+const emptyForm = (programaId = 0, tipoFormacion: TipoFormacion = 'FORMACION_REGULAR'): FichaCaracterizacionRequest => ({
+  programa_formacion_id: programaId || null,
+  nombre: '',
   ficha: '',
+  tipo_formacion: tipoFormacion,
   instructor_id: undefined,
   fecha_inicio: undefined,
   fecha_fin: undefined,
@@ -43,7 +46,51 @@ export type FichaFormModalProps = Readonly<{
   editing: FichaCaracterizacionResponse | null;
   onSaved: (saved: FichaCaracterizacionResponse) => void;
   inputIdPrefix?: string;
+  /** Tipo preseleccionado al crear (según la entrada del menú). */
+  defaultTipoFormacion?: TipoFormacion;
 }>;
+
+function programaDefaultNuevaFicha(
+  tipo: TipoFormacion,
+  progs: ProgramaFormacionResponse[],
+): number {
+  if (tipo === 'MEDIA_TECNICA' || tipo === 'FORMACION_COMPLEMENTARIA') return 0;
+  return progs[0]?.id ?? 0;
+}
+
+async function cargarFormEdicion(
+  editing: FichaCaracterizacionResponse,
+): Promise<{ row: FichaCaracterizacionResponse; form: FichaCaracterizacionRequest }> {
+  try {
+    const fresh = await apiService.getFichaCaracterizacionById(editing.id);
+    return { row: fresh, form: formStateFromFicha(fresh) };
+  } catch {
+    return { row: editing, form: formStateFromFicha(editing) };
+  }
+}
+
+function FichaFormStatusBadges({
+  fichaNumero,
+  status,
+}: Readonly<{ fichaNumero: string; status?: boolean }>) {
+  const activa = Boolean(status);
+  return (
+    <>
+      <span className="rounded-md bg-primary-100 px-2 py-0.5 font-mono text-sm font-semibold text-primary-800 dark:bg-primary-900/50 dark:text-primary-200">
+        {fichaNumero}
+      </span>
+      <span
+        className={`rounded-full px-2 py-0.5 text-xs font-medium ${
+          activa
+            ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300'
+            : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400'
+        }`}
+      >
+        {activa ? 'Activa' : 'Inactiva'}
+      </span>
+    </>
+  );
+}
 
 export function FichaFormModal({
   open,
@@ -51,6 +98,7 @@ export function FichaFormModal({
   editing,
   onSaved,
   inputIdPrefix = 'ficha-form',
+  defaultTipoFormacion = 'FORMACION_REGULAR',
 }: FichaFormModalProps) {
   const [form, setForm] = useState<FichaCaracterizacionRequest>(emptyForm());
   const [editingRow, setEditingRow] = useState<FichaCaracterizacionResponse | null>(null);
@@ -103,19 +151,14 @@ export function FichaFormModal({
       if (cancelled) return;
 
       if (editing) {
-        try {
-          const fresh = await apiService.getFichaCaracterizacionById(editing.id);
-          if (cancelled) return;
-          setEditingRow(fresh);
-          setForm(formStateFromFicha(fresh));
-        } catch {
-          if (cancelled) return;
-          setEditingRow(editing);
-          setForm(formStateFromFicha(editing));
-        }
+        const loaded = await cargarFormEdicion(editing);
+        if (cancelled) return;
+        setEditingRow(loaded.row);
+        setForm(loaded.form);
       } else {
         setEditingRow(null);
-        setForm(emptyForm(progs[0]?.id ?? 0));
+        const tipo = normalizeTipoFormacion(defaultTipoFormacion);
+        setForm(emptyForm(programaDefaultNuevaFicha(tipo, progs), tipo));
       }
       if (!cancelled) setLoadingForm(false);
     })();
@@ -123,7 +166,7 @@ export function FichaFormModal({
     return () => {
       cancelled = true;
     };
-  }, [open, editing, loadCatalogos]);
+  }, [open, editing, loadCatalogos, defaultTipoFormacion]);
 
   const handleSave = async () => {
     const err = validarFormFicha(form, editingRow);
@@ -152,6 +195,10 @@ export function FichaFormModal({
   const pid = inputIdPrefix;
   const isEditing = editingRow !== null;
   const programaLabel = programas.find((p) => p.id === form.programa_formacion_id);
+  const tituloSecundario = form.nombre?.trim()
+    || programaLabel?.nombre
+    || editingRow?.programa_formacion_nombre
+    || editingRow?.nombre;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -173,26 +220,13 @@ export function FichaFormModal({
               <h2 id={`${pid}-title`} className="text-lg font-bold text-gray-900 dark:text-white sm:text-xl">
                 {isEditing ? 'Editar ficha' : 'Nueva ficha'}
               </h2>
-              {isEditing ? (
-                <span className="rounded-md bg-primary-100 px-2 py-0.5 font-mono text-sm font-semibold text-primary-800 dark:bg-primary-900/50 dark:text-primary-200">
-                  {editingRow.ficha}
-                </span>
-              ) : null}
-              {isEditing ? (
-                <span
-                  className={`rounded-full px-2 py-0.5 text-xs font-medium ${
-                    form.status
-                      ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300'
-                      : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400'
-                  }`}
-                >
-                  {form.status ? 'Activa' : 'Inactiva'}
-                </span>
+              {isEditing && editingRow ? (
+                <FichaFormStatusBadges fichaNumero={editingRow.ficha} status={form.status} />
               ) : null}
             </div>
             <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-              {isEditing
-                ? toDisplayTitle(programaLabel?.nombre ?? editingRow.programa_formacion_nombre)
+              {isEditing && tituloSecundario
+                ? toDisplayTitle(tituloSecundario)
                 : 'Complete los datos de caracterización y la programación horaria.'}
             </p>
           </div>

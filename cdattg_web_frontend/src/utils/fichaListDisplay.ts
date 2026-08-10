@@ -23,6 +23,14 @@ export function toDisplayTitle(text: string | undefined | null): string {
     .replaceAll(/(^|[\s(/-])(\p{L})/gu, (_, sep: string, c: string) => `${sep}${c.toUpperCase()}`);
 }
 
+/** Título visible: nombre libre (MT/FC) o programa del catálogo. */
+export function tituloProgramaFicha(f: {
+  nombre?: string | null;
+  programa_formacion_nombre?: string | null;
+}): string {
+  return (f.nombre || f.programa_formacion_nombre || '').trim();
+}
+
 function abbrDia(nombre: string): string {
   const key = nombre.trim().toUpperCase();
   return DIA_ABBR[key] ?? nombre.trim().slice(0, 3);

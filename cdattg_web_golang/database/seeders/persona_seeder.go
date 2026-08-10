@@ -33,6 +33,9 @@ var personaSeeds = []PersonaSeed{
 	{8, "222222222", "PROVEEDOR", "DEMO", "CDATTG", "PRUEBAS", "3052222222", "proveedor@dataguaviare.com.co", "CALLE 7 #14-25", "1988-05-15"},
 	// Persona para rol "BIENESTAR AL APRENDIZ"
 	{9, "999999999", "BIENESTAR", "AL", "APRENDIZ", "", "3069999999", "bienestar@dataguaviare.com.co", "CALLE 9 #19-99", "1988-01-01"},
+	// ID alto: no reutilizar IDs bajos (pueden ser aprendices reales; el sync les asignaría APRENDIZ/fichas).
+	{9100, "9000000010", "FORMACION", "PROFESIONAL", "INTEGRAL", "COMPLEMENTARIA", "3071010101", "formacionprofesionalintegralcomplementaria@dataguaviare.com.co", "CALLE 10 #10-10", "1991-02-01"},
+	{9101, "9000000011", "VIGILANCIA", "SENA", "CDATTG", "PRUEBAS", "3081111110", "vigilanciasena@dataguaviare.com.co", "CALLE 11 #11-11", "1992-03-01"},
 }
 
 // RunPersonaSeeder crea las personas de prueba (IDs 1-8) igual que cdattg_web.
@@ -57,7 +60,7 @@ func RunPersonaSeeder(db *gorm.DB) error {
 			return err
 		}
 	}
-	// Resetear la secuencia de PostgreSQL para que el próximo ID sea 9
+	// Resetear la secuencia de PostgreSQL al máximo ID sembrado
 	if err := db.Exec("SELECT setval('personas_id_seq', (SELECT MAX(id) FROM personas))").Error; err != nil {
 		log.Printf("Advertencia: No se pudo resetear la secuencia de personas: %v", err)
 	}

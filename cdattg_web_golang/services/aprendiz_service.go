@@ -122,9 +122,7 @@ func (s *aprendizService) toResponse(a models.Aprendiz, fichaNumero string) dto.
 		r.PersonaDocumento = a.Persona.NumeroDocumento
 	}
 	if a.FichaCaracterizacion != nil {
-		if a.FichaCaracterizacion.ProgramaFormacion != nil {
-			r.ProgramaNombre = a.FichaCaracterizacion.ProgramaFormacion.Nombre
-		}
+		r.ProgramaNombre = models.NombreProgramaDisplay(a.FichaCaracterizacion)
 		if a.FichaCaracterizacion.Sede != nil && a.FichaCaracterizacion.Sede.Regional != nil {
 			r.RegionalNombre = a.FichaCaracterizacion.Sede.Regional.Nombre
 		}

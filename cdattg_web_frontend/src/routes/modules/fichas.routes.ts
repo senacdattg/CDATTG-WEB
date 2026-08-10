@@ -1,26 +1,58 @@
 import type { RouteObject } from 'react-router-dom';
 import { fichasPaths } from '../paths';
 
+const lazyFichasList = async () => {
+  const { FichasCaracterizacion } = await import('../../pages/FichasCaracterizacion');
+  return { Component: FichasCaracterizacion };
+};
+
+const lazyFichaDetalle = async () => {
+  const { FichaDetalle } = await import('../../pages/FichaDetalle');
+  return { Component: FichaDetalle };
+};
+
+function detalleBreadcrumb(listLabel: string, listPath: string) {
+  return (params: Record<string, string | undefined>) => [
+    { label: listLabel, to: listPath },
+    { label: params.fichaId ? `Ficha ${params.fichaId}` : 'Ficha' },
+  ];
+}
+
 export const fichasRoutes: RouteObject[] = [
   {
     path: fichasPaths.index,
-    handle: { breadcrumb: { label: 'Fichas' } },
-    lazy: async () => {
-      const { FichasCaracterizacion } = await import('../../pages/FichasCaracterizacion');
-      return { Component: FichasCaracterizacion };
-    },
+    handle: { breadcrumb: { label: 'Formación Regular' } },
+    lazy: lazyFichasList,
   },
   {
-    path: '/fichas/:fichaId',
+    path: fichasPaths.mediaTecnica,
+    handle: { breadcrumb: { label: 'Media Técnica' } },
+    lazy: lazyFichasList,
+  },
+  {
+    path: fichasPaths.complementaria,
+    handle: { breadcrumb: { label: 'Formación Complementaria' } },
+    lazy: lazyFichasList,
+  },
+  {
+    path: `${fichasPaths.mediaTecnica}/:fichaId`,
     handle: {
-      breadcrumb: (params: Record<string, string | undefined>) => [
-        { label: 'Fichas', to: fichasPaths.index },
-        { label: params.fichaId ? `Ficha ${params.fichaId}` : 'Ficha' },
-      ],
+      breadcrumb: detalleBreadcrumb('Media Técnica', fichasPaths.mediaTecnica),
     },
-    lazy: async () => {
-      const { FichaDetalle } = await import('../../pages/FichaDetalle');
-      return { Component: FichaDetalle };
+    lazy: lazyFichaDetalle,
+  },
+  {
+    path: `${fichasPaths.complementaria}/:fichaId`,
+    handle: {
+      breadcrumb: detalleBreadcrumb('Formación Complementaria', fichasPaths.complementaria),
     },
+    lazy: lazyFichaDetalle,
+  },
+  {
+    path: `${fichasPaths.index}/:fichaId`,
+    handle: {
+      breadcrumb: detalleBreadcrumb('Formación Regular', fichasPaths.index),
+    },
+    lazy: lazyFichaDetalle,
   },
 ];

@@ -203,6 +203,7 @@ func inasistenciasAprendiz(
 		ProgramaNombre:            ap.ProgramaNombre,
 		SedeNombre:                ap.SedeNombre,
 		JornadaNombre:             ap.JornadaNombre,
+		TipoFormacion:             ap.TipoFormacion,
 		InstructorNombre:          ap.InstructorNombre,
 		AmbienteNombre:            ap.AmbienteNombre,
 		ModalidadNombre:           ap.ModalidadNombre,

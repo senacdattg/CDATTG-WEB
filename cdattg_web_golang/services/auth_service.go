@@ -132,23 +132,30 @@ func (s *authService) Login(req dto.LoginRequest) (*dto.LoginResponse, error) {
 	}
 
 	fullName := ""
+	perfilCompleto := true
+	var camposFaltantes []string
 	if user.PersonaID != nil {
 		// Cargar persona si existe
 		var persona models.Persona
 		if err := database.GetDB().First(&persona, *user.PersonaID).Error; err == nil {
 			fullName = persona.GetFullName()
+			perfilCompleto = PersonaPerfilCompleto(&persona)
+			camposFaltantes = CamposFaltantesPerfil(&persona)
 		}
+		// Sin persona cargable: no forzar perfil (solo stubs de portería se bloquean).
 	}
 
 	return &dto.LoginResponse{
 		Token: token,
 		Type:  "Bearer",
 		User: dto.UserResponse{
-			ID:        user.ID,
-			Email:     user.Email,
-			FullName:  fullName,
-			Status:    user.Status,
-			PersonaID: user.PersonaID,
+			ID:              user.ID,
+			Email:           user.Email,
+			FullName:        fullName,
+			Status:          user.Status,
+			PersonaID:       user.PersonaID,
+			PerfilCompleto:  perfilCompleto,
+			CamposFaltantes: camposFaltantes,
 		},
 		Roles:       roles,
 		Permissions: permissions,
@@ -162,19 +169,25 @@ func (s *authService) GetCurrentUser(userID uint) (*dto.UserResponse, error) {
 	}
 
 	fullName := ""
+	perfilCompleto := true
+	var camposFaltantes []string
 	if user.PersonaID != nil {
 		var persona models.Persona
 		if err := database.GetDB().First(&persona, *user.PersonaID).Error; err == nil {
 			fullName = persona.GetFullName()
+			perfilCompleto = PersonaPerfilCompleto(&persona)
+			camposFaltantes = CamposFaltantesPerfil(&persona)
 		}
 	}
 
 	return &dto.UserResponse{
-		ID:        user.ID,
-		Email:     user.Email,
-		FullName:  fullName,
-		Status:    user.Status,
-		PersonaID: user.PersonaID,
+		ID:              user.ID,
+		Email:           user.Email,
+		FullName:        fullName,
+		Status:          user.Status,
+		PersonaID:       user.PersonaID,
+		PerfilCompleto:  perfilCompleto,
+		CamposFaltantes: camposFaltantes,
 	}, nil
 }
 

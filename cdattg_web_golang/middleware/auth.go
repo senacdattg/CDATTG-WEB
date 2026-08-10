@@ -29,6 +29,7 @@ const (
 	roleAdministrador             = "ADMINISTRADOR"
 	roleCoordinador               = "COORDINADOR"
 	roleBienestarAprendiz         = "BIENESTAR AL APRENDIZ"
+	roleFPI                       = "FPI"
 	roleInstructor                = "INSTRUCTOR"
 	actVerPersona                 = "VER PERSONA"
 	actVerFicha                   = "VER FICHA"
@@ -232,6 +233,7 @@ func RequirePermission(obj, act string) gin.HandlerFunc {
 // RequirePermissionCatalogosFicha permite GET a catálogos del formulario de ficha (sedes, días, etc.)
 // si el usuario tiene cualquier permiso relevante sobre fichas. Así quien solo tiene EDITAR/CREAR FICHA
 // (sin VER FICHAS) puede cargar los días de formación y guardarlos.
+// También permite acceso con permisos de vigilancia (portería necesita regionales/sedes).
 func RequirePermissionCatalogosFicha() gin.HandlerFunc {
 	acts := authz.PermisosFicha
 	return func(c *gin.Context) {
@@ -253,6 +255,12 @@ func RequirePermissionCatalogosFicha() gin.HandlerFunc {
 		if allowed, errEnf := authz.Enforce(e, sub, authz.ObjAsistencia, actVerAsistencia); errEnf == nil && allowed {
 			c.Next()
 			return
+		}
+		for _, act := range authz.PermisosVigilancia {
+			if allowed, errEnf := authz.Enforce(e, sub, authz.ObjVigilancia, act); errEnf == nil && allowed {
+				c.Next()
+				return
+			}
 		}
 		c.JSON(http.StatusForbidden, gin.H{"error": "No tiene permiso para acceder a catálogos de fichas"})
 		c.Abort()
@@ -637,7 +645,7 @@ func requireAnyRole(allowed ...string) gin.HandlerFunc {
 	}
 }
 
-// RequireSuperAdminAdminOrCoordinator permite acceso a SUPER ADMINISTRADOR, ADMINISTRADOR o COORDINADOR.
+// RequireSuperAdminAdminOrCoordinator permite acceso a SUPER ADMINISTRADOR, ADMINISTRADOR, COORDINADOR o FPI.
 func RequireSuperAdminAdminOrCoordinator() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		userID, ok := requireAuthenticatedUserID(c)
@@ -656,7 +664,7 @@ func RequireSuperAdminAdminOrCoordinator() gin.HandlerFunc {
 			return
 		}
 		for _, r := range roles {
-			if r == roleSuperAdministrador || r == roleAdministrador || r == roleCoordinador {
+			if r == roleSuperAdministrador || r == roleAdministrador || r == roleCoordinador || r == roleFPI {
 				c.Next()
 				return
 			}

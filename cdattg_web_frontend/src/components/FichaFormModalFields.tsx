@@ -11,6 +11,11 @@ import { SelectSearch } from './SelectSearch';
 import { LABEL_INSTRUCTOR_LIDER } from '../constants/instructorLiderLabels';
 import { InstructorSelectAsync } from './InstructorSelectAsync';
 import { toDisplayTitle } from '../utils/fichaListDisplay';
+import {
+  normalizeTipoFormacion,
+  TIPO_FORMACION,
+  TIPO_FORMACION_OPTIONS,
+} from '../constants/tipoFormacion';
 import type {
   AmbienteItem,
   DiaFormacionItem,
@@ -64,15 +69,48 @@ export function FichaFormModalFields({
   diasFormacion,
 }: Props) {
   const isEditing = editingRow !== null;
+  const tipo = normalizeTipoFormacion(form.tipo_formacion);
+  const sinPrograma =
+    tipo === TIPO_FORMACION.MEDIA_TECNICA || tipo === TIPO_FORMACION.COMPLEMENTARIA;
 
   return (
     <div className="space-y-4">
       <FichaFormSection
         title="Identificación"
-        description="Datos básicos de la ficha y vigencia del programa."
+        description={
+          sinPrograma
+            ? 'Datos básicos de la ficha y nombre de la formación.'
+            : 'Datos básicos de la ficha y vigencia del programa.'
+        }
         icon={<DocumentTextIcon className="h-5 w-5" />}
       >
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <div>
+            <FieldLabel htmlFor={`${pid}-tipo`}>Tipo de formación *</FieldLabel>
+            <select
+              id={`${pid}-tipo`}
+              className="input-field w-full"
+              value={form.tipo_formacion || TIPO_FORMACION.REGULAR}
+              onChange={(e) => {
+                const nextTipo = e.target.value;
+                const nextSinPrograma =
+                  nextTipo === TIPO_FORMACION.MEDIA_TECNICA ||
+                  nextTipo === TIPO_FORMACION.COMPLEMENTARIA;
+                setForm((f) => ({
+                  ...f,
+                  tipo_formacion: nextTipo,
+                  programa_formacion_id: nextSinPrograma ? null : f.programa_formacion_id,
+                  nombre: nextSinPrograma ? f.nombre : '',
+                }));
+              }}
+            >
+              {TIPO_FORMACION_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+          </div>
           <div>
             <FieldLabel htmlFor={`${pid}-ficha`}>Número de ficha *</FieldLabel>
             <input
@@ -84,20 +122,34 @@ export function FichaFormModalFields({
               className="input-field w-full"
             />
           </div>
-          <div>
-            <FieldLabel htmlFor={`${pid}-programa`}>Programa de formación *</FieldLabel>
-            <SelectSearch
-              inputId={`${pid}-programa`}
-              options={programas.map((p) => ({
-                value: p.id,
-                label: p.codigo ? `${p.codigo} — ${toDisplayTitle(p.nombre)}` : toDisplayTitle(p.nombre),
-              }))}
-              value={form.programa_formacion_id === 0 ? undefined : form.programa_formacion_id}
-              onChange={(v) => setForm((f) => ({ ...f, programa_formacion_id: v ?? 0 }))}
-              placeholder="Seleccione un programa…"
-              isRequired
-            />
-          </div>
+          {sinPrograma ? (
+            <div className="md:col-span-2">
+              <FieldLabel htmlFor={`${pid}-nombre`}>Nombre *</FieldLabel>
+              <input
+                id={`${pid}-nombre`}
+                type="text"
+                placeholder="Nombre de la formación"
+                value={form.nombre ?? ''}
+                onChange={(e) => setForm((f) => ({ ...f, nombre: e.target.value }))}
+                className="input-field w-full"
+              />
+            </div>
+          ) : (
+            <div className="md:col-span-2">
+              <FieldLabel htmlFor={`${pid}-programa`}>Programa de formación *</FieldLabel>
+              <SelectSearch
+                inputId={`${pid}-programa`}
+                options={programas.map((p) => ({
+                  value: p.id,
+                  label: p.codigo ? `${p.codigo} — ${toDisplayTitle(p.nombre)}` : toDisplayTitle(p.nombre),
+                }))}
+                value={form.programa_formacion_id ? form.programa_formacion_id : undefined}
+                onChange={(v) => setForm((f) => ({ ...f, programa_formacion_id: v ?? null }))}
+                placeholder="Seleccione un programa…"
+                isRequired
+              />
+            </div>
+          )}
           <div>
             <FieldLabel htmlFor={`${pid}-fecha-inicio`}>Fecha de inicio *</FieldLabel>
             <input

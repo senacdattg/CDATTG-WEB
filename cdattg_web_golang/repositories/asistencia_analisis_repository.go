@@ -35,11 +35,18 @@ type AprendizRegistroRow struct {
 	HoraSalida      *time.Time `gorm:"column:hora_salida"`
 }
 
+// AnalisisSesionFiltros filtros de jornada / estado / tipo para consultas del panel analítico.
+type AnalisisSesionFiltros struct {
+	Jornada       string
+	EstadoFicha   string
+	TipoFormacion string
+}
+
 type AsistenciaAnalisisRepository interface {
-	FindSesionesDetalle(desde, hasta time.Time, sedeIDs []uint, fichaIDs []uint, aprendizID *uint, jornada, estadoFicha string) ([]SesionDetalleRow, error)
+	FindSesionesDetalle(desde, hasta time.Time, sedeIDs []uint, fichaIDs []uint, aprendizID *uint, filtros AnalisisSesionFiltros) ([]SesionDetalleRow, error)
 	FindFechasConSesionPorFicha(fichaID uint, desde, hasta time.Time) (map[string]struct{}, error)
 	CountAprendicesAsistieronEnSesiones(asistenciaIDs []uint, aprendizID *uint) (int, error)
-	FindAsistenciaIDsEnRango(desde, hasta time.Time, sedeIDs []uint, jornada string, soloFichasActivas bool) ([]uint, error)
+	FindAsistenciaIDsEnRango(desde, hasta time.Time, sedeIDs []uint, filtros AnalisisSesionFiltros, soloFichasActivas bool) ([]uint, error)
 	FindRegistrosAprendizPorFicha(fichaID uint, desde, hasta time.Time, busqueda string, aprendizID *uint) ([]AprendizRegistroRow, error)
 	FindFichasExplorar(qText string, sedeIDs []uint, limit int) ([]FichaExplorarRow, error)
 	FindAprendicesResumenPorFicha(fichaID uint, desde, hasta time.Time, busqueda string) ([]AprendizResumenRow, error)
@@ -79,6 +86,14 @@ func (r *asistenciaAnalisisRepository) applyEstadoFichaFilter(q *gorm.DB, estado
 	}
 }
 
+func (r *asistenciaAnalisisRepository) applyTipoFormacionFilter(q *gorm.DB, tipoFormacion string) *gorm.DB {
+	t := strings.TrimSpace(tipoFormacion)
+	if t == "" {
+		return q
+	}
+	return q.Where("fc.tipo_formacion = ?", t)
+}
+
 func (r *asistenciaAnalisisRepository) applyActivasFilter(q *gorm.DB, soloActivas bool, ref time.Time) *gorm.DB {
 	if !soloActivas {
 		return q
@@ -92,14 +107,14 @@ func (r *asistenciaAnalisisRepository) FindSesionesDetalle(
 	sedeIDs []uint,
 	fichaIDs []uint,
 	aprendizID *uint,
-	jornada, estadoFicha string,
+	filtros AnalisisSesionFiltros,
 ) ([]SesionDetalleRow, error) {
 	q := r.baseJoin(r.db).
 		Select(`
 			a.id AS asistencia_id,
 			fc.id AS ficha_id,
 			fc.ficha AS ficha_numero,
-			COALESCE(pf.nombre, '') AS programa_nombre,
+			COALESCE(NULLIF(BTRIM(pf.nombre), ''), NULLIF(BTRIM(fc.nombre), ''), '') AS programa_nombre,
 			COALESCE(j.nombre, '') AS jornada_nombre,
 			fc.status AS ficha_activa,
 			a.fecha AS fecha,
@@ -116,14 +131,15 @@ func (r *asistenciaAnalisisRepository) FindSesionesDetalle(
 			) AS ultima_hora`).
 		Where("a.deleted_at IS NULL AND a.fecha >= ? AND a.fecha < ?", desde, hasta)
 	q = r.applySedeFilter(q, sedeIDs)
-	q = r.applyEstadoFichaFilter(q, estadoFicha)
+	q = r.applyEstadoFichaFilter(q, filtros.EstadoFicha)
+	q = r.applyTipoFormacionFilter(q, filtros.TipoFormacion)
 	if len(fichaIDs) == 1 {
 		q = q.Where("fc.id = ?", fichaIDs[0])
 	} else if len(fichaIDs) > 1 {
 		q = q.Where("fc.id IN ?", fichaIDs)
 	}
-	if jornada != "" {
-		q = q.Where("j.nombre = ?", jornada)
+	if filtros.Jornada != "" {
+		q = q.Where("j.nombre = ?", filtros.Jornada)
 	}
 	if aprendizID != nil && *aprendizID > 0 {
 		q = q.Where(`EXISTS (
@@ -183,7 +199,7 @@ func (r *asistenciaAnalisisRepository) CountAprendicesAsistieronEnSesiones(asist
 func (r *asistenciaAnalisisRepository) FindAsistenciaIDsEnRango(
 	desde, hasta time.Time,
 	sedeIDs []uint,
-	jornada string,
+	filtros AnalisisSesionFiltros,
 	soloFichasActivas bool,
 ) ([]uint, error) {
 	ref := hasta.Add(-time.Second)
@@ -191,8 +207,9 @@ func (r *asistenciaAnalisisRepository) FindAsistenciaIDsEnRango(
 		Where("a.deleted_at IS NULL AND a.fecha >= ? AND a.fecha < ?", desde, hasta)
 	q = r.applySedeFilter(q, sedeIDs)
 	q = r.applyActivasFilter(q, soloFichasActivas, ref)
-	if jornada != "" {
-		q = q.Where("j.nombre = ?", jornada)
+	q = r.applyTipoFormacionFilter(q, filtros.TipoFormacion)
+	if filtros.Jornada != "" {
+		q = q.Where("j.nombre = ?", filtros.Jornada)
 	}
 	var ids []uint
 	if err := q.Pluck("a.id", &ids).Error; err != nil {
@@ -285,7 +302,7 @@ func (r *asistenciaAnalisisRepository) FindFichasExplorar(qText string, sedeIDs 
 		Select(`
 			fc.id AS ficha_id,
 			fc.ficha AS ficha_numero,
-			COALESCE(pf.nombre, '') AS programa_nombre,
+			COALESCE(NULLIF(BTRIM(pf.nombre), ''), NULLIF(BTRIM(fc.nombre), ''), '') AS programa_nombre,
 			COALESCE(s.nombre, '') AS sede_nombre,
 			COALESCE(j.nombre, '') AS jornada_nombre,
 			COALESCE(mf.nombre, '') AS modalidad_nombre,
@@ -313,6 +330,7 @@ func (r *asistenciaAnalisisRepository) FindFichasExplorar(qText string, sedeIDs 
 		Where(`
 			LOWER(fc.ficha) LIKE ? OR
 			LOWER(COALESCE(pf.nombre, '')) LIKE ? OR
+			LOWER(COALESCE(fc.nombre, '')) LIKE ? OR
 			EXISTS (
 			  SELECT 1 FROM aprendices apx
 			  INNER JOIN personas px ON px.id = apx.persona_id AND px.deleted_at IS NULL
@@ -321,7 +339,7 @@ func (r *asistenciaAnalisisRepository) FindFichasExplorar(qText string, sedeIDs 
 			      LOWER(px.numero_documento) LIKE ? OR
 			      LOWER(CONCAT_WS(' ', px.primer_nombre, px.segundo_nombre, px.primer_apellido, px.segundo_apellido)) LIKE ?
 			    )
-			)`, pattern, pattern, pattern, pattern)
+			)`, pattern, pattern, pattern, pattern, pattern)
 
 	if len(sedeIDs) > 0 {
 		q = q.Where("fc.sede_id IN ?", sedeIDs)

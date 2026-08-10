@@ -62,8 +62,10 @@ export function CasosBienestarFichaDetallePage() {
       <CasosBienestarCriteriosCard
         dias={page.dias}
         minFallas={page.minFallas}
+        tipoFormacion={page.tipoFormacion}
         onDiasChange={page.setDias}
         onMinFallasChange={page.setMinFallas}
+        onTipoFormacionChange={page.setTipoFormacion}
       />
 
       {page.error && (

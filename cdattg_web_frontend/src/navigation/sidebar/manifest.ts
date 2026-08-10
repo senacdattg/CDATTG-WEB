@@ -14,6 +14,7 @@ import {
   programasPaths,
   instructoresPaths,
   vigilanciaPaths,
+  complementariosPaths,
 } from '../../routes/paths';
 import type { SidebarManifestItem } from './types';
 
@@ -66,7 +67,23 @@ export const SIDEBAR_MANIFEST: SidebarManifestItem[] = [
   {
     section: 'Formación',
     path: fichasPaths.index,
-    label: 'Fichas',
+    label: 'Formación Regular',
+    permission: 'VER FICHAS',
+    alsoVisibleForRoles: ['INSTRUCTOR'],
+    iconKey: 'fichas',
+  },
+  {
+    section: 'Formación',
+    path: fichasPaths.mediaTecnica,
+    label: 'Media Técnica',
+    permission: 'VER FICHAS',
+    alsoVisibleForRoles: ['INSTRUCTOR'],
+    iconKey: 'fichas',
+  },
+  {
+    section: 'Formación',
+    path: fichasPaths.complementaria,
+    label: 'Formación Complementaria',
     permission: 'VER FICHAS',
     alsoVisibleForRoles: ['INSTRUCTOR'],
     iconKey: 'fichas',
@@ -113,7 +130,7 @@ export const SIDEBAR_MANIFEST: SidebarManifestItem[] = [
   {
     section: 'Asistencia',
     path: asistenciaPaths.sesionesSinAsistenciaTomada,
-    label: 'Sin asistencia tomada',
+    label: 'Panel de toma de asistencia',
     permission: null,
     rolesRequired: ['SUPER ADMINISTRADOR', 'ADMINISTRADOR', 'COORDINADOR'],
     iconKey: 'asistencia/sin-asistencia',
@@ -149,6 +166,32 @@ export const SIDEBAR_MANIFEST: SidebarManifestItem[] = [
     permission: null,
     rolesRequired: ['SUPER ADMINISTRADOR'],
     iconKey: 'asistencia/tipos-observacion',
+  },
+
+  // —— FPI ——
+  {
+    section: 'FPI',
+    path: complementariosPaths.betowa,
+    label: 'Complementarios (Betowa)',
+    permission: null,
+    rolesRequired: ['SUPER ADMINISTRADOR', 'ADMINISTRADOR', 'COORDINADOR', 'FPI'],
+    iconKey: 'complementarios',
+  },
+  {
+    section: 'FPI',
+    path: complementariosPaths.consultarRegistro,
+    label: 'Sofía · Fase 1 · Consultar Registro',
+    permission: null,
+    rolesRequired: ['SUPER ADMINISTRADOR', 'ADMINISTRADOR', 'COORDINADOR', 'FPI'],
+    iconKey: 'complementarios',
+  },
+  {
+    section: 'FPI',
+    path: complementariosPaths.inscripciones,
+    label: 'Sofía · Fase 2 · Programas',
+    permission: null,
+    rolesRequired: ['SUPER ADMINISTRADOR', 'ADMINISTRADOR', 'COORDINADOR', 'FPI'],
+    iconKey: 'complementarios',
   },
 
   // —— Bienestar ——
@@ -198,10 +241,26 @@ export const SIDEBAR_MANIFEST: SidebarManifestItem[] = [
   // —— Vigilancia ——
   {
     section: 'Vigilancia',
+    path: vigilanciaPaths.porteria,
+    label: 'Portería / Acceso',
+    permission: 'REGISTRAR ACCESO SEDE',
+    rolesRequired: ['VIGILANTE', 'SUPER ADMINISTRADOR', 'ADMINISTRADOR', 'COORDINADOR'],
+    iconKey: 'vigilancia/porteria',
+  },
+  {
+    section: 'Vigilancia',
+    path: vigilanciaPaths.reporte,
+    label: 'Reporte de accesos',
+    permission: 'VER ACCESO SEDE',
+    rolesRequired: ['VIGILANTE', 'SUPER ADMINISTRADOR', 'ADMINISTRADOR', 'COORDINADOR'],
+    iconKey: 'vigilancia/reporte',
+  },
+  {
+    section: 'Vigilancia',
     path: vigilanciaPaths.ambientes,
     label: 'Ambientes en uso',
     permission: null,
-    rolesRequired: ['VIGILANTE', 'SUPER ADMINISTRADOR'],
+    rolesRequired: ['VIGILANTE', 'SUPER ADMINISTRADOR', 'ADMINISTRADOR', 'COORDINADOR'],
     iconKey: 'vigilancia/ambientes',
   },
 

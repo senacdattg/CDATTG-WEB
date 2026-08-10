@@ -64,6 +64,16 @@ import type {
   MunicipioItem,
   ParametroItem,
   RegionalItem,
+  VerificarAspiranteRequest,
+  VerificarAspiranteResponse,
+  VerificarLoteResponse,
+  LoteIniciadoResponse,
+  ProgresoLoteResponse,
+  GuardarCredencialSofiaRequest,
+  CredencialSofiaEstado,
+  ConsultarInscripcionesRequest,
+  ConsultarInscripcionesResponse,
+  ConsultarInscripcionesLoteResponse,
   SedeCreateRequest,
   SedeUpdateRequest,
   SedeResponse,
@@ -97,6 +107,12 @@ import type {
   UsuarioPermisosResponse,
   UsuarioRegionalesResponse,
   DefinicionesPermisosResponse,
+  AccesoLookupResponse,
+  AccesoRegistroResponse,
+  AccesoDentroItem,
+  AccesoHistorialParams,
+  AccesoHistorialResponse,
+  AccesoEstadisticasResponse,
 } from '../types';
 import type { InstructorAgendaResponse } from '../types/agenda';
 import type {
@@ -491,7 +507,9 @@ class ApiService {
   }
 
   async createDiaSinFormacionFicha(data: {
-    ficha_ids: number[];
+    ficha_ids?: number[];
+    sede_ids?: number[];
+    tipos_formacion?: string[];
     fecha_inicio: string;
     fecha_fin: string;
     motivo: string;
@@ -624,10 +642,18 @@ class ApiService {
     pageSize = 20,
     programaId?: number,
     misFichas?: boolean,
-    search?: string
+    search?: string,
+    tipoFormacion?: string,
   ): Promise<PaginatedResponse<FichaCaracterizacionResponse>> {
     const response = await this.api.get<PaginatedResponse<FichaCaracterizacionResponse>>('/fichas-caracterizacion', {
-      params: { page, page_size: pageSize, programa_id: programaId, mis_fichas: misFichas ? '1' : undefined, q: search },
+      params: {
+        page,
+        page_size: pageSize,
+        programa_id: programaId,
+        mis_fichas: misFichas ? '1' : undefined,
+        q: search,
+        tipo_formacion: tipoFormacion || undefined,
+      },
     });
     return response.data;
   }
@@ -657,17 +683,26 @@ class ApiService {
     await this.api.delete(`/fichas-caracterizacion/${id}`);
   }
 
-  async uploadFichasImport(file: File): Promise<FichaImportResult> {
+  async downloadFichasImportTemplate(): Promise<Blob> {
+    const response = await this.api.get<Blob>('/fichas-caracterizacion/import/template', {
+      responseType: 'blob',
+    });
+    return response.data;
+  }
+
+  async uploadFichasImport(file: File, tipoFormacion: string): Promise<FichaImportResult> {
     const formData = new FormData();
     formData.append('file', file);
+    formData.append('tipo_formacion', tipoFormacion);
     const response = await this.api.post<FichaImportResult>('/fichas-caracterizacion/import', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
     });
     return response.data;
   }
 
-  async exportAllFichasExcel(): Promise<Blob> {
+  async exportAllFichasExcel(tipoFormacion: string): Promise<Blob> {
     const response = await this.api.get<Blob>('/fichas-caracterizacion/export/all', {
+      params: { tipo_formacion: tipoFormacion },
       responseType: 'blob',
     });
     return response.data;
@@ -851,7 +886,12 @@ class ApiService {
   }
 
   /** Dashboard de asistencia detallado. Params opcionales: sede_id, fecha (YYYY-MM-DD). */
-  async getAsistenciaDashboard(params?: { sede_id?: number; fecha?: string }): Promise<AsistenciaDashboardResponse> {
+  async getAsistenciaDashboard(params?: {
+    sede_id?: number;
+    fecha?: string;
+    tipo_formacion?: string;
+    jornada?: string;
+  }): Promise<AsistenciaDashboardResponse> {
     const response = await this.api.get<AsistenciaDashboardResponse>('/asistencias/dashboard', { params });
     return response.data;
   }
@@ -869,6 +909,7 @@ class ApiService {
     regional_id?: number;
     sede_id?: number;
     jornada?: string;
+    tipo_formacion?: string;
     ficha?: string;
     estado_ficha?: 'activas' | 'inactivas' | 'todas';
     aprendiz_id?: number;
@@ -925,7 +966,12 @@ class ApiService {
   }
 
   /** Casos de bienestar: aprendices con N+ inasistencias (riesgo deserción). Params: dias (default 30), min_fallas (default 3), sede_id (opcional). */
-  async getCasosBienestar(params?: { dias?: number; min_fallas?: number; sede_id?: number }): Promise<CasosBienestarResponse> {
+  async getCasosBienestar(params?: {
+    dias?: number;
+    min_fallas?: number;
+    sede_id?: number;
+    tipo_formacion?: string;
+  }): Promise<CasosBienestarResponse> {
     const response = await this.api.get<CasosBienestarResponse>('/asistencias/dashboard/casos-bienestar', { params });
     return response.data;
   }
@@ -935,6 +981,8 @@ class ApiService {
     dias?: number;
     regional_id?: number;
     sede_id?: number;
+    tipo_formacion?: string;
+    jornada?: string;
   }): Promise<SesionesSinAsistenciaTomadaResponse> {
     const response = await this.api.get<SesionesSinAsistenciaTomadaResponse>(
       '/asistencias/dashboard/sesiones-sin-asistencia-tomada',
@@ -956,7 +1004,12 @@ class ApiService {
   }
 
   /** Inasistencias del aprendiz autenticado (resuelto por persona_id del JWT). */
-  async getMisInasistencias(params?: { dias?: number }): Promise<MisInasistenciasResponse> {
+  async getMisInasistencias(params?: {
+    dias?: number;
+    ficha_id?: number;
+    estado_ficha?: 'activas' | 'inactivas' | 'todas';
+    tipo_formacion?: string;
+  }): Promise<MisInasistenciasResponse> {
     const response = await this.api.get<MisInasistenciasResponse>('/asistencias/mis-inasistencias', { params });
     return response.data;
   }
@@ -1066,6 +1119,62 @@ class ApiService {
    */
   async registrarEntradaAmbiente(params: { ambiente_id: number; instructor_id: number }): Promise<void> {
     await this.api.post('/vigilancia/entradas-ambiente', params);
+  }
+
+  // --- Vigilancia / portería (acceso sede) ---
+  async accesoLookup(data: {
+    numero_documento: string;
+    sede_id: number;
+    metodo?: string;
+    modo?: string;
+  }): Promise<AccesoLookupResponse> {
+    const response = await this.api.post<{ data: AccesoLookupResponse }>('/vigilancia/acceso/lookup', data);
+    return response.data.data;
+  }
+
+  async accesoIngreso(data: {
+    numero_documento: string;
+    metodo_registro: string;
+    sede_id: number;
+    observaciones?: string;
+    tipo_persona?: string;
+  }): Promise<AccesoRegistroResponse> {
+    const response = await this.api.post<{ data: AccesoRegistroResponse }>('/vigilancia/acceso/ingreso', data);
+    return response.data.data;
+  }
+
+  async accesoSalida(data: {
+    numero_documento: string;
+    motivo_salida: string;
+    observacion_salida?: string;
+    metodo_registro: string;
+    sede_id: number;
+    permitir_sin_ingreso?: boolean;
+    tipo_persona?: string;
+  }): Promise<AccesoRegistroResponse> {
+    const response = await this.api.post<{ data: AccesoRegistroResponse }>('/vigilancia/acceso/salida', data);
+    return response.data.data;
+  }
+
+  async accesoListDentro(sedeId: number): Promise<AccesoDentroItem[]> {
+    const response = await this.api.get<{ data: AccesoDentroItem[] }>('/vigilancia/acceso/dentro', {
+      params: { sede_id: sedeId },
+    });
+    return response.data.data;
+  }
+
+  async accesoHistorial(params: AccesoHistorialParams): Promise<AccesoHistorialResponse> {
+    const response = await this.api.get<{ data: AccesoHistorialResponse }>('/vigilancia/acceso/historial', {
+      params,
+    });
+    return response.data.data;
+  }
+
+  async accesoEstadisticas(params: AccesoHistorialParams): Promise<AccesoEstadisticasResponse> {
+    const response = await this.api.get<{ data: AccesoEstadisticasResponse }>('/vigilancia/acceso/estadisticas', {
+      params,
+    });
+    return response.data.data;
   }
 
   // Inventario
@@ -1306,6 +1415,140 @@ class ApiService {
     );
     return response.data.data;
   }
+
+  // Complementarios (FPI): verificación de aspirantes en SofiaPlus.
+  // La 1.ª consulta abre Chromium + login SENA y puede tardar varios minutos.
+  async verificarAspirante(data: VerificarAspiranteRequest): Promise<VerificarAspiranteResponse> {
+    const response = await this.api.post<{ data: VerificarAspiranteResponse }>(
+      '/complementarios/verificar-aspirante',
+      data,
+      { timeout: 900000 },
+    );
+    return response.data.data;
+  }
+
+  // Complementarios: credenciales SofiaPlus del operador (contraseña cifrada en el backend).
+  async getCredencialSofia(): Promise<CredencialSofiaEstado> {
+    const response = await this.api.get<{ data: CredencialSofiaEstado }>('/complementarios/credenciales');
+    return response.data.data;
+  }
+
+  async guardarCredencialSofia(data: GuardarCredencialSofiaRequest): Promise<CredencialSofiaEstado> {
+    const response = await this.api.post<{ data: CredencialSofiaEstado }>('/complementarios/credenciales', data);
+    return response.data.data;
+  }
+
+  async eliminarCredencialSofia(): Promise<void> {
+    await this.api.delete('/complementarios/credenciales');
+  }
+
+  // Complementarios: Consultar Inscripciones (Usuario SENA) filtrado por programa.
+  async consultarInscripcionesSofia(
+    data: ConsultarInscripcionesRequest,
+  ): Promise<ConsultarInscripcionesResponse> {
+    const response = await this.api.post<{ data: ConsultarInscripcionesResponse }>(
+      '/complementarios/consultar-inscripciones',
+      data,
+      { timeout: 900000 },
+    );
+    return response.data.data;
+  }
+
+  async descargarPlantillaInscripciones(): Promise<Blob> {
+    const response = await this.api.get('/complementarios/inscripciones/plantilla', {
+      responseType: 'blob',
+    });
+    return response.data as Blob;
+  }
+
+  async consultarInscripcionesLoteSofia(file: File): Promise<LoteIniciadoResponse> {
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await this.api.post<{ data: LoteIniciadoResponse }>(
+      '/complementarios/inscripciones/consultar-lote',
+      formData,
+      {
+        headers: { 'Content-Type': 'multipart/form-data' },
+        // El POST solo valida el Excel y arranca el lote; el escaneo corre en segundo plano.
+        timeout: 60000,
+      },
+    );
+    return response.data.data;
+  }
+
+  async progresoInscripcionesLote(loteId: string): Promise<ProgresoLoteResponse> {
+    const response = await this.api.get<{ data: ProgresoLoteResponse }>(
+      `/complementarios/inscripciones/consultar-lote/progreso/${loteId}`,
+      { timeout: 15000 },
+    );
+    return response.data.data;
+  }
+
+  async resultadosInscripcionesLote(loteId: string): Promise<ConsultarInscripcionesLoteResponse> {
+    const response = await this.api.get<{ data: ConsultarInscripcionesLoteResponse }>(
+      `/complementarios/inscripciones/consultar-lote/resultados/${loteId}`,
+      { timeout: 15000 },
+    );
+    return response.data.data;
+  }
+
+  // Complementarios: carga masiva por Excel.
+  async descargarPlantillaLote(): Promise<Blob> {
+    const response = await this.api.get('/complementarios/plantilla', { responseType: 'blob' });
+    return response.data as Blob;
+  }
+
+  async verificarLote(file: File): Promise<LoteIniciadoResponse> {
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await this.api.post<{ data: LoteIniciadoResponse }>('/complementarios/verificar-lote', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+      // El POST solo valida el Excel y arranca el lote; el escaneo corre en segundo plano.
+      timeout: 60000,
+    });
+    return response.data.data;
+  }
+
+  async progresoLote(loteId: string): Promise<ProgresoLoteResponse> {
+    const response = await this.api.get<{ data: ProgresoLoteResponse }>(
+      `/complementarios/verificar-lote/progreso/${loteId}`,
+      { timeout: 15000 },
+    );
+    return response.data.data;
+  }
+
+  async resultadosLote(loteId: string): Promise<VerificarLoteResponse> {
+    const response = await this.api.get<{ data: VerificarLoteResponse }>(
+      `/complementarios/verificar-lote/resultados/${loteId}`,
+      { timeout: 15000 },
+    );
+    return response.data.data;
+  }
+
+  // Complementarios (Betowa): verificación sin credenciales SENA.
+  async verificarAspiranteBetowa(data: VerificarAspiranteRequest): Promise<VerificarAspiranteResponse> {
+    const response = await this.api.post<{ data: VerificarAspiranteResponse }>(
+      '/complementarios/betowa/verificar-aspirante',
+      data,
+      { timeout: 180000 },
+    );
+    return response.data.data;
+  }
+
+  async verificarLoteBetowa(file: File): Promise<VerificarLoteResponse> {
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await this.api.post<{ data: VerificarLoteResponse }>(
+      '/complementarios/betowa/verificar-lote',
+      formData,
+      {
+        headers: { 'Content-Type': 'multipart/form-data' },
+        timeout: 1800000,
+      },
+    );
+    return response.data.data;
+  }
+
 }
 
 export const apiService = new ApiService();

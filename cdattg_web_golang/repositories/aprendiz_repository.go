@@ -20,6 +20,9 @@ type AprendizRepository interface {
 	FindByPersonaIDAndFichaID(personaID, fichaID uint) (*models.Aprendiz, error)
 	FindByPersonaID(personaID uint) (*models.Aprendiz, error)
 	FindActivoByPersonaID(personaID uint) (*models.Aprendiz, error)
+	FindActivosByPersonaID(personaID uint) ([]models.Aprendiz, error)
+	// FindAllByPersonaID todas las matrículas de la persona (activas e inactivas), con ficha precargada.
+	FindAllByPersonaID(personaID uint) ([]models.Aprendiz, error)
 	FindAll(page, pageSize int, fichaID *uint, search string) ([]models.Aprendiz, int64, error)
 	Create(a *models.Aprendiz) error
 	Update(a *models.Aprendiz) error
@@ -86,16 +89,48 @@ func (r *aprendizRepository) FindActivoByPersonaID(personaID uint) (*models.Apre
 	return &a, nil
 }
 
+// FindActivosByPersonaID todas las matrículas activas de la persona (puede haber varias fichas / tipos).
+func (r *aprendizRepository) FindActivosByPersonaID(personaID uint) ([]models.Aprendiz, error) {
+	var list []models.Aprendiz
+	err := r.db.Where("persona_id = ? AND estado = ?", personaID, true).
+		Order("updated_at DESC").
+		Preload("FichaCaracterizacion").
+		Preload(aprendizPreloadFichaPrograma).
+		Preload("FichaCaracterizacion.Jornada").
+		Preload(aprendizPreloadFichaSedeRegional).
+		Find(&list).Error
+	if err != nil {
+		return nil, err
+	}
+	return list, nil
+}
+
+// FindAllByPersonaID todas las matrículas de la persona (activas e inactivas).
+func (r *aprendizRepository) FindAllByPersonaID(personaID uint) ([]models.Aprendiz, error) {
+	var list []models.Aprendiz
+	err := r.db.Where("persona_id = ?", personaID).
+		Order("estado DESC, updated_at DESC").
+		Preload("FichaCaracterizacion").
+		Preload(aprendizPreloadFichaPrograma).
+		Preload("FichaCaracterizacion.Jornada").
+		Preload(aprendizPreloadFichaSedeRegional).
+		Find(&list).Error
+	if err != nil {
+		return nil, err
+	}
+	return list, nil
+}
+
 // applyAprendizSearch aplica búsqueda por varias palabras: cada palabra debe coincidir en al menos un campo.
 func applyAprendizSearch(q *gorm.DB, search string) *gorm.DB {
 	words := strings.Fields(strings.TrimSpace(search))
 	if len(words) == 0 {
 		return q
 	}
-	likeClause := "personas.numero_documento ILIKE ? OR personas.primer_nombre ILIKE ? OR personas.segundo_nombre ILIKE ? OR personas.primer_apellido ILIKE ? OR personas.segundo_apellido ILIKE ? OR fichas_caracterizacion.ficha ILIKE ? OR programas_formacion.nombre ILIKE ?"
+	likeClause := "personas.numero_documento ILIKE ? OR personas.primer_nombre ILIKE ? OR personas.segundo_nombre ILIKE ? OR personas.primer_apellido ILIKE ? OR personas.segundo_apellido ILIKE ? OR fichas_caracterizacion.ficha ILIKE ? OR programas_formacion.nombre ILIKE ? OR fichas_caracterizacion.nombre ILIKE ?"
 	for _, word := range words {
 		term := "%" + word + "%"
-		q = q.Where("("+likeClause+")", term, term, term, term, term, term, term)
+		q = q.Where("("+likeClause+")", term, term, term, term, term, term, term, term)
 	}
 	return q
 }

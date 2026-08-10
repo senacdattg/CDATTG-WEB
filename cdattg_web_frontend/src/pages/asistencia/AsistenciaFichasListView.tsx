@@ -1,19 +1,23 @@
 import { Link } from 'react-router-dom';
+import { useMemo, useState } from 'react';
 import { ArrowLeftIcon, CalendarDaysIcon, ChartBarIcon, EyeIcon } from '@heroicons/react/24/outline';
 import { useAuth } from '../../context/AuthContext';
 import { asistenciaPaths, fichasPaths } from '../../routes/paths';
 import { getInicioNavigationPath } from '../../utils/roles';
 import { getHorarioHoyInstructor, mensajeEstadoAsistenciaFicha } from '../../utils/fichaHorario';
 import { FichaCaracterizacionCard } from '../../components/FichaCaracterizacionCard';
+import { TIPO_FORMACION_OPTIONS, type TipoFormacion } from '../../constants/tipoFormacion';
 import { ASIST_MODAL_IDS_ROOT } from './asistenciaConstants';
 import { AsistenciaModals } from './AsistenciaModals';
 import type { AsistenciaFichasPageState } from './useAsistenciaFichasCatalog';
 
 type Props = Readonly<{ page: AsistenciaFichasPageState }>;
+type FiltroTipo = 'TODOS' | TipoFormacion;
 
 export function AsistenciaFichasListView({ page }: Props) {
   const { roles, permissions } = useAuth();
   const volverTo = getInicioNavigationPath(roles, permissions, asistenciaPaths.fichas);
+  const [filtroTipo, setFiltroTipo] = useState<FiltroTipo>('TODOS');
   const {
     fichas,
     error,
@@ -30,6 +34,11 @@ export function AsistenciaFichasListView({ page }: Props) {
     handleTomarAsistencia,
     onAbrirEstadoModal,
   } = page;
+
+  const fichasVisibles = useMemo(() => {
+    if (filtroTipo === 'TODOS') return fichas;
+    return fichas.filter((f) => (f.tipo_formacion || 'FORMACION_REGULAR') === filtroTipo);
+  }, [fichas, filtroTipo]);
 
   const mensajeEstado = (ficha: (typeof fichas)[number]) =>
     mensajeEstadoAsistenciaFicha(ficha, eventosHoy, now, relaxarRestriccionAsistencia);
@@ -114,8 +123,39 @@ export function AsistenciaFichasListView({ page }: Props) {
         )}
       </div>
 
+      <div className="flex flex-wrap gap-2">
+        <button
+          type="button"
+          className={`rounded-lg px-3 py-1.5 text-sm font-medium ${
+            filtroTipo === 'TODOS'
+              ? 'bg-primary-600 text-white'
+              : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600'
+          }`}
+          onClick={() => setFiltroTipo('TODOS')}
+        >
+          Todas ({fichas.length})
+        </button>
+        {TIPO_FORMACION_OPTIONS.map((opt) => {
+          const n = fichas.filter((f) => (f.tipo_formacion || 'FORMACION_REGULAR') === opt.value).length;
+          return (
+            <button
+              key={opt.value}
+              type="button"
+              className={`rounded-lg px-3 py-1.5 text-sm font-medium ${
+                filtroTipo === opt.value
+                  ? 'bg-primary-600 text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600'
+              }`}
+              onClick={() => setFiltroTipo(opt.value)}
+            >
+              {opt.label} ({n})
+            </button>
+          );
+        })}
+      </div>
+
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {fichas.map((item) => {
+        {fichasVisibles.map((item) => {
           const enHorario = puedeTomarAsistencia(item);
           const estadoMsg = enHorario ? '' : mensajeEstado(item);
 
@@ -128,7 +168,7 @@ export function AsistenciaFichasListView({ page }: Props) {
             actions={
               <>
                 <Link
-                  to={fichasPaths.detalle(item.id)}
+                  to={fichasPaths.detalle(item.id, item.tipo_formacion)}
                   className="inline-flex items-center gap-2 rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-800 transition-colors hover:bg-gray-50 dark:border-gray-600 dark:text-gray-100 dark:hover:bg-gray-700/50"
                 >
                   <EyeIcon className="h-4 w-4" />
@@ -155,6 +195,9 @@ export function AsistenciaFichasListView({ page }: Props) {
           );
         })}
       </div>
+      {fichasVisibles.length === 0 ? (
+        <p className="text-sm text-gray-500 dark:text-gray-400">No hay fichas para este filtro.</p>
+      ) : null}
       <AsistenciaModals page={page} estadoFieldIds={ASIST_MODAL_IDS_ROOT} />
     </div>
   );

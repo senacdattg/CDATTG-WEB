@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback, type Dispatch, type SetStateAction } from 'react';
-import { Link } from 'react-router-dom';
+import { useState, useEffect, useCallback, useMemo, type Dispatch, type SetStateAction } from 'react';
+import { Link, useLocation } from 'react-router-dom';
 import { DASHBOARD_PATH, fichasPaths } from '../routes/paths';
 import { asistenciaFichaPath } from './asistencia/asistenciaPaths';
 import {
@@ -23,12 +23,24 @@ import { FichaCaracterizacionCard } from '../components/FichaCaracterizacionCard
 import { FichasAdminTable } from './fichas/FichasAdminTable';
 import { mergeListAfterSave } from '../utils/fichaCaracterizacionForm';
 import { canProgramarInstructores } from '../utils/programacionPermissions';
+import {
+  labelTipoFormacion,
+  normalizeTipoFormacion,
+  TIPO_FORMACION,
+  type TipoFormacion,
+} from '../constants/tipoFormacion';
 import type {
   FichaCaracterizacionResponse,
   FichaImportResult,
   ProgramaFormacionResponse,
   DiaFormacionItem,
 } from '../types';
+
+function tipoFormacionDesdePath(pathname: string): TipoFormacion {
+  if (pathname.startsWith(fichasPaths.mediaTecnica)) return TIPO_FORMACION.MEDIA_TECNICA;
+  if (pathname.startsWith(fichasPaths.complementaria)) return TIPO_FORMACION.COMPLEMENTARIA;
+  return TIPO_FORMACION.REGULAR;
+}
 
 const EXT_EXCEL_IMPORT = new Set(['.xlsx', '.xls']);
 
@@ -76,14 +88,23 @@ function filtrarListaFichasInstructor(
   );
 }
 
-async function exportarBlobExcelFichas(setExportLoading: (v: boolean) => void): Promise<void> {
+function nombreArchivoExportFichas(tipoFormacion: TipoFormacion): string {
+  if (tipoFormacion === TIPO_FORMACION.MEDIA_TECNICA) return 'fichas_media_tecnica.xlsx';
+  if (tipoFormacion === TIPO_FORMACION.COMPLEMENTARIA) return 'fichas_formacion_complementaria.xlsx';
+  return 'fichas_aprendices.xlsx';
+}
+
+async function exportarBlobExcelFichas(
+  tipoFormacion: TipoFormacion,
+  setExportLoading: (v: boolean) => void
+): Promise<void> {
   try {
     setExportLoading(true);
-    const blob = await apiService.exportAllFichasExcel();
+    const blob = await apiService.exportAllFichasExcel(tipoFormacion);
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'fichas_aprendices.xlsx';
+    a.download = nombreArchivoExportFichas(tipoFormacion);
     document.body.appendChild(a);
     a.click();
     a.remove();
@@ -97,6 +118,7 @@ async function exportarBlobExcelFichas(setExportLoading: (v: boolean) => void): 
 
 type ImportFichasParams = Readonly<{
   importFile: File | null;
+  tipoFormacion: TipoFormacion;
   setImportError: (msg: string) => void;
   setImportResult: (r: FichaImportResult | null) => void;
   setImportLoading: (v: boolean) => void;
@@ -104,7 +126,7 @@ type ImportFichasParams = Readonly<{
 }>;
 
 async function ejecutarImportFichasExcel(p: ImportFichasParams): Promise<void> {
-  const { importFile, setImportError, setImportResult, setImportLoading, fetchList } = p;
+  const { importFile, tipoFormacion, setImportError, setImportResult, setImportLoading, fetchList } = p;
   if (!importFile) {
     setImportError('Seleccione un archivo Excel.');
     return;
@@ -117,13 +139,30 @@ async function ejecutarImportFichasExcel(p: ImportFichasParams): Promise<void> {
   setImportResult(null);
   setImportLoading(true);
   try {
-    const result = await apiService.uploadFichasImport(importFile);
+    const result = await apiService.uploadFichasImport(importFile, tipoFormacion);
     setImportResult(result);
     await fetchList();
   } catch (err: unknown) {
     setImportError(axiosErrorMessage(err, 'Error al importar'));
   } finally {
     setImportLoading(false);
+  }
+}
+
+async function descargarPlantillaImportFicha(setImportError: (msg: string) => void): Promise<void> {
+  try {
+    setImportError('');
+    const blob = await apiService.downloadFichasImportTemplate();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'plantilla_importar_ficha.xlsx';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  } catch (err: unknown) {
+    setImportError(axiosErrorMessage(err, 'Error al descargar la plantilla'));
   }
 }
 
@@ -207,7 +246,7 @@ function FichasInstructorConFichas({ filteredList, searchQuery, setSearchQuery }
             actions={
               <>
                 <Link
-                  to={fichasPaths.detalle(item.id)}
+                  to={fichasPaths.detalle(item.id, item.tipo_formacion)}
                   className="inline-flex items-center gap-2 rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-800 transition-colors hover:bg-gray-50 dark:border-gray-600 dark:text-gray-100 dark:hover:bg-gray-700/50"
                 >
                   <EyeIcon className="h-4 w-4" />
@@ -236,6 +275,11 @@ function FichasInstructorConFichas({ filteredList, searchQuery, setSearchQuery }
 
 export const FichasCaracterizacion = () => {
   const { roles, hasPermission } = useAuth();
+  const location = useLocation();
+  const tipoFormacion = useMemo(() => tipoFormacionDesdePath(location.pathname), [location.pathname]);
+  const tituloTipo = labelTipoFormacion(tipoFormacion);
+  const permiteImportExport = true;
+  const mostrarFiltroPrograma = tipoFormacion === TIPO_FORMACION.REGULAR;
   const puedeProgramarInstructores = canProgramarInstructores(roles, hasPermission);
   const [list, setList] = useState<FichaCaracterizacionResponse[]>([]);
   const [programas, setProgramas] = useState<ProgramaFormacionResponse[]>([]);
@@ -283,7 +327,14 @@ export const FichasCaracterizacion = () => {
       setLoading(true);
       setError('');
       const id = programaId === '' ? undefined : programaId;
-      const response = await apiService.getFichasCaracterizacion(page, pageSize, id, esInstructor, searchQuery.trim() || undefined);
+      const response = await apiService.getFichasCaracterizacion(
+        page,
+        pageSize,
+        id,
+        esInstructor,
+        searchQuery.trim() || undefined,
+        tipoFormacion,
+      );
       setList(response.data);
       setTotal(response.total);
     } catch (err: unknown) {
@@ -291,7 +342,7 @@ export const FichasCaracterizacion = () => {
     } finally {
       setLoading(false);
     }
-  }, [page, pageSize, programaId, esInstructor, searchQuery]);
+  }, [page, pageSize, programaId, esInstructor, searchQuery, tipoFormacion]);
 
   useEffect(() => {
     fetchProgramas();
@@ -299,15 +350,17 @@ export const FichasCaracterizacion = () => {
   }, []);
 
   useEffect(() => {
-    // Si la búsqueda cambia, es buena idea volver a la página 1.
-    // Usaremos un timeout para el debounce si hay escritura, 
-    // pero de momento simplificamos llamando directamente o con un debounce simple.
-    // Para no romper la dependencia directa de useEffect:
+    setPage(1);
+    setProgramaId('');
+    setSearchQuery('');
+  }, [tipoFormacion]);
+
+  useEffect(() => {
     const timer = setTimeout(() => {
       void fetchList();
     }, 300);
     return () => clearTimeout(timer);
-  }, [page, programaId, esInstructor, searchQuery, fetchList]);
+  }, [page, programaId, esInstructor, searchQuery, tipoFormacion, fetchList]);
 
   const openCreate = () => {
     setEditing(null);
@@ -350,6 +403,7 @@ export const FichasCaracterizacion = () => {
   const handleImportSubmit = () =>
     ejecutarImportFichasExcel({
       importFile,
+      tipoFormacion,
       setImportError,
       setImportResult,
       setImportLoading,
@@ -361,7 +415,9 @@ export const FichasCaracterizacion = () => {
     descargarExcelDesdeBase64(importResult.incident_report_base64, 'reporte_incidencias_ficha.xlsx');
   };
 
-  const handleExportAllFichas = () => exportarBlobExcelFichas(setExportLoading);
+  const handleDownloadPlantilla = () => descargarPlantillaImportFicha(setImportError);
+
+  const handleExportAllFichas = () => exportarBlobExcelFichas(tipoFormacion, setExportLoading);
 
   const totalPages = Math.ceil(total / pageSize);
 
@@ -386,9 +442,11 @@ export const FichasCaracterizacion = () => {
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white sm:text-3xl">Fichas de caracterización</h1>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white sm:text-3xl">
+            Fichas · {tituloTipo}
+          </h1>
           <p className="mt-1 text-sm text-gray-600 dark:text-gray-400 sm:mt-2 sm:text-base">
-            Gestión de fichas por programa de formación
+            Gestión de fichas de {tituloTipo.toLowerCase()}
             {!loading && total > 0 ? (
               <span className="ml-2 inline-flex rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-700 dark:bg-gray-700 dark:text-gray-300">
                 {total} {total === 1 ? 'ficha' : 'fichas'}
@@ -397,14 +455,18 @@ export const FichasCaracterizacion = () => {
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <button onClick={handleExportAllFichas} disabled={exportLoading} className="btn-secondary disabled:opacity-50">
-            <ArrowDownTrayIcon className="mr-2 inline h-5 w-5" />
-            {exportLoading ? 'Exportando...' : 'Exportar'}
-          </button>
-          <button onClick={openImportModal} className="btn-secondary">
-            <ArrowUpTrayIcon className="mr-2 inline h-5 w-5" />
-            Importar
-          </button>
+          {permiteImportExport && (
+            <>
+              <button onClick={handleExportAllFichas} disabled={exportLoading} className="btn-secondary disabled:opacity-50">
+                <ArrowDownTrayIcon className="mr-2 inline h-5 w-5" />
+                {exportLoading ? 'Exportando...' : 'Exportar'}
+              </button>
+              <button onClick={openImportModal} className="btn-secondary">
+                <ArrowUpTrayIcon className="mr-2 inline h-5 w-5" />
+                Importar
+              </button>
+            </>
+          )}
           <button onClick={openCreate} className="btn-primary">
             <PlusIcon className="mr-2 inline h-5 w-5" />
             Nueva ficha
@@ -444,30 +506,32 @@ export const FichasCaracterizacion = () => {
             />
           </div>
         </div>
-        <div className="w-full sm:w-auto min-w-[250px]">
-          <label
-            htmlFor="fichas-admin-programa"
-            className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-          >
-            Filtrar por Programa
-          </label>
-          <SelectSearch
-            inputId="fichas-admin-programa"
-            options={[
-              { value: 0, label: 'Todos los programas' },
-              ...programas.map((p) => ({
-                value: p.id,
-                label: p.codigo ? `${p.codigo} - ${p.nombre}` : p.nombre,
-              })),
-            ]}
-            value={programaId === '' ? 0 : programaId}
-            onChange={(v) => {
-              setProgramaId(v === 0 || v === undefined ? '' : v);
-              setPage(1);
-            }}
-            placeholder="Todos los programas"
-          />
-        </div>
+        {mostrarFiltroPrograma && (
+          <div className="w-full sm:w-auto min-w-[250px]">
+            <label
+              htmlFor="fichas-admin-programa"
+              className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+            >
+              Filtrar por Programa
+            </label>
+            <SelectSearch
+              inputId="fichas-admin-programa"
+              options={[
+                { value: 0, label: 'Todos los programas' },
+                ...programas.map((p) => ({
+                  value: p.id,
+                  label: p.codigo ? `${p.codigo} - ${p.nombre}` : p.nombre,
+                })),
+              ]}
+              value={programaId === '' ? 0 : programaId}
+              onChange={(v) => {
+                setProgramaId(v === 0 || v === undefined ? '' : v);
+                setPage(1);
+              }}
+              placeholder="Todos los programas"
+            />
+          </div>
+        )}
       </div>
 
       <div className="card !p-0 overflow-hidden">
@@ -518,15 +582,26 @@ export const FichasCaracterizacion = () => {
         editing={editing}
         onSaved={handleFichaSaved}
         inputIdPrefix="fichas-list"
+        defaultTipoFormacion={normalizeTipoFormacion(tipoFormacion)}
       />
 
-      {isImportModalOpen && (
+      {isImportModalOpen && permiteImportExport && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 overflow-y-auto">
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full p-6 border border-gray-200 dark:border-gray-600">
-            <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">Importar fichas desde Excel</h2>
-            <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-              Suba un archivo Excel (XLSX o XLS) con el reporte de aprendices (ficha de caracterización). Debe contener la línea con código y nombre del programa, y las columnas: Tipo de Documento, Número de Documento, Nombre, Apellidos, Celular, Correo.
+            <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
+              Importar fichas · {tituloTipo}
+            </h2>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+              Suba un Excel (XLSX o XLS) con el reporte de aprendices. Debe incluir la línea «Ficha de Caracterización» con código y nombre de la formación (no se liga al catálogo de programas), y las columnas Tipo de Documento, Número de Documento, Nombre, Apellidos, Celular y Correo.
             </p>
+            <button
+              type="button"
+              onClick={() => void handleDownloadPlantilla()}
+              className="mb-4 inline-flex items-center text-sm font-medium text-primary-700 hover:text-primary-800 dark:text-primary-300 dark:hover:text-primary-200"
+            >
+              <ArrowDownTrayIcon className="mr-1.5 h-4 w-4" />
+              Descargar plantilla Excel
+            </button>
             {importError && (
               <div className="mb-4 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 px-4 py-3 rounded-lg text-sm">
                 {importError}

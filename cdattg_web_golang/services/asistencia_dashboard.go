@@ -152,21 +152,24 @@ func calcularDashboardEsperadosSedes(
 }
 
 func fichaToSinSesionDTO(f models.FichaCaracterizacion, totalAprendices int) dto.AsistenciaDashboardFichaSinSesion {
+	tipo := strings.TrimSpace(f.TipoFormacion)
+	if tipo == "" {
+		tipo = models.TipoFormacionRegular
+	}
 	return dto.AsistenciaDashboardFichaSinSesion{
-		FichaID:         f.ID,
-		FichaNumero:     f.Ficha,
-		ProgramaNombre:  nombreProgramaFicha(f),
-		JornadaNombre:   nombreJornadaFicha(f),
-		SedeNombre:      nombreSedeFicha(f),
-		TotalAprendices: totalAprendices,
+		FichaID:            f.ID,
+		FichaNumero:        f.Ficha,
+		ProgramaNombre:     nombreProgramaFicha(f),
+		JornadaNombre:      nombreJornadaFicha(f),
+		SedeNombre:         nombreSedeFicha(f),
+		TipoFormacion:      tipo,
+		TipoFormacionLabel: labelTipoFormacionMisInasistencias(tipo),
+		TotalAprendices:    totalAprendices,
 	}
 }
 
 func nombreProgramaFicha(f models.FichaCaracterizacion) string {
-	if f.ProgramaFormacion == nil {
-		return ""
-	}
-	return f.ProgramaFormacion.Nombre
+	return models.NombreProgramaDisplay(&f)
 }
 
 func nombreJornadaFicha(f models.FichaCaracterizacion) string {

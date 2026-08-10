@@ -33,9 +33,7 @@ func (s *DiaSinFormacionFichaService) toItem(row *models.DiaSinFormacionFicha) d
 	}
 	if row.Ficha != nil {
 		item.FichaNumero = row.Ficha.Ficha
-		if row.Ficha.ProgramaFormacion != nil {
-			item.ProgramaNombre = row.Ficha.ProgramaFormacion.Nombre
-		}
+		item.ProgramaNombre = models.NombreProgramaDisplay(row.Ficha)
 	}
 	return item
 }
@@ -59,9 +57,6 @@ func (s *DiaSinFormacionFichaService) List(fichaID *uint) ([]dto.DiaSinFormacion
 }
 
 func validarRangoYMotivoFicha(req dto.DiaSinFormacionFichaCreateRequest) (inicio, fin time.Time, motivo string, err error) {
-	if len(req.FichaIDs) == 0 {
-		return time.Time{}, time.Time{}, "", errors.New("seleccione al menos una ficha")
-	}
 	inicio, err = parseFechaAdmin(req.FechaInicio)
 	if err != nil {
 		return time.Time{}, time.Time{}, "", errors.New("fecha_inicio inválida, use YYYY-MM-DD")
@@ -81,6 +76,49 @@ func validarRangoYMotivoFicha(req dto.DiaSinFormacionFichaCreateRequest) (inicio
 		return time.Time{}, time.Time{}, "", errors.New("la observación no puede superar 500 caracteres")
 	}
 	return inicio, fin, motivo, nil
+}
+
+func (s *DiaSinFormacionFichaService) resolverFichaIDsCreate(req dto.DiaSinFormacionFichaCreateRequest) ([]uint, error) {
+	ids := make([]uint, 0, len(req.FichaIDs))
+	seen := make(map[uint]struct{})
+	for _, id := range req.FichaIDs {
+		if id == 0 {
+			continue
+		}
+		if _, ok := seen[id]; ok {
+			continue
+		}
+		seen[id] = struct{}{}
+		ids = append(ids, id)
+	}
+	if len(ids) > 0 {
+		return ids, nil
+	}
+	if len(req.SedeIDs) == 0 {
+		return nil, errors.New("seleccione al menos una ficha o una sede")
+	}
+	tipos := make([]string, 0, len(req.TiposFormacion))
+	for _, t := range req.TiposFormacion {
+		norm, err := normalizeTipoFormacionFilter(t)
+		if err != nil {
+			return nil, err
+		}
+		if norm == "" {
+			continue
+		}
+		tipos = append(tipos, norm)
+	}
+	if len(tipos) == 0 {
+		return nil, errors.New("indique al menos un tipo de formación al filtrar por sede")
+	}
+	resolved, err := s.fichaRepo.ListIDsBySedesAndTipos(req.SedeIDs, tipos)
+	if err != nil {
+		return nil, err
+	}
+	if len(resolved) == 0 {
+		return nil, errors.New("no hay fichas activas para las sedes y tipos de formación seleccionados")
+	}
+	return resolved, nil
 }
 
 func (s *DiaSinFormacionFichaService) crearRegistroFicha(
@@ -117,17 +155,13 @@ func (s *DiaSinFormacionFichaService) Create(
 	if err != nil {
 		return nil, err
 	}
+	fichaIDs, err := s.resolverFichaIDsCreate(req)
+	if err != nil {
+		return nil, err
+	}
 
-	seen := make(map[uint]struct{}, len(req.FichaIDs))
-	creados := make([]dto.DiaSinFormacionFichaItem, 0, len(req.FichaIDs))
-	for _, fichaID := range req.FichaIDs {
-		if fichaID == 0 {
-			continue
-		}
-		if _, ok := seen[fichaID]; ok {
-			continue
-		}
-		seen[fichaID] = struct{}{}
+	creados := make([]dto.DiaSinFormacionFichaItem, 0, len(fichaIDs))
+	for _, fichaID := range fichaIDs {
 		item, errCreate := s.crearRegistroFicha(actorUserID, fichaID, inicio, fin, motivo)
 		if errCreate != nil {
 			return nil, errCreate

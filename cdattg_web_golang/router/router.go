@@ -25,6 +25,7 @@ const (
 	permCrearPersona    = "CREAR PERSONA"
 	permEditarMiPersona = "EDITAR MI PERSONA"
 	permVerFichas       = "VER FICHAS"
+	permCrearFicha      = "CREAR FICHA"
 	permCrearInstructor = "CREAR INSTRUCTOR"
 	permTomarAsistencia = "TOMAR ASISTENCIA"
 	permVerAsistencia          = "VER ASISTENCIA"
@@ -32,6 +33,8 @@ const (
 	permProgramarInstructores  = "PROGRAMAR INSTRUCTORES"
 	permGestionarAprendicesFicha = "GESTIONAR APRENDICES FICHA"
 	permVerMiAgenda            = "VER MI AGENDA"
+	permRegistrarAccesoSede    = "REGISTRAR ACCESO SEDE"
+	permVerAccesoSede          = "VER ACCESO SEDE"
 )
 
 func SetupRouter() *gin.Engine {
@@ -76,6 +79,8 @@ func SetupRouter() *gin.Engine {
 	diaSinFormacionFichaHandler := handlers.NewDiaSinFormacionFichaHandler()
 	configAsistenciaHandler := handlers.NewConfiguracionAsistenciaHandler()
 	eleccionHandler := handlers.NewEleccionHandler()
+	vigilanciaAccesoHandler := handlers.NewVigilanciaAccesoHandler()
+	complementariosHandler := handlers.NewComplementariosHandler()
 
 	// Rutas públicas
 	api := r.Group("/api")
@@ -147,9 +152,10 @@ func SetupRouter() *gin.Engine {
 				fichas.GET("/:id/detalle", middleware.RequirePermissionLeerFichaIndividual(), fichaHandler.GetByIDWithDetail)
 				fichas.GET("/:id/codigo", middleware.RequirePermissionVerFichaOrInstructorDeFicha(), fichaHandler.GetCodigo)
 				fichas.GET("/:id", middleware.RequirePermissionLeerFichaIndividual(), fichaHandler.GetByID)
-				fichas.POST(routeImport, middleware.RequirePermission("ficha", "CREAR FICHA"), fichaHandler.ImportFichas)
+				fichas.GET(routeImport+"/template", middleware.RequirePermission("ficha", permCrearFicha), fichaHandler.DownloadFichaImportTemplate)
+				fichas.POST(routeImport, middleware.RequirePermission("ficha", permCrearFicha), fichaHandler.ImportFichas)
 				fichas.GET("/export/all", middleware.RequirePermission("ficha", permVerFichas), fichaHandler.ExportAllExcel)
-				fichas.POST("", middleware.RequirePermission("ficha", "CREAR FICHA"), fichaHandler.Create)
+				fichas.POST("", middleware.RequirePermission("ficha", permCrearFicha), fichaHandler.Create)
 				fichas.PUT("/:id", middleware.RequirePermission("ficha", "EDITAR FICHA"), fichaHandler.Update)
 				fichas.DELETE("/:id", middleware.RequirePermission("ficha", "ELIMINAR FICHA"), fichaHandler.Delete)
 				fichas.GET("/:id/instructores", middleware.RequirePermissionListInstructoresFicha(), fichaHandler.ListInstructores)
@@ -281,6 +287,42 @@ func SetupRouter() *gin.Engine {
 
 			elecciones := protected.Group("/elecciones")
 			registerEleccionRoutes(elecciones, eleccionHandler)
+
+			vigilancia := protected.Group("/vigilancia/acceso")
+			{
+				vigilancia.POST("/lookup", middleware.RequirePermission("vigilancia", permRegistrarAccesoSede), vigilanciaAccesoHandler.Lookup)
+				vigilancia.POST("/ingreso", middleware.RequirePermission("vigilancia", permRegistrarAccesoSede), vigilanciaAccesoHandler.Ingreso)
+				vigilancia.POST("/salida", middleware.RequirePermission("vigilancia", permRegistrarAccesoSede), vigilanciaAccesoHandler.Salida)
+				vigilancia.GET("/dentro", middleware.RequirePermission("vigilancia", permVerAccesoSede), vigilanciaAccesoHandler.ListDentro)
+				vigilancia.GET("/historial", middleware.RequirePermission("vigilancia", permVerAccesoSede), vigilanciaAccesoHandler.Historial)
+				vigilancia.GET("/estadisticas", middleware.RequirePermission("vigilancia", permVerAccesoSede), vigilanciaAccesoHandler.Estadisticas)
+			}
+
+			// Complementarios (FPI): credenciales SofiaPlus por operador + verificación de aspirantes
+			const rutaCredencialesSofia = "/credenciales"
+			complementarios := protected.Group("/complementarios")
+			complementarios.Use(middleware.RequireSuperAdminAdminOrCoordinator())
+			{
+				complementarios.GET(rutaCredencialesSofia, complementariosHandler.GetCredencialEstado)
+				complementarios.POST(rutaCredencialesSofia, complementariosHandler.GuardarCredencial)
+				complementarios.DELETE(rutaCredencialesSofia, complementariosHandler.EliminarCredencial)
+				complementarios.POST("/verificar-aspirante", complementariosHandler.VerificarAspirante)
+				complementarios.POST("/consultar-inscripciones", complementariosHandler.ConsultarInscripciones)
+				complementarios.GET("/inscripciones/plantilla", complementariosHandler.DescargarPlantillaInscripciones)
+				complementarios.POST("/inscripciones/consultar-lote", complementariosHandler.ConsultarInscripcionesLote)
+				complementarios.GET("/inscripciones/consultar-lote/progreso/:lote_id", complementariosHandler.ProgresoLote)
+				complementarios.GET("/inscripciones/consultar-lote/resultados/:lote_id", complementariosHandler.ResultadosLoteInscripciones)
+				complementarios.GET("/plantilla", complementariosHandler.DescargarPlantilla)
+				complementarios.POST("/verificar-lote", complementariosHandler.VerificarLote)
+				complementarios.GET("/verificar-lote/progreso/:lote_id", complementariosHandler.ProgresoLote)
+				complementarios.GET("/verificar-lote/resultados/:lote_id", complementariosHandler.ResultadosLote)
+
+				betowa := complementarios.Group("/betowa")
+				{
+					betowa.POST("/verificar-aspirante", complementariosHandler.VerificarAspiranteBetowa)
+					betowa.POST("/verificar-lote", complementariosHandler.VerificarLoteBetowa)
+				}
+			}
 
 			// Inventario desactivado: rutas /inventario, /productos, /ordenes, /aprobaciones, /devoluciones, /proveedores, /categorias, /marcas, /contratos-convenios no registradas
 

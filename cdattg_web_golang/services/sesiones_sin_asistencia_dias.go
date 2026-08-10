@@ -65,6 +65,7 @@ func filaDiaSinSesion(asg repositories.AsignacionInstructorFichaReporteRaw, fech
 		ProgramaNombre:     asg.ProgramaNombre,
 		SedeNombre:         asg.SedeNombre,
 		JornadaNombre:      asg.JornadaNombre,
+		TipoFormacion:      asg.TipoFormacion,
 		SedeID:             asg.SedeID,
 		Fecha:              fecha,
 		IsFinished:         false,

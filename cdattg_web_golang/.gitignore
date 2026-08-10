@@ -40,6 +40,9 @@ logs/
 # Reportes de asistencia generados al finalizar sesión
 storage/asistencia_pdfs/
 
+# Diagnóstico del scraper de SofiaPlus (capturas/HTML con datos personales)
+storage/sofia_diagnostico/
+
 # OS
 .DS_Store
 Thumbs.db

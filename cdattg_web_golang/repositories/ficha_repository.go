@@ -14,7 +14,7 @@ type FichaRepository interface {
 	FindByID(id uint) (*models.FichaCaracterizacion, error)
 	FindByIDWithInstructoresAndAprendices(id uint) (*models.FichaCaracterizacion, error)
 	FindByFicha(ficha string) (*models.FichaCaracterizacion, error)
-	FindAll(page, pageSize int, programaID *uint, instructorID *uint, search string) ([]models.FichaCaracterizacion, int64, error)
+	FindAll(page, pageSize int, programaID *uint, instructorID *uint, search string, tipoFormacion string) ([]models.FichaCaracterizacion, int64, error)
 	FindActivasParaHoyConJornada(hoy time.Time) ([]models.FichaCaracterizacion, error)
 	// FindActivasParaFechaConJornada fichas activas con formación el día de la semana de fecha; sedeID opcional.
 	FindActivasParaFechaConJornada(fecha time.Time, sedeID *uint) ([]models.FichaCaracterizacion, error)
@@ -24,6 +24,8 @@ type FichaRepository interface {
 	FindSolapandoRango(desde, hasta time.Time, sedeIDs []uint, jornadaNombre string, soloEnFormacion bool, estadoFicha string) ([]models.FichaCaracterizacion, error)
 	// FindIDsByFichaOPrograma busca por número de ficha o nombre de programa (parcial).
 	FindIDsByFichaOPrograma(search string, sedeIDs []uint) ([]uint, error)
+	// ListIDsBySedesAndTipos IDs de fichas activas en sedes y tipos de formación indicados.
+	ListIDsBySedesAndTipos(sedeIDs []uint, tiposFormacion []string) ([]uint, error)
 	Search(query string) ([]models.FichaCaracterizacion, error)
 	Create(ficha *models.FichaCaracterizacion) error
 	Update(ficha *models.FichaCaracterizacion) error
@@ -38,6 +40,7 @@ const (
 	preloadAmbienteRuta      = "Ambiente.Piso.Bloque"
 	fichaCondStatus          = "status = ?"
 	fichaCondFechaFinVigente = "(fecha_fin IS NULL OR fecha_fin >= ?)"
+	fichaSQLSedeIDIn         = "sede_id IN ?"
 )
 
 type fichaRepository struct {
@@ -141,7 +144,7 @@ func (r *fichaRepository) FindSolapandoRango(desde, hasta time.Time, sedeIDs []u
 		}
 	}
 	if len(sedeIDs) > 0 {
-		q = q.Where("sede_id IN ?", sedeIDs)
+		q = q.Where(fichaSQLSedeIDIn, sedeIDs)
 	}
 	if strings.TrimSpace(jornadaNombre) != "" {
 		q = q.Where("jornada_id IN (SELECT id FROM jornadas WHERE nombre = ? AND deleted_at IS NULL)", jornadaNombre)
@@ -160,9 +163,12 @@ func (r *fichaRepository) FindIDsByFichaOPrograma(search string, sedeIDs []uint)
 	}
 	pattern := "%" + strings.ToLower(strings.Join(strings.Fields(norm), "%")) + "%"
 	q := r.db.Model(&models.FichaCaracterizacion{}).
-		Where("LOWER(ficha) LIKE ? OR programa_formacion_id IN (SELECT id FROM programas_formacion WHERE LOWER(nombre) LIKE ? AND deleted_at IS NULL)", pattern, pattern)
+		Where(
+			"LOWER(ficha) LIKE ? OR LOWER(nombre) LIKE ? OR programa_formacion_id IN (SELECT id FROM programas_formacion WHERE LOWER(nombre) LIKE ? AND deleted_at IS NULL)",
+			pattern, pattern, pattern,
+		)
 	if len(sedeIDs) > 0 {
-		q = q.Where("sede_id IN ?", sedeIDs)
+		q = q.Where(fichaSQLSedeIDIn, sedeIDs)
 	}
 	var ids []uint
 	if err := q.Pluck("id", &ids).Error; err != nil {
@@ -171,37 +177,59 @@ func (r *fichaRepository) FindIDsByFichaOPrograma(search string, sedeIDs []uint)
 	return ids, nil
 }
 
-func (r *fichaRepository) FindAll(page, pageSize int, programaID *uint, instructorID *uint, search string) ([]models.FichaCaracterizacion, int64, error) {
-	var fichas []models.FichaCaracterizacion
-	var total int64
-	offset := (page - 1) * pageSize
-	q := r.db.Model(&models.FichaCaracterizacion{})
+func (r *fichaRepository) ListIDsBySedesAndTipos(sedeIDs []uint, tiposFormacion []string) ([]uint, error) {
+	if len(sedeIDs) == 0 {
+		return nil, nil
+	}
+	q := r.db.Model(&models.FichaCaracterizacion{}).Where(fichaCondStatus, true)
+	q = q.Where(fichaSQLSedeIDIn, sedeIDs)
+	if len(tiposFormacion) > 0 {
+		q = q.Where("tipo_formacion IN ?", tiposFormacion)
+	}
+	var ids []uint
+	if err := q.Pluck("id", &ids).Error; err != nil {
+		return nil, err
+	}
+	return ids, nil
+}
+
+func applyFichaListFilters(q *gorm.DB, programaID *uint, instructorID *uint, search string, tipoFormacion string) *gorm.DB {
 	if programaID != nil && *programaID > 0 {
 		q = q.Where("programa_formacion_id = ?", *programaID)
 	}
 	if instructorID != nil && *instructorID > 0 {
 		q = q.Where("id IN (SELECT ficha_id FROM instructor_fichas_caracterizacion WHERE instructor_id = ? AND deleted_at IS NULL)", *instructorID)
 	}
+	if tipoFormacion != "" {
+		q = q.Where("tipo_formacion = ?", tipoFormacion)
+	}
 	if search != "" {
 		// Reemplazar espacios por % para permitir búsqueda parcial (ej. "analisis software" -> "%analisis%software%")
 		// Convertimos el patrón a minúsculas y usamos LOWER() en las columnas para asegurar compatibilidad total en todas las bases de datos (y evitar problemas con ILIKE que es exclusivo de Postgres)
 		searchPattern := "%" + strings.ToLower(strings.Join(strings.Fields(search), "%")) + "%"
-		q = q.Where("LOWER(ficha) LIKE ? OR programa_formacion_id IN (SELECT id FROM programas_formacion WHERE LOWER(nombre) LIKE ? OR LOWER(codigo) LIKE ?)", searchPattern, searchPattern, searchPattern)
+		q = q.Where(
+			"LOWER(ficha) LIKE ? OR LOWER(nombre) LIKE ? OR programa_formacion_id IN (SELECT id FROM programas_formacion WHERE LOWER(nombre) LIKE ? OR LOWER(codigo) LIKE ?)",
+			searchPattern, searchPattern, searchPattern, searchPattern,
+		)
 	}
+	return q
+}
+
+func (r *fichaRepository) FindAll(page, pageSize int, programaID *uint, instructorID *uint, search string, tipoFormacion string) ([]models.FichaCaracterizacion, int64, error) {
+	var fichas []models.FichaCaracterizacion
+	var total int64
+	offset := (page - 1) * pageSize
+	q := applyFichaListFilters(r.db.Model(&models.FichaCaracterizacion{}), programaID, instructorID, search, tipoFormacion)
 	if err := q.Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
-	findQ := r.db.Preload("ProgramaFormacion").Preload("Instructor").Preload(preloadAmbienteRuta).Preload("Sede").Preload("ModalidadFormacion").Preload("Jornada").Preload("FichaDiasFormacion")
-	if programaID != nil && *programaID > 0 {
-		findQ = findQ.Where("programa_formacion_id = ?", *programaID)
-	}
-	if instructorID != nil && *instructorID > 0 {
-		findQ = findQ.Where("id IN (SELECT ficha_id FROM instructor_fichas_caracterizacion WHERE instructor_id = ? AND deleted_at IS NULL)", *instructorID)
-	}
-	if search != "" {
-		searchPattern := "%" + strings.ToLower(strings.Join(strings.Fields(search), "%")) + "%"
-		findQ = findQ.Where("LOWER(ficha) LIKE ? OR programa_formacion_id IN (SELECT id FROM programas_formacion WHERE LOWER(nombre) LIKE ? OR LOWER(codigo) LIKE ?)", searchPattern, searchPattern, searchPattern)
-	}
+	findQ := applyFichaListFilters(
+		r.db.Preload("ProgramaFormacion").Preload("Instructor").Preload(preloadAmbienteRuta).Preload("Sede").Preload("ModalidadFormacion").Preload("Jornada").Preload("FichaDiasFormacion"),
+		programaID,
+		instructorID,
+		search,
+		tipoFormacion,
+	)
 	if err := findQ.Offset(offset).Limit(pageSize).Find(&fichas).Error; err != nil {
 		return nil, 0, err
 	}

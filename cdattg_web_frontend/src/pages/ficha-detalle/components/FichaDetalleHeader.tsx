@@ -15,7 +15,7 @@ export function FichaDetalleHeader({ ficha, puedeEditarFicha, onEditarFicha }: F
     <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
       <div className="flex items-start gap-3">
         <Link
-          to={fichasPaths.index}
+          to={fichasPaths.listado(ficha.tipo_formacion)}
           className="mt-1 inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50"
           title="Volver al listado"
         >

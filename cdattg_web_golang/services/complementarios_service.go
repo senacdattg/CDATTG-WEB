@@ -456,8 +456,12 @@ func (s *ComplementariosService) ResultadosLote(loteID string) (dto.VerificarLot
 	if !jobTerminado(job) {
 		return dto.VerificarLoteResponse{}, errors.New("el lote aún está en curso")
 	}
+	resultados, ok := job.Resultados.([]dto.VerificarAspiranteResponse)
+	if !ok {
+		return dto.VerificarLoteResponse{}, errors.New("el lote no es de verificación")
+	}
 
-	out := dto.VerificarLoteResponse{Total: len(job.Resultados.([]dto.VerificarAspiranteResponse)), Resultados: job.Resultados.([]dto.VerificarAspiranteResponse)}
+	out := dto.VerificarLoteResponse{Total: len(resultados), Resultados: resultados}
 	for _, r := range out.Resultados {
 		switch r.Estado {
 		case dto.VerificacionRegistrado:

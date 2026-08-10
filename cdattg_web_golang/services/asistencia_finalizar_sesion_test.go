@@ -51,10 +51,10 @@ func (s *stubAsistenciaRepoFinalizar) GetFichasSinSesionHoy(*uint, string) ([]re
 func (s *stubAsistenciaRepoFinalizar) CountPendientesRevisionByFecha(*uint, string) (int, error) {
 	return 0, nil
 }
-func (s *stubAsistenciaRepoFinalizar) ListSesionesCasosBienestarEnRango(*uint, string, string) ([]repositories.SesionCasosBienestarRaw, error) {
+func (s *stubAsistenciaRepoFinalizar) ListSesionesCasosBienestarEnRango(*uint, *uint, string, string) ([]repositories.SesionCasosBienestarRaw, error) {
 	return nil, nil
 }
-func (s *stubAsistenciaRepoFinalizar) ListAprendicesActivosCasosBienestar(*uint) ([]repositories.AprendizCasosBienestarRaw, error) {
+func (s *stubAsistenciaRepoFinalizar) ListAprendicesActivosCasosBienestar(*uint, *uint) ([]repositories.AprendizCasosBienestarRaw, error) {
 	return nil, nil
 }
 func (s *stubAsistenciaRepoFinalizar) ListAsistenciasEfectivasEnSesiones([]uint) ([]repositories.AsistenciaEfectivaRaw, error) {

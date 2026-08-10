@@ -196,6 +196,21 @@ func patchPersonaIngresoSalidaSalidaSinIngreso() error {
 	)
 }
 
+func patchPersonaIngresoSalidaColumnas() error {
+	if err := execSchemaPatch("", `ALTER TABLE persona_ingreso_salida
+		ADD COLUMN IF NOT EXISTS metodo_registro VARCHAR(20) NOT NULL DEFAULT 'MANUAL',
+		ADD COLUMN IF NOT EXISTS registrado_por_user_id BIGINT,
+		ADD COLUMN IF NOT EXISTS motivo_salida VARCHAR(80),
+		ADD COLUMN IF NOT EXISTS observacion_salida TEXT`); err != nil {
+		return err
+	}
+	return execSchemaPatch(
+		"Esquema: columnas persona_ingreso_salida (metodo_registro, registrado_por_user_id, motivo_salida, observacion_salida) verificadas",
+		`CREATE INDEX IF NOT EXISTS idx_persona_ingreso_salida_registrado_por
+		ON persona_ingreso_salida (registrado_por_user_id)`,
+	)
+}
+
 func patchFichaTipoFormacion() error {
 	if err := execSchemaPatch(
 		"Esquema: columna fichas_caracterizacion.tipo_formacion verificada",
@@ -250,6 +265,7 @@ func EnsureSchemaPatches() error {
 		patchAutoMigrateDashboardModels,
 		patchAutoMigrateEleccionModels,
 		patchPersonaIngresoSalidaSalidaSinIngreso,
+		patchPersonaIngresoSalidaColumnas,
 		patchFichaTipoFormacion,
 		patchFichaNombreYProgramaOpcional,
 		patchAutoMigrateSofiaCredencial,

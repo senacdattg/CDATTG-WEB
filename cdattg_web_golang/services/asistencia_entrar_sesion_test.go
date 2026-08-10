@@ -118,10 +118,10 @@ func (s *stubInstFichaRepoEntrar) FindByFichaIDAndInstructorID(_, _ uint) (*mode
 func (s *stubInstFichaRepoEntrar) FindByInstructorID(uint) ([]models.InstructorFichaCaracterizacion, error) {
 	return nil, nil
 }
-func (s *stubInstFichaRepoEntrar) CountActiveFichasByInstructorID(uint) (int, error) { return 0, nil }
-func (s *stubInstFichaRepoEntrar) Create(*models.InstructorFichaCaracterizacion) error  { return nil }
-func (s *stubInstFichaRepoEntrar) Update(*models.InstructorFichaCaracterizacion) error  { return nil }
-func (s *stubInstFichaRepoEntrar) Delete(uint) error                                     { return nil }
+func (s *stubInstFichaRepoEntrar) CountActiveFichasByInstructorID(uint) (int, error)   { return 0, nil }
+func (s *stubInstFichaRepoEntrar) Create(*models.InstructorFichaCaracterizacion) error { return nil }
+func (s *stubInstFichaRepoEntrar) Update(*models.InstructorFichaCaracterizacion) error { return nil }
+func (s *stubInstFichaRepoEntrar) Delete(uint) error                                   { return nil }
 func (s *stubInstFichaRepoEntrar) DeleteByFichaIDAndInstructorID(_, _ uint) error      { return nil }
 
 type stubEvidenciaRepoEntrar struct{}
@@ -131,7 +131,31 @@ func (s *stubEvidenciaRepoEntrar) Create(ev *models.Evidencia) error {
 	return nil
 }
 func (s *stubEvidenciaRepoEntrar) FindByID(uint) (*models.Evidencia, error) { return nil, nil }
-func (s *stubEvidenciaRepoEntrar) Update(*models.Evidencia) error         { return nil }
+func (s *stubEvidenciaRepoEntrar) Update(*models.Evidencia) error           { return nil }
+
+// stubDiaSinFormacionFichaRepo implementa DiaSinFormacionFichaRepository con
+// valores cero: los tests de asistencia no cubren la feature de días sin formación.
+type stubDiaSinFormacionFichaRepo struct{}
+
+var _ repositories.DiaSinFormacionFichaRepository = (*stubDiaSinFormacionFichaRepo)(nil)
+
+func (s *stubDiaSinFormacionFichaRepo) Create(row *models.DiaSinFormacionFicha) error { return nil }
+func (s *stubDiaSinFormacionFichaRepo) Delete(id uint) error                          { return nil }
+func (s *stubDiaSinFormacionFichaRepo) FindByID(id uint) (*models.DiaSinFormacionFicha, error) {
+	return nil, nil
+}
+func (s *stubDiaSinFormacionFichaRepo) ListByFicha(fichaID uint) ([]models.DiaSinFormacionFicha, error) {
+	return nil, nil
+}
+func (s *stubDiaSinFormacionFichaRepo) ListAll() ([]models.DiaSinFormacionFicha, error) {
+	return nil, nil
+}
+func (s *stubDiaSinFormacionFichaRepo) ExistsEnFecha(fichaID uint, fecha time.Time) (bool, string, error) {
+	return false, "", nil
+}
+func (s *stubDiaSinFormacionFichaRepo) FindEnRango(fichaID uint, desde, hasta time.Time) ([]models.DiaSinFormacionFicha, error) {
+	return nil, nil
+}
 
 func testAsistenciaServiceEntrar(repo *stubAsistenciaRepoEntrar, ifc *models.InstructorFichaCaracterizacion) *asistenciaService {
 	setRelaxarRestriccionAsistenciaForTest(true)
@@ -146,13 +170,15 @@ func testAsistenciaServiceEntrar(repo *stubAsistenciaRepoEntrar, ifc *models.Ins
 	}
 	ifc.Ficha = ficha
 	calendarioSvc := &CalendarioFormacionService{
-		fichaRepo:             &stubFichaRepoHorario{ficha: ficha},
-		instFichaRepo:         &stubInstFichaRepoEntrar{ifc: ifc},
-		fichaDiasRepo:         &stubFichaDiasRepo{},
-		instFichaDiasRepo:     &stubInstFichaDiasRepo{},
-		trasladoFechaRepo:     &stubTrasladoFechaRepo{},
-		festivosCache:         map[string]bool{time.Now().Format(time.DateOnly): false},
-		sinFormacionSedeCache: make(map[uint]map[string]string),
+		fichaRepo:                &stubFichaRepoHorario{ficha: ficha},
+		instFichaRepo:            &stubInstFichaRepoEntrar{ifc: ifc},
+		fichaDiasRepo:            &stubFichaDiasRepo{},
+		instFichaDiasRepo:        &stubInstFichaDiasRepo{},
+		trasladoFechaRepo:        &stubTrasladoFechaRepo{},
+		festivosCache:            map[string]bool{time.Now().Format(time.DateOnly): false},
+		sinFormacionSedeCache:    make(map[uint]map[string]string),
+		sinFormacionFichaCache:   make(map[uint]map[string]string),
+		diaSinFormacionFichaRepo: &stubDiaSinFormacionFichaRepo{},
 	}
 	horario := testHorarioService(ifc, ficha, nil, nil)
 	horario.calendarioSvc = calendarioSvc

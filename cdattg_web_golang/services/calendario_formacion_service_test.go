@@ -107,13 +107,15 @@ func TestEsSesionFormacionValida_RelaxarPermiteSinDiaProgramado(t *testing.T) {
 	}
 	ifc := &models.InstructorFichaCaracterizacion{InstructorID: 1, FichaID: 10, FechaInicio: &inicio, FechaFin: &fin}
 	svc := &CalendarioFormacionService{
-		fichaRepo:             &stubFichaRepoHorario{ficha: ficha},
-		instFichaRepo:         &stubInstFichaRepo{ifc: ifc},
-		fichaDiasRepo:         &stubFichaDiasRepoCal{dias: []models.FichaDiasFormacion{{DiaFormacionID: 1}}},
-		instFichaDiasRepo:     &stubInstFichaDiasRepo{dias: []models.InstructorFichaDias{{DiaFormacionID: 1}}},
-		trasladoFechaRepo:     &stubTrasladoFechaRepo{},
-		festivosCache:         make(map[string]bool),
-		sinFormacionSedeCache: make(map[uint]map[string]string),
+		fichaRepo:                &stubFichaRepoHorario{ficha: ficha},
+		instFichaRepo:            &stubInstFichaRepo{ifc: ifc},
+		fichaDiasRepo:            &stubFichaDiasRepoCal{dias: []models.FichaDiasFormacion{{DiaFormacionID: 1}}},
+		instFichaDiasRepo:        &stubInstFichaDiasRepo{dias: []models.InstructorFichaDias{{DiaFormacionID: 1}}},
+		trasladoFechaRepo:        &stubTrasladoFechaRepo{},
+		festivosCache:            make(map[string]bool),
+		sinFormacionSedeCache:    make(map[uint]map[string]string),
+		sinFormacionFichaCache:   make(map[uint]map[string]string),
+		diaSinFormacionFichaRepo: &stubDiaSinFormacionFichaRepo{},
 	}
 	miercoles := time.Date(2026, 6, 3, 0, 0, 0, 0, time.Local)
 	svc.festivosCache[miercoles.Format(time.DateOnly)] = false
@@ -139,13 +141,15 @@ func TestEsSesionFormacionValida_SinRelaxRechazaDiaNoProgramado(t *testing.T) {
 	}
 	ifc := &models.InstructorFichaCaracterizacion{InstructorID: 1, FichaID: 10, FechaInicio: &inicio, FechaFin: &fin}
 	svc := &CalendarioFormacionService{
-		fichaRepo:             &stubFichaRepoHorario{ficha: ficha},
-		instFichaRepo:         &stubInstFichaRepo{ifc: ifc},
-		fichaDiasRepo:         &stubFichaDiasRepoCal{dias: []models.FichaDiasFormacion{{DiaFormacionID: 1}, {DiaFormacionID: 3}}},
-		instFichaDiasRepo:     &stubInstFichaDiasRepo{dias: []models.InstructorFichaDias{{DiaFormacionID: 1}}},
-		trasladoFechaRepo:     &stubTrasladoFechaRepo{},
-		festivosCache:         make(map[string]bool),
-		sinFormacionSedeCache: make(map[uint]map[string]string),
+		fichaRepo:                &stubFichaRepoHorario{ficha: ficha},
+		instFichaRepo:            &stubInstFichaRepo{ifc: ifc},
+		fichaDiasRepo:            &stubFichaDiasRepoCal{dias: []models.FichaDiasFormacion{{DiaFormacionID: 1}, {DiaFormacionID: 3}}},
+		instFichaDiasRepo:        &stubInstFichaDiasRepo{dias: []models.InstructorFichaDias{{DiaFormacionID: 1}}},
+		trasladoFechaRepo:        &stubTrasladoFechaRepo{},
+		festivosCache:            make(map[string]bool),
+		sinFormacionSedeCache:    make(map[uint]map[string]string),
+		sinFormacionFichaCache:   make(map[uint]map[string]string),
+		diaSinFormacionFichaRepo: &stubDiaSinFormacionFichaRepo{},
 	}
 	miercoles := time.Date(2026, 6, 3, 0, 0, 0, 0, time.Local)
 	svc.festivosCache[miercoles.Format(time.DateOnly)] = false

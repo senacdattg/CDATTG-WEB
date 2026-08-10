@@ -304,13 +304,13 @@ function PerfilContactoSection({ loading, persona, email }: PerfilContactoSectio
             icon={<DevicePhoneMobileIcon className="h-5 w-5" />}
             label="Celular"
             value={persona.celular || ''}
-            href={persona.celular ? `tel:${persona.celular.replace(/\s/g, '')}` : undefined}
+            href={persona.celular ? `tel:${persona.celular.replaceAll(/\s/g, '')}` : undefined}
           />
           <InfoRow
             icon={<PhoneIcon className="h-5 w-5" />}
             label="Teléfono"
             value={persona.telefono || ''}
-            href={persona.telefono ? `tel:${persona.telefono.replace(/\s/g, '')}` : undefined}
+            href={persona.telefono ? `tel:${persona.telefono.replaceAll(/\s/g, '')}` : undefined}
           />
           <InfoRow
             icon={<MapPinIcon className="h-5 w-5" />}

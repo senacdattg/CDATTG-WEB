@@ -89,7 +89,7 @@ func (s *productoService) Create(req dto.ProductoCreateRequest, userCreateID uin
 func (s *productoService) Update(id uint, req dto.ProductoUpdateRequest) (*dto.ProductoResponse, error) {
 	p, err := s.repo.FindByID(id)
 	if err != nil || p == nil {
-		return nil, errors.New("producto no encontrado")
+		return nil, errors.New(errMsgProductoNoEncontrado)
 	}
 	name := strings.TrimSpace(strings.ToUpper(req.Name))
 	if name == "" {
@@ -137,7 +137,7 @@ func (s *productoService) Update(id uint, req dto.ProductoUpdateRequest) (*dto.P
 func (s *productoService) GetByID(id uint) (*dto.ProductoResponse, error) {
 	p, err := s.repo.FindByID(id)
 	if err != nil || p == nil {
-		return nil, errors.New("producto no encontrado")
+		return nil, errors.New(errMsgProductoNoEncontrado)
 	}
 	return s.toResponse(p), nil
 }
@@ -157,7 +157,7 @@ func (s *productoService) List(limit, offset int) ([]dto.ProductoResponse, int64
 func (s *productoService) Delete(id uint) error {
 	p, err := s.repo.FindByID(id)
 	if err != nil || p == nil {
-		return errors.New("producto no encontrado")
+		return errors.New(errMsgProductoNoEncontrado)
 	}
 	return s.repo.Delete(p)
 }

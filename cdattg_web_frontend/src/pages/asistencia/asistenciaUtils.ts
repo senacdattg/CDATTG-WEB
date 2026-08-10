@@ -7,7 +7,7 @@ export type AccionRegistroDocumento = 'ingreso' | 'salida';
 export function normalizarDocumentoEscaneado(raw: string): string {
   const trimmed = raw.trim();
   if (!trimmed) return '';
-  const soloDigitos = trimmed.replace(/\D/g, '');
+  const soloDigitos = trimmed.replaceAll(/\D/g, '');
   return soloDigitos.length >= 5 ? soloDigitos : trimmed;
 }
 

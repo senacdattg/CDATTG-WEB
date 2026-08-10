@@ -4,10 +4,21 @@ export type TrasladoModo = 'permanente' | 'fechas';
 
 export type TrasladoParFechaDraft = TrasladoParFechaRequest & { clientKey: string };
 
+function nuevoClientKey(): string {
+  const c = globalThis.crypto;
+  if (typeof c?.randomUUID === 'function') {
+    return c.randomUUID();
+  }
+  if (!c?.getRandomValues) {
+    throw new Error('Web Crypto API no disponible');
+  }
+  const bytes = new Uint8Array(16);
+  c.getRandomValues(bytes);
+  return Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
+}
+
 export function crearTrasladoParFechaDraft(): TrasladoParFechaDraft {
-  const clientKey =
-    globalThis.crypto?.randomUUID?.() ?? `par-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-  return { clientKey, fecha_origen: '', fecha_destino: '' };
+  return { clientKey: nuevoClientKey(), fecha_origen: '', fecha_destino: '' };
 }
 
 type FichaDetalleTrasladoDiaModalProps = Readonly<{

@@ -43,7 +43,7 @@ func (h *JornadaHandler) Create(c *gin.Context) {
 func (h *JornadaHandler) Update(c *gin.Context) {
 	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
 	if err != nil || id == 0 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "id inválido"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": errMsgIDInvalido})
 		return
 	}
 	var req dto.JornadaUpdateRequest
@@ -62,7 +62,7 @@ func (h *JornadaHandler) Update(c *gin.Context) {
 func (h *JornadaHandler) Propagar(c *gin.Context) {
 	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
 	if err != nil || id == 0 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "id inválido"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": errMsgIDInvalido})
 		return
 	}
 	result, err := h.svc.Propagar(uint(id))
@@ -76,7 +76,7 @@ func (h *JornadaHandler) Propagar(c *gin.Context) {
 func (h *JornadaHandler) Delete(c *gin.Context) {
 	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
 	if err != nil || id == 0 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "id inválido"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": errMsgIDInvalido})
 		return
 	}
 	if err := h.svc.Delete(uint(id)); err != nil {

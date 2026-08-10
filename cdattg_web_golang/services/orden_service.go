@@ -38,60 +38,99 @@ func NewOrdenService() OrdenService {
 	}
 }
 
-func (s *ordenService) CreateFromCarrito(req dto.OrdenFromCarritoRequest, personaID uint, userCreateID uint) (*dto.OrdenResponse, error) {
-	if req.Tipo == "prestamo" && (req.FechaDevolucion == nil || !req.FechaDevolucion.After(time.Now().Truncate(24*time.Hour))) {
-		return nil, errors.New("para préstamo la fecha de devolución es obligatoria y debe ser posterior a hoy")
+type carritoItemStock struct {
+	ProductoID uint
+	Cantidad   int
+}
+
+func validateFechaDevolucionPrestamo(tipo string, fecha *time.Time) error {
+	if tipo != "prestamo" {
+		return nil
 	}
-	// Validar stock de todos los ítems antes de crear
-	for _, item := range req.Carrito {
+	hoy := time.Now().Truncate(24 * time.Hour)
+	if fecha == nil || !fecha.After(hoy) {
+		return errors.New("para préstamo la fecha de devolución es obligatoria y debe ser posterior a hoy")
+	}
+	return nil
+}
+
+func (s *ordenService) validateStockItems(items []carritoItemStock) error {
+	for _, item := range items {
 		prod, err := s.productoRepo.FindByID(item.ProductoID)
 		if err != nil || prod == nil {
-			return nil, fmt.Errorf("producto %d no encontrado", item.ProductoID)
+			return fmt.Errorf("producto %d no encontrado", item.ProductoID)
 		}
 		disp := 0
 		if prod.Cantidad != nil {
 			disp = *prod.Cantidad
 		}
 		if item.Cantidad > disp {
-			return nil, fmt.Errorf("stock insuficiente para producto %s: solicitado %d, disponible %d", prod.Name, item.Cantidad, disp)
+			return fmt.Errorf("stock insuficiente para producto %s: solicitado %d, disponible %d", prod.Name, item.Cantidad, disp)
 		}
 	}
-	db := database.GetDB()
+	return nil
+}
+
+func (s *ordenService) createOrdenCarritoInTx(
+	tx *gorm.DB,
+	req dto.OrdenFromCarritoRequest,
+	personaID uint,
+	userCreateID uint,
+) (*inventario.Orden, error) {
+	o := inventario.Orden{
+		NumeroOrden:         "",
+		TipoOrden:           strings.ToUpper(req.Tipo),
+		Descripcion:         req.Descripcion,
+		FechaOrden:          time.Now(),
+		FechaDevolucion:     req.FechaDevolucion,
+		Estado:              inventario.OrdenEstadoEnEspera,
+		PersonaID:           personaID,
+		RolID:               req.RolID,
+		ProgramaFormacionID: req.ProgramaFormacionID,
+	}
+	o.UserCreateID = &userCreateID
+	if err := tx.Create(&o).Error; err != nil {
+		return nil, err
+	}
+	o.NumeroOrden = "ORD-" + strconv.FormatUint(uint64(o.ID), 10)
+	if err := tx.Save(&o).Error; err != nil {
+		return nil, err
+	}
+	detalles := make([]inventario.DetalleOrden, 0, len(req.Carrito))
+	for _, item := range req.Carrito {
+		detalles = append(detalles, inventario.DetalleOrden{
+			OrdenID:    o.ID,
+			ProductoID: item.ProductoID,
+			Cantidad:   item.Cantidad,
+			Estado:     inventario.DetalleEstadoEnEspera,
+		})
+	}
+	if err := tx.Create(&detalles).Error; err != nil {
+		return nil, err
+	}
+	o.DetalleOrdenes = detalles
+	return &o, nil
+}
+
+func (s *ordenService) CreateFromCarrito(req dto.OrdenFromCarritoRequest, personaID uint, userCreateID uint) (*dto.OrdenResponse, error) {
+	if err := validateFechaDevolucionPrestamo(req.Tipo, req.FechaDevolucion); err != nil {
+		return nil, err
+	}
+	items := make([]carritoItemStock, len(req.Carrito))
+	for i, item := range req.Carrito {
+		items[i] = carritoItemStock{ProductoID: item.ProductoID, Cantidad: item.Cantidad}
+	}
+	if err := s.validateStockItems(items); err != nil {
+		return nil, err
+	}
+
 	var orden *inventario.Orden
-	err := db.Transaction(func(tx *gorm.DB) error {
-		o := inventario.Orden{
-			NumeroOrden:         "", // se asigna después
-			TipoOrden:           strings.ToUpper(req.Tipo),
-			Descripcion:         req.Descripcion,
-			FechaOrden:          time.Now(),
-			FechaDevolucion:     req.FechaDevolucion,
-			Estado:              inventario.OrdenEstadoEnEspera,
-			PersonaID:           personaID,
-			RolID:               req.RolID,
-			ProgramaFormacionID: req.ProgramaFormacionID,
+	err := database.GetDB().Transaction(func(tx *gorm.DB) error {
+		o, errTx := s.createOrdenCarritoInTx(tx, req, personaID, userCreateID)
+		if errTx != nil {
+			return errTx
 		}
-		o.UserCreateID = &userCreateID
-		if err := tx.Create(&o).Error; err != nil {
-			return err
-		}
-		o.NumeroOrden = "ORD-" + strconv.FormatUint(uint64(o.ID), 10)
-		if err := tx.Save(&o).Error; err != nil {
-			return err
-		}
-		orden = &o
-		detalles := make([]inventario.DetalleOrden, 0, len(req.Carrito))
-		for _, item := range req.Carrito {
-			detalles = append(detalles, inventario.DetalleOrden{
-				OrdenID:   o.ID,
-				ProductoID: item.ProductoID,
-				Cantidad:   item.Cantidad,
-				Estado:     inventario.DetalleEstadoEnEspera,
-			})
-		}
-		if err := tx.Create(&detalles).Error; err != nil {
-			return err
-		}
-		orden.DetalleOrdenes = detalles
+		orden = o
 		return nil
 	})
 	if err != nil {

@@ -11,8 +11,13 @@ type Props = Readonly<{
   children: ReactNode;
 }>;
 
+/** id estable del panel colapsable (aria-controls / id del contenido). */
+export function asistenciaPanelId(title: string): string {
+  return `asistencia-panel-${title.replaceAll(/\s+/g, '-').toLowerCase()}`;
+}
+
 export function AsistenciaCollapsibleCard({ title, description, icon, badge, open, onToggle, children }: Props) {
-  const panelId = `asistencia-panel-${title.replace(/\s+/g, '-').toLowerCase()}`;
+  const panelId = asistenciaPanelId(title);
 
   return (
     <div

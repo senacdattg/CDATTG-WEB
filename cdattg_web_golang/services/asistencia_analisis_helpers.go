@@ -99,13 +99,6 @@ func enriquecerHoraTomaConCumplimiento(hora *dto.AnalisisHoraTomaSection, cumpl 
 	hora.TotalDiasConSesion = total
 }
 
-func filtrarFichasPorID(fichas []models.FichaCaracterizacion, fichaID *uint) []models.FichaCaracterizacion {
-	if fichaID == nil || *fichaID == 0 {
-		return fichas
-	}
-	return filtrarFichasPorIDs(fichas, []uint{*fichaID})
-}
-
 func filtrarFichasPorIDs(fichas []models.FichaCaracterizacion, fichaIDs []uint) []models.FichaCaracterizacion {
 	if len(fichaIDs) == 0 {
 		return fichas

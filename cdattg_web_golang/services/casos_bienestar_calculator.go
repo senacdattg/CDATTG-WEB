@@ -101,9 +101,9 @@ func mapInasistenciasJustificadas(rows []repositories.InasistenciaJustificadaRaw
 // sesionDiaBienestar agrupa sesiones del mismo instructor en la misma fecha de formación.
 // Evita doble conteo cuando hubo más de una sesión abierta el mismo día.
 type sesionDiaBienestar struct {
-	Fecha          time.Time
-	InstructorID   uint
-	AsistenciaIDs  []uint
+	Fecha         time.Time
+	InstructorID  uint
+	AsistenciaIDs []uint
 }
 
 func agruparSesionesPorDiaInstructor(validas []repositories.SesionCasosBienestarRaw) map[uint][]sesionDiaBienestar {
@@ -382,37 +382,43 @@ func ordenarInasistenciasDetallePorFechaDesc(rows []repositories.InasistenciaDet
 	})
 }
 
+func rachaAprendizEnPrep(prep *casosBienestarRangoPreparado, fichaID, aprendizID uint) rachaConsecutivaResult {
+	return detectarRachaConsecutiva(
+		estadosFormacionAprendiz(aprendizID, prep.slotsPorFicha[fichaID], prep.asistio, prep.justificada),
+	)
+}
+
 func (c *CasosBienestarCalculator) CalcularDetalle(
 	fichaNumero string,
 	aprendizID uint,
 	fechaInicio, fechaFin string,
-) (sinJustificar, justificadas []repositories.InasistenciaDetalleRow, err error) {
+) (sinJustificar, justificadas []repositories.InasistenciaDetalleRow, racha rachaConsecutivaResult, err error) {
 	fichaNumero = strings.TrimSpace(fichaNumero)
 	if fichaNumero == "" || aprendizID == 0 {
-		return nil, nil, errors.New("ficha y aprendiz son requeridos")
+		return nil, nil, rachaConsecutivaResult{}, errors.New("ficha y aprendiz son requeridos")
 	}
 
 	prep, err := c.prepararRango(nil, nil, fechaInicio, fechaFin)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, rachaConsecutivaResult{}, err
 	}
 
 	// La ficha se resuelve solo por número: la sede de origen no limita el análisis
 	// (puede haber formación o práctica en otras sedes).
 	ficha, err := c.fichaRepo.FindByFicha(fichaNumero)
 	if err != nil || ficha == nil {
-		return nil, nil, fmt.Errorf("ficha no encontrada")
+		return nil, nil, rachaConsecutivaResult{}, fmt.Errorf("ficha no encontrada")
 	}
 
 	metaRows, err := c.repo.ListDetalleSesionesCasosBienestar(fichaNumero, aprendizID, fechaInicio, fechaFin, "")
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, rachaConsecutivaResult{}, err
 	}
 	metaPorID := agruparDetalleSesionesPorAsistenciaID(metaRows)
 	sinJustificar, justificadas = clasificarInasistenciasDetalle(prep, ficha.ID, aprendizID, metaPorID)
 	ordenarInasistenciasDetallePorFechaDesc(sinJustificar)
 	ordenarInasistenciasDetallePorFechaDesc(justificadas)
-	return sinJustificar, justificadas, nil
+	return sinJustificar, justificadas, rachaAprendizEnPrep(prep, ficha.ID, aprendizID), nil
 }
 
 func (c *CasosBienestarCalculator) ListSesionesSinAsistenciaTomada(

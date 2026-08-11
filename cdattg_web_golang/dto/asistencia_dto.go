@@ -175,16 +175,16 @@ type AsistenciaDashboardFichaSinSesion struct {
 
 // AsistenciaDashboardPorFicha cantidad de aprendices que vinieron a formación por ficha
 type AsistenciaDashboardPorFicha struct {
-	FichaID              uint   `json:"ficha_id"`
-	FichaNumero          string `json:"ficha_numero"`
-	ProgramaNombre       string `json:"programa_nombre"`
-	JornadaNombre        string `json:"jornada_nombre"`
-	SedeNombre           string `json:"sede_nombre"`
-	TipoFormacion        string `json:"tipo_formacion,omitempty"`
-	TipoFormacionLabel   string `json:"tipo_formacion_label,omitempty"`
-	CantidadVinieron     int    `json:"cantidad_vinieron"`
-	CantidadEnFormacion  int    `json:"cantidad_en_formacion"`
-	TotalAprendices      int    `json:"total_aprendices"`
+	FichaID             uint   `json:"ficha_id"`
+	FichaNumero         string `json:"ficha_numero"`
+	ProgramaNombre      string `json:"programa_nombre"`
+	JornadaNombre       string `json:"jornada_nombre"`
+	SedeNombre          string `json:"sede_nombre"`
+	TipoFormacion       string `json:"tipo_formacion,omitempty"`
+	TipoFormacionLabel  string `json:"tipo_formacion_label,omitempty"`
+	CantidadVinieron    int    `json:"cantidad_vinieron"`
+	CantidadEnFormacion int    `json:"cantidad_en_formacion"`
+	TotalAprendices     int    `json:"total_aprendices"`
 }
 
 // CasosBienestarResponse lista de aprendices con indicadores de riesgo (para oficina de bienestar)
@@ -200,22 +200,57 @@ type CasosBienestarResponse struct {
 
 // CasoBienestarItem un aprendiz con inasistencias >= umbral
 type CasoBienestarItem struct {
-	AprendizID           uint   `json:"aprendiz_id"`
-	PersonaNombre        string `json:"persona_nombre"`
-	NumeroDocumento      string `json:"numero_documento"`
-	FichaNumero          string `json:"ficha_numero"`
-	ProgramaNombre       string `json:"programa_nombre"`
-	SedeNombre           string `json:"sede_nombre"`
-	JornadaNombre        string `json:"jornada_nombre,omitempty"`
-	TipoFormacion        string `json:"tipo_formacion,omitempty"`
-	TipoFormacionLabel   string `json:"tipo_formacion_label,omitempty"`
-	InstructorNombre     string `json:"instructor_nombre,omitempty"`
-	AmbienteNombre       string `json:"ambiente_nombre,omitempty"`
-	ModalidadNombre      string `json:"modalidad_formacion_nombre,omitempty"`
+	AprendizID                uint   `json:"aprendiz_id"`
+	PersonaNombre             string `json:"persona_nombre"`
+	NumeroDocumento           string `json:"numero_documento"`
+	FichaNumero               string `json:"ficha_numero"`
+	ProgramaNombre            string `json:"programa_nombre"`
+	SedeNombre                string `json:"sede_nombre"`
+	JornadaNombre             string `json:"jornada_nombre,omitempty"`
+	TipoFormacion             string `json:"tipo_formacion,omitempty"`
+	TipoFormacionLabel        string `json:"tipo_formacion_label,omitempty"`
+	InstructorNombre          string `json:"instructor_nombre,omitempty"`
+	AmbienteNombre            string `json:"ambiente_nombre,omitempty"`
+	ModalidadNombre           string `json:"modalidad_formacion_nombre,omitempty"`
 	TotalSesiones             int    `json:"total_sesiones"`
 	AsistenciasEfectivas      int    `json:"asistencias_efectivas"`
 	Inasistencias             int    `json:"inasistencias"` // sin justificar (umbral de alerta)
 	InasistenciasJustificadas int    `json:"inasistencias_justificadas"`
+}
+
+// AlertasConsecutivasResponse aprendices con 2+ inasistencias seguidas (Acuerdo 009).
+type AlertasConsecutivasResponse struct {
+	DiasAnalizados int                     `json:"dias_analizados"`
+	FechaInicio    string                  `json:"fecha_inicio"`
+	FechaFin       string                  `json:"fecha_fin"`
+	Historico      bool                    `json:"historico_completo"`
+	Alertas        []AlertaConsecutivaItem `json:"alertas"`
+}
+
+// AlertaConsecutivaItem un aprendiz con racha de inasistencias sin justificar.
+type AlertaConsecutivaItem struct {
+	AprendizID         uint     `json:"aprendiz_id"`
+	PersonaNombre      string   `json:"persona_nombre"`
+	NumeroDocumento    string   `json:"numero_documento"`
+	FichaNumero        string   `json:"ficha_numero"`
+	ProgramaNombre     string   `json:"programa_nombre"`
+	SedeNombre         string   `json:"sede_nombre"`
+	JornadaNombre      string   `json:"jornada_nombre,omitempty"`
+	TipoFormacion      string   `json:"tipo_formacion,omitempty"`
+	TipoFormacionLabel string   `json:"tipo_formacion_label,omitempty"`
+	InstructorNombre   string   `json:"instructor_nombre,omitempty"`
+	AmbienteNombre     string   `json:"ambiente_nombre,omitempty"`
+	ModalidadNombre    string   `json:"modalidad_formacion_nombre,omitempty"`
+	FechasRacha        []string `json:"fechas_racha"`
+	RachaActiva        bool     `json:"racha_activa"`
+}
+
+// MisAlertasConsecutivasResponse alertas Acuerdo 009 del aprendiz autenticado.
+type MisAlertasConsecutivasResponse struct {
+	DiasAnalizados int                     `json:"dias_analizados"`
+	FechaInicio    string                  `json:"fecha_inicio"`
+	FechaFin       string                  `json:"fecha_fin"`
+	Alertas        []AlertaConsecutivaItem `json:"alertas"`
 }
 
 // InasistenciaDetalleItem representa una fecha de sesión en la que el aprendiz no asistió.
@@ -227,12 +262,14 @@ type InasistenciaDetalleItem struct {
 
 // CasoBienestarAprendizDetalleResponse detalle de inasistencias por aprendiz en una ficha.
 type CasoBienestarAprendizDetalleResponse struct {
-	FichaNumero   string                    `json:"ficha_numero"`
-	AprendizID    uint                      `json:"aprendiz_id"`
-	FechaInicio   string                    `json:"fecha_inicio"`
+	FichaNumero               string                    `json:"ficha_numero"`
+	AprendizID                uint                      `json:"aprendiz_id"`
+	FechaInicio               string                    `json:"fecha_inicio"`
 	FechaFin                  string                    `json:"fecha_fin"`
 	Inasistencias             []InasistenciaDetalleItem `json:"inasistencias"`
 	InasistenciasJustificadas []InasistenciaDetalleItem `json:"inasistencias_justificadas"`
+	FechasRacha               []string                  `json:"fechas_racha,omitempty"`
+	RachaActiva               bool                      `json:"racha_activa,omitempty"`
 }
 
 // MisInasistenciasFichaOpcion ficha a la que está vinculado el aprendiz (activa o no según filtro).
@@ -263,6 +300,7 @@ type MisInasistenciasResponse struct {
 	Inasistencias                  []InasistenciaDetalleItem     `json:"inasistencias"`
 	InasistenciasJustificadas      []InasistenciaDetalleItem     `json:"inasistencias_justificadas"`
 	Fichas                         []MisInasistenciasFichaOpcion `json:"fichas"`
+	AlertasConsecutivas            []AlertaConsecutivaItem       `json:"alertas_consecutivas"`
 }
 
 // InstructorPendienteItem resume cuántos aprendices tiene un instructor con registros "por corregir" (requiere_revision=true) en el período analizado.

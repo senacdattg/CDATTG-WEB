@@ -634,6 +634,46 @@ func (h *AsistenciaHandler) GetCasosBienestar(c *gin.Context) {
 	c.JSON(http.StatusOK, resp)
 }
 
+// GetAlertasConsecutivas aprendices con 2+ inasistencias seguidas (Acuerdo 009).
+func (h *AsistenciaHandler) GetAlertasConsecutivas(c *gin.Context) {
+	instructorLiderID, ok := h.resolveInstructorLiderScopeCasosBienestar(c)
+	if !ok {
+		return
+	}
+	resp, err := h.svc.GetAlertasConsecutivas(
+		parseUintQuery(c, "sede_id"),
+		parseDiasAnalisisQuery(c),
+		instructorLiderID,
+		c.Query("tipo_formacion"),
+	)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, resp)
+}
+
+// GetMisAlertasConsecutivas alertas Acuerdo 009 del aprendiz autenticado.
+func (h *AsistenciaHandler) GetMisAlertasConsecutivas(c *gin.Context) {
+	u, _ := c.Get("user")
+	user, _ := u.(*models.User)
+	if user == nil || user.PersonaID == nil {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Su cuenta no está vinculada a una persona."})
+		return
+	}
+	resp, err := h.svc.GetMisAlertasConsecutivas(*user.PersonaID, parseDiasAnalisisQuery(c))
+	if err != nil {
+		msg := err.Error()
+		if msg == "no está matriculado como aprendiz activo" {
+			c.JSON(http.StatusOK, dto.MisAlertasConsecutivasResponse{Alertas: []dto.AlertaConsecutivaItem{}})
+			return
+		}
+		c.JSON(http.StatusBadRequest, gin.H{"error": msg})
+		return
+	}
+	c.JSON(http.StatusOK, resp)
+}
+
 // GetDetalleInasistenciasAprendiz devuelve las fechas de inasistencia y observaciones de un aprendiz en una ficha.
 func (h *AsistenciaHandler) GetDetalleInasistenciasAprendiz(c *gin.Context) {
 	instructorLiderID, ok := h.resolveInstructorLiderScopeCasosBienestar(c)

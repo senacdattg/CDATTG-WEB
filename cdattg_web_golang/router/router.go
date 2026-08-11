@@ -188,7 +188,9 @@ func SetupRouter() *gin.Engine {
 			// Casos de Bienestar: oficina (superadmin/bienestar) o instructor líder (alcance a sus fichas)
 			asistencias.GET("/dashboard/casos-bienestar", middleware.RequireSuperAdminBienestarOrInstructor(), asistenciaHandler.GetCasosBienestar)
 			asistencias.GET("/dashboard/casos-bienestar/ficha/:fichaNumero/aprendiz/:aprendizId/detalle", middleware.RequireSuperAdminBienestarOrInstructor(), asistenciaHandler.GetDetalleInasistenciasAprendiz)
+			asistencias.GET("/dashboard/alertas-consecutivas", middleware.RequireSuperAdminBienestarOrInstructor(), asistenciaHandler.GetAlertasConsecutivas)
 			asistencias.GET("/mis-inasistencias", middleware.RequirePermission("asistencia", permVerMisInasistencias), asistenciaHandler.GetMisInasistencias)
+			asistencias.GET("/mis-alertas-consecutivas", middleware.RequirePermission("asistencia", permVerMisInasistencias), asistenciaHandler.GetMisAlertasConsecutivas)
 			asistencias.GET("/dashboard/pendientes-revision-instructor", middleware.RequireSuperAdminOrBienestar(), asistenciaHandler.ListPendientesRevisionAdmin)
 			asistencias.GET("/dashboard/sesiones-sin-asistencia-tomada", middleware.RequireSuperAdminAdminOrCoordinator(), asistenciaHandler.GetSesionesSinAsistenciaTomada)
 			// Entrar a tomar asistencia: solo requiere estar autenticado; el servicio valida que el usuario sea instructor asignado a la ficha.

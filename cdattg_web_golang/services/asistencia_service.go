@@ -27,11 +27,10 @@ const (
 	errMsgSinIngresoParaFinalizar        = "Debe registrar al menos un ingreso antes de finalizar."
 )
 
-
 const (
 	minSegundosEntreIngresoYSalida = 60
-	msgIngresoYaRegistrado   = "Entrada ya registrada para este aprendiz en esta sesión. No se guardó de nuevo para evitar un registro duplicado."
-	errMsgEsperaMinutoSalida = "debe esperar al menos 1 minuto entre la entrada y la salida"
+	msgIngresoYaRegistrado         = "Entrada ya registrada para este aprendiz en esta sesión. No se guardó de nuevo para evitar un registro duplicado."
+	errMsgEsperaMinutoSalida       = "debe esperar al menos 1 minuto entre la entrada y la salida"
 )
 
 func mensajeSalidaQRDemasiadoPronto(segundosRestantes int) string {
@@ -66,6 +65,8 @@ type AsistenciaService interface {
 	EliminarRegistroAprendiz(asistenciaAprendizID uint) error
 	GetDashboard(sedeID *uint, fecha, tipoFormacion, jornada string) (*dto.AsistenciaDashboardResponse, error)
 	GetCasosBienestar(sedeID *uint, dias, minFallas int, instructorLiderID *uint, tipoFormacion string) (*dto.CasosBienestarResponse, error)
+	GetAlertasConsecutivas(sedeID *uint, dias int, instructorLiderID *uint, tipoFormacion string) (*dto.AlertasConsecutivasResponse, error)
+	GetMisAlertasConsecutivas(personaID uint, dias int) (*dto.MisAlertasConsecutivasResponse, error)
 	GetDetalleInasistenciasAprendiz(fichaNumero string, aprendizID uint, dias int, instructorLiderID *uint) (*dto.CasoBienestarAprendizDetalleResponse, error)
 	GetMisInasistencias(personaID uint, dias int, fichaID *uint, estadoFicha, tipoFormacion string) (*dto.MisInasistenciasResponse, error)
 	GetSesionesSinAsistenciaTomada(userID uint, roles []string, dias int, regionalID, sedeID *uint, tipoFormacion, jornada string) (*dto.SesionesSinAsistenciaTomadaResponse, error)
@@ -826,17 +827,17 @@ func (s *asistenciaService) GetDashboard(sedeID *uint, fecha, tipoFormacion, jor
 		totalFichas = n
 	}
 	resp := &dto.AsistenciaDashboardResponse{
-		Fecha:                          fecha,
-		TotalAprendicesEnFormacion:     totalEnFormacion,
-		TotalAprendicesEsperados:       esperados.TotalEsperados,
-		JornadasActivas:                esperados.JornadasActivas,
-		JornadasDisponibles:            formacionDia.JornadasActivas,
-		PendientesRevision:             pendientes,
-		PorFicha:                       make([]dto.AsistenciaDashboardPorFicha, len(porFicha)),
-		FichasSinAsistenciaHoy:         sinSesionDTO,
-		FichasSinSesionJornadaActiva:   len(sinSesionActivas),
-		TotalFichasRegistradas:         int(totalFichas),
-		FichasConSesionHoy:             len(porFichaActivas),
+		Fecha:                        fecha,
+		TotalAprendicesEnFormacion:   totalEnFormacion,
+		TotalAprendicesEsperados:     esperados.TotalEsperados,
+		JornadasActivas:              esperados.JornadasActivas,
+		JornadasDisponibles:          formacionDia.JornadasActivas,
+		PendientesRevision:           pendientes,
+		PorFicha:                     make([]dto.AsistenciaDashboardPorFicha, len(porFicha)),
+		FichasSinAsistenciaHoy:       sinSesionDTO,
+		FichasSinSesionJornadaActiva: len(sinSesionActivas),
+		TotalFichasRegistradas:       int(totalFichas),
+		FichasConSesionHoy:           len(porFichaActivas),
 	}
 	for i := range porFicha {
 		tipo := tipoFormacionEfectivo(porFicha[i].TipoFormacion)
@@ -981,6 +982,113 @@ func (s *asistenciaService) GetCasosBienestar(sedeID *uint, dias, minFallas int,
 	return resp, nil
 }
 
+func alertaConsecutivaItemFromRow(row AlertaConsecutivaRow) dto.AlertaConsecutivaItem {
+	return dto.AlertaConsecutivaItem{
+		AprendizID:         row.AprendizID,
+		PersonaNombre:      row.PersonaNombre,
+		NumeroDocumento:    row.NumeroDocumento,
+		FichaNumero:        row.FichaNumero,
+		ProgramaNombre:     row.ProgramaNombre,
+		SedeNombre:         row.SedeNombre,
+		JornadaNombre:      row.JornadaNombre,
+		TipoFormacion:      tipoFormacionEfectivo(row.TipoFormacion),
+		TipoFormacionLabel: labelTipoFormacionMisInasistencias(row.TipoFormacion),
+		InstructorNombre:   row.InstructorNombre,
+		AmbienteNombre:     row.AmbienteNombre,
+		ModalidadNombre:    row.ModalidadNombre,
+		FechasRacha:        row.FechasRacha,
+		RachaActiva:        row.RachaActiva,
+	}
+}
+
+func filtrarAlertasConsecutivasPorTipo(rows []AlertaConsecutivaRow, tipoFiltro string) []AlertaConsecutivaRow {
+	if tipoFiltro == "" {
+		return rows
+	}
+	filtrados := make([]AlertaConsecutivaRow, 0, len(rows))
+	for i := range rows {
+		if tipoFormacionEfectivo(rows[i].TipoFormacion) == tipoFiltro {
+			filtrados = append(filtrados, rows[i])
+		}
+	}
+	return filtrados
+}
+
+func (s *asistenciaService) GetAlertasConsecutivas(
+	sedeID *uint,
+	dias int,
+	instructorLiderID *uint,
+	tipoFormacion string,
+) (*dto.AlertasConsecutivasResponse, error) {
+	tipoFiltro, errTipo := normalizeTipoFormacionFilter(tipoFormacion)
+	if errTipo != nil {
+		return nil, errTipo
+	}
+	rango, err := resolverRangoCasosBienestar(s.repo, sedeID, dias)
+	if err != nil {
+		return nil, err
+	}
+	fechaInicioStr := rango.FechaInicio.Format(time.DateOnly)
+	fechaFinStr := rango.FechaFin.Format(time.DateOnly)
+	rows, err := NewCasosBienestarCalculator().CalcularAlertasConsecutivas(
+		sedeID, instructorLiderID, fechaInicioStr, fechaFinStr, nil,
+	)
+	if err != nil {
+		return nil, err
+	}
+	rows = filtrarAlertasConsecutivasPorTipo(rows, tipoFiltro)
+	resp := &dto.AlertasConsecutivasResponse{
+		DiasAnalizados: rango.DiasAnalizados,
+		FechaInicio:    fechaInicioStr,
+		FechaFin:       fechaFinStr,
+		Historico:      rango.Historico,
+		Alertas:        make([]dto.AlertaConsecutivaItem, len(rows)),
+	}
+	for i := range rows {
+		resp.Alertas[i] = alertaConsecutivaItemFromRow(rows[i])
+	}
+	return resp, nil
+}
+
+func (s *asistenciaService) GetMisAlertasConsecutivas(personaID uint, dias int) (*dto.MisAlertasConsecutivasResponse, error) {
+	if personaID == 0 {
+		return nil, errors.New(errMsgAprendizActivoNoEncontrado)
+	}
+	todas, err := s.aprendizRepo.FindAllByPersonaID(personaID)
+	if err != nil {
+		return nil, err
+	}
+	if len(todas) == 0 {
+		return nil, errors.New(errMsgAprendizActivoNoEncontrado)
+	}
+	ids := make(map[uint]struct{}, len(todas))
+	for i := range todas {
+		ids[todas[i].ID] = struct{}{}
+	}
+	rango, err := resolverRangoCasosBienestar(s.repo, nil, dias)
+	if err != nil {
+		return nil, err
+	}
+	fechaInicioStr := rango.FechaInicio.Format(time.DateOnly)
+	fechaFinStr := rango.FechaFin.Format(time.DateOnly)
+	rows, err := NewCasosBienestarCalculator().CalcularAlertasConsecutivas(
+		nil, nil, fechaInicioStr, fechaFinStr, ids,
+	)
+	if err != nil {
+		return nil, err
+	}
+	mias := make([]dto.AlertaConsecutivaItem, len(rows))
+	for i := range rows {
+		mias[i] = alertaConsecutivaItemFromRow(rows[i])
+	}
+	return &dto.MisAlertasConsecutivasResponse{
+		DiasAnalizados: rango.DiasAnalizados,
+		FechaInicio:    fechaInicioStr,
+		FechaFin:       fechaFinStr,
+		Alertas:        mias,
+	}, nil
+}
+
 func (s *asistenciaService) esInstructorLiderDeFicha(instructorID uint, fichaNumero string) (bool, error) {
 	f, err := s.fichaRepo.FindByFicha(strings.TrimSpace(fichaNumero))
 	if err != nil || f == nil {
@@ -1009,7 +1117,7 @@ func (s *asistenciaService) GetDetalleInasistenciasAprendiz(fichaNumero string, 
 	fechaInicioStr := rango.FechaInicio.Format(time.DateOnly)
 	fechaFinStr := rango.FechaFin.Format(time.DateOnly)
 
-	sinJustificar, justificadas, err := NewCasosBienestarCalculator().CalcularDetalle(fichaNumero, aprendizID, fechaInicioStr, fechaFinStr)
+	sinJustificar, justificadas, racha, err := NewCasosBienestarCalculator().CalcularDetalle(fichaNumero, aprendizID, fechaInicioStr, fechaFinStr)
 	if err != nil {
 		return nil, err
 	}
@@ -1020,6 +1128,8 @@ func (s *asistenciaService) GetDetalleInasistenciasAprendiz(fichaNumero string, 
 		FechaFin:                  fechaFinStr,
 		Inasistencias:             make([]dto.InasistenciaDetalleItem, len(sinJustificar)),
 		InasistenciasJustificadas: make([]dto.InasistenciaDetalleItem, len(justificadas)),
+		FechasRacha:               racha.Fechas,
+		RachaActiva:               racha.Activa,
 	}
 	for i := range sinJustificar {
 		resp.Inasistencias[i] = dto.InasistenciaDetalleItem{
@@ -1208,6 +1318,19 @@ func (s *asistenciaService) GetMisInasistencias(personaID uint, dias int, fichaI
 	if err != nil {
 		return nil, err
 	}
+	alertas := make([]dto.AlertaConsecutivaItem, 0)
+	if len(detalle.FechasRacha) >= minRachaInasistenciasConsecutivas {
+		alertas = append(alertas, dto.AlertaConsecutivaItem{
+			AprendizID:         aprendiz.ID,
+			FichaNumero:        detalle.FichaNumero,
+			ProgramaNombre:     programaNombre,
+			SedeNombre:         sedeNombre,
+			TipoFormacion:      tipoFormacionEfectivo(tipoFormacion),
+			TipoFormacionLabel: labelTipoFormacionMisInasistencias(tipoFormacion),
+			FechasRacha:        detalle.FechasRacha,
+			RachaActiva:        detalle.RachaActiva,
+		})
+	}
 	return &dto.MisInasistenciasResponse{
 		AprendizID:                     aprendiz.ID,
 		FichaID:                        fichaIDSel,
@@ -1223,6 +1346,7 @@ func (s *asistenciaService) GetMisInasistencias(personaID uint, dias int, fichaI
 		Inasistencias:                  detalle.Inasistencias,
 		InasistenciasJustificadas:      detalle.InasistenciasJustificadas,
 		Fichas:                         opciones,
+		AlertasConsecutivas:            alertas,
 	}, nil
 }
 

@@ -110,16 +110,6 @@ func normalizeMetodo(m string) (string, error) {
 	}
 }
 
-func normalizeTipoPersona(t string) (string, error) {
-	v := strings.ToUpper(strings.TrimSpace(t))
-	for _, ok := range tiposPersonaAcceso {
-		if v == ok {
-			return v, nil
-		}
-	}
-	return "", errors.New("tipo de persona inválido")
-}
-
 func normalizeMotivoSalida(m string) (string, error) {
 	v := strings.ToUpper(strings.TrimSpace(m))
 	for _, ok := range motivosSalidaAcceso {

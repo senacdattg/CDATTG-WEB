@@ -84,17 +84,6 @@ type scraperVerificarLoteResponse struct {
 	Resultados []scraperResultadoPayload `json:"resultados"`
 }
 
-type scraperProgresoPayload struct {
-	LoteID       string `json:"lote_id"`
-	Fase         string `json:"fase"`
-	Total        int    `json:"total"`
-	Procesados   int    `json:"procesados"`
-	ActualDoc    string `json:"actual_doc"`
-	EstadoActual string `json:"estado_actual"`
-	Terminado    bool   `json:"terminado"`
-	Error        string `json:"error"`
-}
-
 func (s *SofiaScraper) postJSON(path string, payload any, out any) error {
 	body, err := json.Marshal(payload)
 	if err != nil {

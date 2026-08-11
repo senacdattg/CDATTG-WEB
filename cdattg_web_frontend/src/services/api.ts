@@ -45,6 +45,8 @@ import type {
   AnalisisExplorarFichasResponse,
   AnalisisAprendicesFichaResponse,
   CasosBienestarResponse,
+  AlertasConsecutivasResponse,
+  MisAlertasConsecutivasResponse,
   SesionesSinAsistenciaTomadaResponse,
   CasoBienestarAprendizDetalleResponse,
   MisInasistenciasResponse,
@@ -973,6 +975,28 @@ class ApiService {
     tipo_formacion?: string;
   }): Promise<CasosBienestarResponse> {
     const response = await this.api.get<CasosBienestarResponse>('/asistencias/dashboard/casos-bienestar', { params });
+    return response.data;
+  }
+
+  /** Aprendices con 2+ inasistencias consecutivas sin justificar (Acuerdo 009). */
+  async getAlertasConsecutivas(params?: {
+    dias?: number;
+    sede_id?: number;
+    tipo_formacion?: string;
+  }): Promise<AlertasConsecutivasResponse> {
+    const response = await this.api.get<AlertasConsecutivasResponse>(
+      '/asistencias/dashboard/alertas-consecutivas',
+      { params },
+    );
+    return response.data;
+  }
+
+  /** Alertas Acuerdo 009 del aprendiz autenticado. */
+  async getMisAlertasConsecutivas(params?: { dias?: number }): Promise<MisAlertasConsecutivasResponse> {
+    const response = await this.api.get<MisAlertasConsecutivasResponse>(
+      '/asistencias/mis-alertas-consecutivas',
+      { params },
+    );
     return response.data;
   }
 

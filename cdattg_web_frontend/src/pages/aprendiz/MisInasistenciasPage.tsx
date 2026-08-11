@@ -10,6 +10,10 @@ import {
 } from './misInasistenciasPermissions';
 import { useMisInasistencias } from './hooks/useMisInasistencias';
 import { EleccionRepresentantesBanner } from '../../components/elecciones/EleccionRepresentantesBanner';
+import { AlertaConsecutivaBanner } from '../../components/bienestar/AlertaConsecutivaBanner';
+import { useMisAlertasConsecutivas } from '../../hooks/useMisAlertasConsecutivas';
+import { rachaCalendarioDesdeFechas } from '../bienestar/alertas-consecutivas/alertasConsecutivasUtils';
+import type { AlertaConsecutivaItem } from '../../types';
 
 function sufijoEstadoEnSelect(mostrarEstados: boolean, activa: boolean | undefined): string {
   if (!mostrarEstados) return '';
@@ -41,6 +45,7 @@ export function MisInasistenciasPage() {
     error,
     recargar,
   } = useMisInasistencias(canView);
+  const { alertas: alertasConsecutivas } = useMisAlertasConsecutivas(canView, dias);
 
   if (!canView) {
     return <Navigate to="/perfil" replace state={{ message: MENSAJE_SIN_PERMISO_MIS_INASISTENCIAS }} />;
@@ -51,6 +56,28 @@ export function MisInasistenciasPage() {
   const totalJustificadas = data?.total_inasistencias_justificadas ?? justificadas.length;
   const variasFichas = fichas.length > 1;
   const mostrarSufijoEstado = estadoFicha === 'todas';
+  const alertasDesdeApi = data?.alertas_consecutivas?.length
+    ? data.alertas_consecutivas
+    : data?.ficha_numero
+      ? alertasConsecutivas.filter((a) => a.ficha_numero === data.ficha_numero)
+      : alertasConsecutivas;
+  const fechasRachaLocal = rachaCalendarioDesdeFechas((data?.inasistencias ?? []).map((i) => i.fecha));
+  const alertaLocal: AlertaConsecutivaItem[] =
+    alertasDesdeApi.length === 0 && fechasRachaLocal.length >= 2 && data
+      ? [
+          {
+            aprendiz_id: data.aprendiz_id,
+            persona_nombre: '',
+            numero_documento: '',
+            ficha_numero: data.ficha_numero,
+            sede_nombre: data.sede_nombre ?? '',
+            programa_nombre: data.programa_nombre,
+            fechas_racha: fechasRachaLocal,
+            racha_activa: true,
+          },
+        ]
+      : [];
+  const alertasFichaActual = alertasDesdeApi.length > 0 ? alertasDesdeApi : alertaLocal;
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
@@ -74,6 +101,7 @@ export function MisInasistenciasPage() {
       </div>
 
       <EleccionRepresentantesBanner />
+      <AlertaConsecutivaBanner alertas={alertasFichaActual} />
 
       <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-800">
         <div className="flex flex-wrap items-end justify-between gap-4 border-b border-gray-100 pb-4 dark:border-gray-700">
@@ -228,6 +256,7 @@ export function MisInasistenciasPage() {
               inasistencias={data?.inasistencias ?? []}
               variant="sin_justificar"
               emptyDescription="No tiene inasistencias sin justificar en el período consultado."
+              fechasRacha={alertasFichaActual.flatMap((a) => a.fechas_racha ?? [])}
             />
           </section>
 

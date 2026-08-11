@@ -15,6 +15,9 @@ import { useAuth } from '../context/AuthContext';
 import { apiService } from '../services/api';
 import { axiosErrorMessage } from '../utils/httpError';
 import { formatRoleLabel } from '../utils/roles';
+import { AlertaConsecutivaBanner } from '../components/bienestar/AlertaConsecutivaBanner';
+import { useMisAlertasConsecutivas } from '../hooks/useMisAlertasConsecutivas';
+import { canViewMisInasistencias } from './aprendiz/misInasistenciasPermissions';
 import { PersonaModal } from '../components/PersonaModal';
 import type { PersonaRequest, PersonaResponse, PersonaSelfUpdateRequest, UserResponse } from '../types';
 
@@ -406,6 +409,8 @@ function PerfilContent({
 
 export const Perfil = () => {
   const { user, roles, permissions, hasPermission, refreshUser } = useAuth();
+  const esAprendiz = canViewMisInasistencias(roles, permissions);
+  const { alertas: alertasConsecutivas } = useMisAlertasConsecutivas(esAprendiz);
   const location = useLocation();
   const { persona, setPersona, loading, error } = usePerfilPersona(user);
   const [editOpen, setEditOpen] = useState(false);
@@ -462,6 +467,7 @@ export const Perfil = () => {
 
       {saveError ? <AlertBanner message={saveError} /> : null}
       {error ? <AlertBanner message={error} /> : null}
+      {esAprendiz ? <AlertaConsecutivaBanner alertas={alertasConsecutivas} showLink /> : null}
       {showSkeleton ? <ProfileSkeleton /> : null}
 
       {showContent ? (

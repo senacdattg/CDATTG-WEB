@@ -63,6 +63,12 @@ export type BienestarCasosQuery = {
   tipo_formacion?: string;
 };
 
+export type BienestarAlertasQuery = {
+  dias?: number;
+  sede?: string;
+  tipo_formacion?: string;
+};
+
 export const bienestarPaths = {
   index: '/bienestar',
   casos: {
@@ -73,6 +79,19 @@ export const bienestarPaths = {
       const params = new URLSearchParams();
       if (query.dias != null) params.set('dias', String(query.dias));
       if (query.min_fallas != null) params.set('min_fallas', String(query.min_fallas));
+      if (query.sede) params.set('sede', query.sede);
+      if (query.tipo_formacion) params.set('tipo_formacion', query.tipo_formacion);
+      const qs = params.toString();
+      return qs ? `${base}?${qs}` : base;
+    },
+  },
+  alertasConsecutivas: {
+    index: '/bienestar/alertas-consecutivas',
+    ficha: (fichaNumero: string, query?: BienestarAlertasQuery) => {
+      const base = `/bienestar/alertas-consecutivas/fichas/${encodeURIComponent(fichaNumero)}`;
+      if (!query) return base;
+      const params = new URLSearchParams();
+      if (query.dias != null) params.set('dias', String(query.dias));
       if (query.sede) params.set('sede', query.sede);
       if (query.tipo_formacion) params.set('tipo_formacion', query.tipo_formacion);
       const qs = params.toString();

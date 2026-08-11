@@ -42,13 +42,22 @@ function InasistenciaCard({
   item,
   indice,
   variant = 'sin_justificar',
-}: Readonly<{ item: InasistenciaDetalleItem; indice: number; variant?: 'sin_justificar' | 'justificada' }>) {
+  enRacha = false,
+}: Readonly<{
+  item: InasistenciaDetalleItem;
+  indice: number;
+  variant?: 'sin_justificar' | 'justificada';
+  enRacha?: boolean;
+}>) {
   const dia = formatDiaSemana(item.fecha);
   const tieneObservaciones = Boolean(item.observaciones?.trim());
   const esJustificada = variant === 'justificada';
-  const borderClass = esJustificada
-    ? 'border-blue-100 dark:border-blue-900/40'
-    : 'border-amber-100 dark:border-amber-900/40';
+  let borderClass = 'border-amber-100 dark:border-amber-900/40';
+  if (enRacha) {
+    borderClass = 'border-amber-300 ring-1 ring-amber-200 dark:border-amber-600 dark:ring-amber-800/60';
+  } else if (esJustificada) {
+    borderClass = 'border-blue-100 dark:border-blue-900/40';
+  }
   const barClass = esJustificada ? 'bg-blue-400 dark:bg-blue-500' : 'bg-amber-400 dark:bg-amber-500';
   const badgeClass = esJustificada
     ? 'bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
@@ -71,9 +80,16 @@ function InasistenciaCard({
             {dia && <p className="text-xs text-gray-500 dark:text-gray-400">{dia}</p>}
           </div>
         </div>
-        <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${badgeClass}`}>
-          {esJustificada ? 'Inasistencia justificada' : 'Sin justificar'}
-        </span>
+        <div className="flex flex-wrap items-center justify-end gap-1.5">
+          {enRacha ? (
+            <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs font-semibold text-red-800 dark:bg-red-900/40 dark:text-red-200">
+              En racha
+            </span>
+          ) : null}
+          <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${badgeClass}`}>
+            {esJustificada ? 'Inasistencia justificada' : 'Sin justificar'}
+          </span>
+        </div>
       </div>
       <div className="mt-3 flex items-start gap-2 text-sm text-gray-700 dark:text-gray-300">
         <UserIcon className="mt-0.5 h-4 w-4 shrink-0 text-gray-400" aria-hidden />
@@ -102,6 +118,7 @@ type InasistenciasDetalleListaProps = Readonly<{
   variant?: 'sin_justificar' | 'justificada';
   emptyTitle?: string;
   emptyDescription?: string;
+  fechasRacha?: string[];
 }>;
 
 export function InasistenciasDetalleLista({
@@ -111,8 +128,13 @@ export function InasistenciasDetalleLista({
   variant = 'sin_justificar',
   emptyTitle = 'Sin registros de inasistencia',
   emptyDescription = 'No se identificaron sesiones con inasistencia en el período consultado.',
+  fechasRacha = [],
 }: InasistenciasDetalleListaProps) {
   const grupos = useMemo(() => agruparInasistenciasPorMes(inasistencias), [inasistencias]);
+  const rachaSet = useMemo(
+    () => new Set(fechasRacha.map((f) => f.slice(0, 10))),
+    [fechasRacha],
+  );
 
   if (error) {
     return (
@@ -153,7 +175,13 @@ export function InasistenciasDetalleLista({
           </h4>
           <div className="space-y-3">
             {grupo.items.map((item, idx) => (
-              <InasistenciaCard key={`${item.fecha}-${idx}`} item={item} indice={idx} variant={variant} />
+              <InasistenciaCard
+                key={`${item.fecha}-${idx}`}
+                item={item}
+                indice={idx}
+                variant={variant}
+                enRacha={rachaSet.has(item.fecha.slice(0, 10))}
+              />
             ))}
           </div>
         </section>

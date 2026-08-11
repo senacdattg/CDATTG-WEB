@@ -203,6 +203,14 @@ export const SIDEBAR_MANIFEST: SidebarManifestItem[] = [
     rolesRequired: ['SUPER ADMINISTRADOR', 'BIENESTAR AL APRENDIZ', 'INSTRUCTOR'],
     iconKey: 'bienestar/casos',
   },
+  {
+    section: 'Bienestar',
+    path: bienestarPaths.alertasConsecutivas.index,
+    label: 'Alertas consecutivas',
+    permission: null,
+    rolesRequired: ['SUPER ADMINISTRADOR', 'BIENESTAR AL APRENDIZ', 'INSTRUCTOR'],
+    iconKey: 'bienestar/casos',
+  },
 
   // —— Infraestructura ——
   {

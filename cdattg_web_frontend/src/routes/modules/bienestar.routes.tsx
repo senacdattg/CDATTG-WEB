@@ -42,5 +42,38 @@ export const bienestarRoutes: RouteObject = {
         },
       ],
     },
+    {
+      path: 'alertas-consecutivas',
+      handle: {
+        breadcrumb: { label: 'Alertas consecutivas', to: bienestarPaths.alertasConsecutivas.index },
+      },
+      children: [
+        {
+          index: true,
+          lazy: async () => {
+            const { AlertasConsecutivasPage } = await import(
+              '../../pages/bienestar/alertas-consecutivas/AlertasConsecutivasPage'
+            );
+            return { Component: AlertasConsecutivasPage };
+          },
+        },
+        {
+          path: 'fichas/:fichaNumero',
+          handle: {
+            breadcrumb: (params: Record<string, string | undefined>) => ({
+              label: params.fichaNumero
+                ? `Ficha ${decodeURIComponent(params.fichaNumero)}`
+                : 'Ficha',
+            }),
+          },
+          lazy: async () => {
+            const { AlertasConsecutivasFichaDetallePage } = await import(
+              '../../pages/bienestar/alertas-consecutivas/AlertasConsecutivasFichaDetallePage'
+            );
+            return { Component: AlertasConsecutivasFichaDetallePage };
+          },
+        },
+      ],
+    },
   ],
 };

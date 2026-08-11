@@ -854,6 +854,39 @@ export interface UsuarioRegionalesResponse {
   regionales: RegionalItem[];
 }
 
+/** Alertas Acuerdo 009: 2+ inasistencias consecutivas sin justificar. */
+export interface AlertaConsecutivaItem {
+  aprendiz_id: number;
+  persona_nombre: string;
+  numero_documento: string;
+  ficha_numero: string;
+  programa_nombre?: string;
+  sede_nombre: string;
+  jornada_nombre?: string;
+  tipo_formacion?: string;
+  tipo_formacion_label?: string;
+  instructor_nombre?: string;
+  ambiente_nombre?: string;
+  modalidad_formacion_nombre?: string;
+  fechas_racha: string[];
+  racha_activa: boolean;
+}
+
+export interface AlertasConsecutivasResponse {
+  dias_analizados: number;
+  fecha_inicio?: string;
+  fecha_fin?: string;
+  historico_completo?: boolean;
+  alertas: AlertaConsecutivaItem[];
+}
+
+export interface MisAlertasConsecutivasResponse {
+  dias_analizados: number;
+  fecha_inicio?: string;
+  fecha_fin?: string;
+  alertas: AlertaConsecutivaItem[];
+}
+
 /** Casos de bienestar: aprendices con N+ inasistencias (riesgo deserción) */
 export interface CasosBienestarResponse {
   dias_analizados: number;
@@ -908,6 +941,8 @@ export interface MisInasistenciasResponse {
   inasistencias_justificadas?: InasistenciaDetalleItem[];
   /** Fichas del aprendiz según filtro estado_ficha. */
   fichas?: MisInasistenciasFichaOpcion[];
+  /** Acuerdo 009: racha de 2+ faltas seguidas en el calendario de la ficha. */
+  alertas_consecutivas?: AlertaConsecutivaItem[];
 }
 
 export interface SesionSinAsistenciaTomadaItem {

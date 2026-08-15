@@ -1,5 +1,5 @@
 // @module personal_rol_common
-// @description Helpers compartidos de CRUD para los handlers de Guardas y Personal Administrativo.
+// @description Helpers compartidos de CRUD para los handlers de Personal Operativo, Administrativo y Contratistas.
 // @author JDTWOR
 // @created 2026-08-14
 package handlers

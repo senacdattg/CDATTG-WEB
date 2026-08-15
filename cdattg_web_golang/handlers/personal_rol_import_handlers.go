@@ -13,7 +13,7 @@ import (
 )
 
 // handlePersonalRolImport procesa la subida de un Excel (campo "file", máx 10 MB) y ejecuta la importación.
-// Parámetros: c (contexto Gin), importSvc (servicio de importación), tipo (guarda | personal_administrativo).
+// Parámetros: c (contexto Gin), importSvc (servicio de importación), tipo (personal_operativo_apoyo | personal_administrativo | contratista).
 // Responde 200 con ImportResult o 400/401/500 con el error.
 func handlePersonalRolImport(c *gin.Context, importSvc services.PersonalRolImportService, tipo string) {
 	userIDVal, exists := c.Get("userID")

@@ -220,18 +220,21 @@ func seedFPIPermissions(e *casbin.Enforcer) error {
 	return seedVerPersonaForRoles(e, []string{"FPI", "BIENESTAR AL APRENDIZ"})
 }
 
-// seedPersonalRolPermissions: administración de guardas y personal administrativo (módulo Personal).
-// Los roles GUARDA y PERSONAL ADMINISTRATIVO solo ven/editan su propia persona.
+// seedPersonalRolPermissions: administración de personal operativo, administrativo y contratistas.
+// Los roles del módulo Personal solo ven/editan su propia persona.
 func seedPersonalRolPermissions(e *casbin.Enforcer) error {
 	for _, role := range []string{"ADMINISTRADOR", "COORDINADOR"} {
-		if err := addPermissionsForObject(e, role, authz.ObjGuarda, authz.PermisosGuarda); err != nil {
+		if err := addPermissionsForObject(e, role, authz.ObjPersonalOperativoYDeApoyo, authz.PermisosPersonalOperativoYDeApoyo); err != nil {
 			return err
 		}
 		if err := addPermissionsForObject(e, role, authz.ObjPersonalAdministrativo, authz.PermisosPersonalAdministrativo); err != nil {
 			return err
 		}
+		if err := addPermissionsForObject(e, role, authz.ObjContratista, authz.PermisosContratista); err != nil {
+			return err
+		}
 	}
-	return seedVerPersonaForRoles(e, []string{authz.RolGuarda, authz.RolPersonalAdministrativo})
+	return seedVerPersonaForRoles(e, []string{authz.RolPersonalOperativoYDeApoyo, authz.RolPersonalAdministrativo, authz.RolContratistaPrestacionServicios})
 }
 
 // SyncInventarioPermissionsToRoles: inventario desactivado, no hace nada.

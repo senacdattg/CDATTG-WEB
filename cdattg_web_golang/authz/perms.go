@@ -19,9 +19,10 @@ var RoleNames = []string{
 	"BIENESTAR AL APRENDIZ",
 	// Rol solo para módulo FPI (Sofía / Betowa / complementarios)
 	"FPI",
-	// Roles del módulo Personal (secciones Guardas y Personal Administrativo)
-	"GUARDA",
+	// Roles del módulo Personal (se toman rol al vincular una persona a un rol de personal)
+	"PERSONAL OPERATIVO Y DE APOYO",
 	"PERSONAL ADMINISTRATIVO",
+	"CONTRATISTA PRESTACIÓN DE SERVICIOS",
 }
 
 // Permisos por objeto (obj). Se usan en Casbin como (roleName o userID, obj, act).
@@ -44,11 +45,14 @@ var (
 	PermisosInstructor = []string{
 		"VER INSTRUCTORES", "CREAR INSTRUCTOR", "EDITAR INSTRUCTOR", "ELIMINAR INSTRUCTOR",
 	}
-	PermisosGuarda = []string{
-		"VER GUARDAS", "CREAR GUARDA", "EDITAR GUARDA", "ELIMINAR GUARDA",
+	PermisosPersonalOperativoYDeApoyo = []string{
+		"VER PERSONAL OPERATIVO Y DE APOYO", "CREAR PERSONAL OPERATIVO Y DE APOYO", "EDITAR PERSONAL OPERATIVO Y DE APOYO", "ELIMINAR PERSONAL OPERATIVO Y DE APOYO",
 	}
 	PermisosPersonalAdministrativo = []string{
 		"VER PERSONAL ADMINISTRATIVO", "CREAR PERSONAL ADMINISTRATIVO", "EDITAR PERSONAL ADMINISTRATIVO", "ELIMINAR PERSONAL ADMINISTRATIVO",
+	}
+	PermisosContratista = []string{
+		"VER CONTRATISTAS PRESTACIÓN DE SERVICIOS", "CREAR CONTRATISTAS PRESTACIÓN DE SERVICIOS", "EDITAR CONTRATISTAS PRESTACIÓN DE SERVICIOS", "ELIMINAR CONTRATISTAS PRESTACIÓN DE SERVICIOS",
 	}
 	PermisosAsistencia = []string{
 		"VER ASISTENCIA", "TOMAR ASISTENCIA", "VER MI AGENDA", "VER MIS INASISTENCIAS",
@@ -80,8 +84,9 @@ const (
 	ObjFicha       = "ficha"
 	ObjAprendiz    = "aprendiz"
 	ObjInstructor  = "instructor"
-	ObjGuarda      = "guarda"
+	ObjPersonalOperativoYDeApoyo = "personal-operativo-apoyo"
 	ObjPersonalAdministrativo = "personal-administrativo"
+	ObjContratista         = "contratista"
 	ObjAsistencia  = "asistencia"
 	ObjEleccion    = "eleccion"
 	ObjUsuario     = "usuario"
@@ -96,10 +101,11 @@ const (
 	ObjContrato   = "contrato"
 )
 
-// Roles del módulo Personal: usados al vincular una persona como guarda o personal administrativo.
+// Roles del módulo Personal: usados al vincular una persona a un rol de personal.
 const (
-	RolGuarda                 = "GUARDA"
-	RolPersonalAdministrativo = "PERSONAL ADMINISTRATIVO"
+	RolPersonalOperativoYDeApoyo       = "PERSONAL OPERATIVO Y DE APOYO"
+	RolPersonalAdministrativo          = "PERSONAL ADMINISTRATIVO"
+	RolContratistaPrestacionServicios = "CONTRATISTA PRESTACIÓN DE SERVICIOS"
 )
 
 // IsValidPermiso indica si (obj, act) es un permiso definido en el sistema.
@@ -130,11 +136,14 @@ func AllPermissionPairs() []struct{ Obj, Act string } {
 	for _, act := range PermisosInstructor {
 		out = append(out, struct{ Obj, Act string }{ObjInstructor, act})
 	}
-	for _, act := range PermisosGuarda {
-		out = append(out, struct{ Obj, Act string }{ObjGuarda, act})
+	for _, act := range PermisosPersonalOperativoYDeApoyo {
+		out = append(out, struct{ Obj, Act string }{ObjPersonalOperativoYDeApoyo, act})
 	}
 	for _, act := range PermisosPersonalAdministrativo {
 		out = append(out, struct{ Obj, Act string }{ObjPersonalAdministrativo, act})
+	}
+	for _, act := range PermisosContratista {
+		out = append(out, struct{ Obj, Act string }{ObjContratista, act})
 	}
 	for _, act := range PermisosAsistencia {
 		out = append(out, struct{ Obj, Act string }{ObjAsistencia, act})

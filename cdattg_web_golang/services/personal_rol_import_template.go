@@ -1,5 +1,5 @@
 // @module personal_rol_import_template
-// @description Generación de plantilla Excel para importar Guardas/Personal Administrativo.
+// @description Generación de plantilla Excel para importar roles de personal.
 // @author JDTWOR
 // @created 2026-08-14
 package services
@@ -11,7 +11,7 @@ import (
 	"github.com/xuri/excelize/v2"
 )
 
-// plantillaRolHeaders son las columnas del formato oficial para importar guardas/personal administrativo.
+// plantillaRolHeaders son las columnas del formato oficial para importar roles de personal.
 var plantillaRolHeaders = []string{
 	"NOMBRES Y APELLIDOS COMPLETO",
 	"TIPO DOCUMENTO",
@@ -23,9 +23,9 @@ var plantillaRolHeaders = []string{
 }
 
 // GenerarPlantilla devuelve una plantilla Excel con encabezados y una fila de ejemplo.
-// Parámetros: tipo (guarda | personal_administrativo), determina el nombre del archivo resultante.
-// Retorna el contenido XLSX y el nombre sugerido. Ejemplo: GenerarPlantilla("guarda") ->
-// plantilla_importar_guardas.xlsx.
+// Parámetros: tipo (personal_operativo_apoyo | personal_administrativo | contratista),
+// determina el nombre del archivo resultante. Retorna el contenido XLSX y el nombre sugerido.
+// Ejemplo: GenerarPlantilla("contratista") -> plantilla_importar_contratistas.xlsx.
 func (s *personalRolImportService) GenerarPlantilla(tipo string) ([]byte, string, error) {
 	f := excelize.NewFile()
 	sheet := "Sheet1"
@@ -45,8 +45,12 @@ func (s *personalRolImportService) GenerarPlantilla(tipo string) ([]byte, string
 	if err := f.Write(&buf); err != nil {
 		return nil, "", fmt.Errorf("error generando plantilla")
 	}
-	if tipo == TipoRolGuarda {
-		return buf.Bytes(), "plantilla_importar_guardas.xlsx", nil
+	switch tipo {
+	case TipoRolPersonalOperativoApoyo:
+		return buf.Bytes(), "plantilla_importar_personal_operativo_apoyo.xlsx", nil
+	case TipoRolContratista:
+		return buf.Bytes(), "plantilla_importar_contratistas.xlsx", nil
+	default:
+		return buf.Bytes(), "plantilla_importar_personal_administrativo.xlsx", nil
 	}
-	return buf.Bytes(), "plantilla_importar_personal_administrativo.xlsx", nil
 }

@@ -1,13 +1,13 @@
 // @module personal_rol_import_log
-// @description Modelo de base de datos para el log de importaciones de Guardas/Personal Administrativo.
+// @description Modelo de base de datos para el log de importaciones de roles de personal.
 // @author JDTWOR
 // @created 2026-08-14
 package models
 
 import "time"
 
-// PersonalRolImportLog registra cada importación masiva de guardas o personal administrativo desde Excel.
-// Tipo distingue el rol: "guarda" | "personal_administrativo".
+// PersonalRolImportLog registra cada importación masiva de personal desde Excel.
+// Tipo distingue el rol: "personal_operativo_apoyo" | "personal_administrativo" | "contratista".
 type PersonalRolImportLog struct {
 	ID               uint      `gorm:"primaryKey" json:"id"`
 	Tipo             string    `gorm:"size:50;not null" json:"tipo"`

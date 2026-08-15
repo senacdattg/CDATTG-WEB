@@ -1,11 +1,11 @@
-// @module guarda
-// @description Modelo de base de datos para la entidad Guarda (persona vinculada a seguridad).
+// @module personal_operativo_apoyo
+// @description Modelo de base de datos para la entidad Personal Operativo y de Apoyo.
 // @author JDTWOR
 // @created 2026-08-14
 package models
 
-// Guarda representa una persona vinculada como guarda de seguridad.
-type Guarda struct {
+// PersonalOperativoApoyo representa una persona vinculada a labores operativas y de apoyo.
+type PersonalOperativoApoyo struct {
 	UserAuditModel
 	PersonaID            uint     `gorm:"column:persona_id;uniqueIndex;not null" json:"persona_id"`
 	Status               bool     `gorm:"default:true" json:"status"`
@@ -17,6 +17,6 @@ type Guarda struct {
 }
 
 // TableName especifica el nombre de la tabla
-func (Guarda) TableName() string {
-	return "guardas"
+func (PersonalOperativoApoyo) TableName() string {
+	return "personal_operativo_apoyo"
 }

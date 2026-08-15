@@ -1,5 +1,5 @@
 // @module personal_rol_import
-// @description Procesamiento de importación masiva de Guardas y Personal Administrativo desde Excel.
+// @description Procesamiento de importación masiva de Personal Operativo, Administrativo y Contratistas.
 // @author JDTWOR
 // @created 2026-08-14
 package services
@@ -17,11 +17,12 @@ import (
 
 // Tipos de rol del módulo Personal soportados por la importación masiva.
 const (
-	TipoRolGuarda                 = "guarda"
-	TipoRolPersonalAdministrativo = "personal_administrativo"
+	TipoRolPersonalOperativoApoyo   = "personal_operativo_apoyo"
+	TipoRolPersonalAdministrativo   = "personal_administrativo"
+	TipoRolContratista              = "contratista"
 )
 
-// PersonalRolImportService define la importación masiva de guardas/personal administrativo desde Excel.
+// PersonalRolImportService define la importación masiva de roles de personal desde Excel.
 // El formato de plantilla es el mismo de instructores (BASE DE DATOS CONTRATISTAS REGULAR.xlsx).
 type PersonalRolImportService interface {
 	ImportFromExcel(tipo string, fileBytes []byte, filename string, userID uint) (*ImportResult, error)
@@ -31,39 +32,48 @@ type PersonalRolImportService interface {
 
 // personalRolImportService implementa PersonalRolImportService reutilizando el helper de instructores.
 type personalRolImportService struct {
-	helper    *instructorImportService
-	guardaRepo repositories.GuardaRepository
-	guardaSvc  GuardaService
+	helper     *instructorImportService
+	rolRepo    repositories.PersonalOperativoApoyoRepository
+	rolSvc     PersonalOperativoApoyoService
 	paRepo     repositories.PersonalAdministrativoRepository
 	paSvc      PersonalAdministrativoService
+	contRepo   repositories.ContratistaRepository
+	contSvc    ContratistaService
 	logRepo    repositories.PersonalRolImportLogRepository
 }
 
-// NewPersonalRolImportService crea el servicio de importación de guardas/personal administrativo
-// reutilizando el parser de instructores (rowToPersonaRequest, mapa de tipos, etc.) sin duplicarlo.
+// NewPersonalRolImportService crea el servicio de importación de roles de personal reutilizando
+// el parser de instructores (rowToPersonaRequest, mapa de tipos, etc.) sin duplicarlo.
 func NewPersonalRolImportService() PersonalRolImportService {
 	return &personalRolImportService{
-		helper:    NewInstructorImportService().(*instructorImportService),
-		guardaRepo: repositories.NewGuardaRepository(),
-		guardaSvc:  NewGuardaService(),
-		paRepo:     repositories.NewPersonalAdministrativoRepository(),
-		paSvc:      NewPersonalAdministrativoService(),
-		logRepo:    repositories.NewPersonalRolImportLogRepository(),
+		helper:   NewInstructorImportService().(*instructorImportService),
+		rolRepo:  repositories.NewPersonalOperativoApoyoRepository(),
+		rolSvc:   NewPersonalOperativoApoyoService(),
+		paRepo:   repositories.NewPersonalAdministrativoRepository(),
+		paSvc:    NewPersonalAdministrativoService(),
+		contRepo: repositories.NewContratistaRepository(),
+		contSvc:  NewContratistaService(),
+		logRepo:  repositories.NewPersonalRolImportLogRepository(),
 	}
 }
 
 // rolCasbinByTipo devuelve el rol Casbin correspondiente al tipo de rol del módulo Personal.
 func rolCasbinByTipo(tipo string) string {
-	if tipo == TipoRolGuarda {
-		return authz.RolGuarda
+	switch tipo {
+	case TipoRolPersonalOperativoApoyo:
+		return authz.RolPersonalOperativoYDeApoyo
+	case TipoRolContratista:
+		return authz.RolContratistaPrestacionServicios
+	default:
+		return authz.RolPersonalAdministrativo
 	}
-	return authz.RolPersonalAdministrativo
 }
 
-// ImportFromExcel procesa un archivo Excel y crea o vincula personas y guardas/personal administrativo.
-// Parámetros: tipo (TipoRolGuarda | TipoRolPersonalAdministrativo), fileBytes (contenido XLSX),
-// filename (nombre original), userID (usuario que ejecuta la importación). Devuelve ImportResult con
-// conteos de procesados, duplicados y errores. Ejemplo: ImportFromExcel("guarda", buf, "a.xlsx", 1).
+// ImportFromExcel procesa un archivo Excel y crea o vincula personas y roles de personal.
+// Parámetros: tipo (TipoRolPersonalOperativoApoyo | TipoRolPersonalAdministrativo |
+// TipoRolContratista), fileBytes (contenido XLSX), filename (nombre original),
+// userID (usuario que ejecuta la importación). Devuelve ImportResult con conteos de
+// procesados, duplicados y errores. Ejemplo: ImportFromExcel("contratista", buf, "a.xlsx", 1).
 func (s *personalRolImportService) ImportFromExcel(tipo string, fileBytes []byte, filename string, userID uint) (*ImportResult, error) {
 	f, err := excelize.OpenReader(bytes.NewReader(fileBytes))
 	if err != nil {

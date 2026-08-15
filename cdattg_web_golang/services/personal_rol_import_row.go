@@ -1,5 +1,5 @@
 // @module personal_rol_import_row
-// @description Procesamiento de una fila del Excel de importación de Guardas/Personal Administrativo.
+// @description Procesamiento de una fila del Excel de importación de roles de personal.
 // @author JDTWOR
 // @created 2026-08-14
 package services
@@ -10,11 +10,11 @@ import (
 	"github.com/sena/cdattg-web-golang/dto"
 )
 
-// tryImportRolRow intenta crear o vincular guarda o personal administrativo para una fila del Excel.
+// tryImportRolRow intenta crear o vincular un rol de personal para una fila del Excel.
 // Reutiliza rowToPersonaRequest y CreateWithoutUser del helper de instructores (DRY).
-// Parámetros: tipo (guarda | personal_administrativo), row (celdas de la fila), colIndex (índice por
-// columna), tipoByKey y generoByKey (catálogos). Retorna instructorImportRowResult con flags
-// processed/duplicate/err y newPersonaID cuando se creó una persona nueva.
+// Parámetros: tipo (personal_operativo_apoyo | personal_administrativo | contratista),
+// row (celdas de la fila), colIndex (índice por columna), tipoByKey y generoByKey (catálogos).
+// Retorna instructorImportRowResult con flags processed/duplicate/err y newPersonaID cuando se creó una persona.
 func (s *personalRolImportService) tryImportRolRow(tipo string, row []string, colIndex map[string]int, tipoByKey, generoByKey map[string]uint) instructorImportRowResult {
 	var r instructorImportRowResult
 	req := s.helper.rowToPersonaRequest(row, colIndex, tipoByKey, generoByKey)
@@ -47,13 +47,24 @@ func (s *personalRolImportService) tryImportRolRow(tipo string, row []string, co
 	}
 
 	switch tipo {
-	case TipoRolGuarda:
-		existing, _ := s.guardaRepo.FindByPersonaID(personaID)
+	case TipoRolPersonalOperativoApoyo:
+		existing, _ := s.rolRepo.FindByPersonaID(personaID)
 		if existing != nil {
 			r.duplicate = true
 			return r
 		}
-		_, createErr := s.guardaSvc.CreateFromPersona(dto.CreateGuardaRequest{PersonaID: personaID})
+		_, createErr := s.rolSvc.CreateFromPersona(dto.CreatePersonalOperativoApoyoRequest{PersonaID: personaID})
+		if createErr != nil {
+			r.err = true
+			return r
+		}
+	case TipoRolContratista:
+		existing, _ := s.contRepo.FindByPersonaID(personaID)
+		if existing != nil {
+			r.duplicate = true
+			return r
+		}
+		_, createErr := s.contSvc.CreateFromPersona(dto.CreateContratistaRequest{PersonaID: personaID})
 		if createErr != nil {
 			r.err = true
 			return r

@@ -32,10 +32,14 @@ const (
 	permVerMisInasistencias    = "VER MIS INASISTENCIAS"
 	permProgramarInstructores  = "PROGRAMAR INSTRUCTORES"
 	permGestionarAprendicesFicha = "GESTIONAR APRENDICES FICHA"
-	permVerGuarda              = "VER GUARDAS"
-	permCrearGuarda            = "CREAR GUARDA"
-	permEditarGuarda           = "EDITAR GUARDA"
-	permEliminarGuarda         = "ELIMINAR GUARDA"
+	permVerPersonalOperativoYDeApoyo = "VER PERSONAL OPERATIVO Y DE APOYO"
+	permCrearPersonalOperativoYDeApoyo = "CREAR PERSONAL OPERATIVO Y DE APOYO"
+	permEditarPersonalOperativoYDeApoyo = "EDITAR PERSONAL OPERATIVO Y DE APOYO"
+	permEliminarPersonalOperativoYDeApoyo = "ELIMINAR PERSONAL OPERATIVO Y DE APOYO"
+	permVerContratista         = "VER CONTRATISTAS PRESTACIÓN DE SERVICIOS"
+	permCrearContratista       = "CREAR CONTRATISTAS PRESTACIÓN DE SERVICIOS"
+	permEditarContratista      = "EDITAR CONTRATISTAS PRESTACIÓN DE SERVICIOS"
+	permEliminarContratista    = "ELIMINAR CONTRATISTAS PRESTACIÓN DE SERVICIOS"
 	permVerPersonalAdministrativo = "VER PERSONAL ADMINISTRATIVO"
 	permCrearPersonalAdministrativo = "CREAR PERSONAL ADMINISTRATIVO"
 	permEditarPersonalAdministrativo = "EDITAR PERSONAL ADMINISTRATIVO"
@@ -64,8 +68,9 @@ func SetupRouter() *gin.Engine {
 	catalogoHandler := handlers.NewCatalogoHandler()
 	aprendizHandler := handlers.NewAprendizHandler()
 	instructorHandler := handlers.NewInstructorHandler()
-	guardaHandler := handlers.NewGuardaHandler()
+	personalOperativoApoyoHandler := handlers.NewPersonalOperativoApoyoHandler()
 	personalAdministrativoHandler := handlers.NewPersonalAdministrativoHandler()
+	contratistaHandler := handlers.NewContratistaHandler()
 	asistenciaHandler := handlers.NewAsistenciaHandler()
 	handlers.StartAsistenciaAutoFinalize(asistenciaHandler)
 	adminHandler := handlers.NewAdminHandler()
@@ -192,15 +197,25 @@ func SetupRouter() *gin.Engine {
 			instructores.PUT("/:id", middleware.RequirePermission("instructor", "EDITAR INSTRUCTOR"), instructorHandler.Update)
 			instructores.DELETE("/:id", middleware.RequirePermission("instructor", "ELIMINAR INSTRUCTOR"), instructorHandler.Delete)
 
-			guardas := protected.Group("/guardas")
-			guardas.GET("", middleware.RequirePermission("guarda", permVerGuarda), guardaHandler.GetAll)
-			guardas.GET("/import/template", middleware.RequirePermission("guarda", permCrearGuarda), guardaHandler.DownloadTemplate)
-			guardas.GET("/imports", middleware.RequirePermission("guarda", permVerGuarda), guardaHandler.ListImports)
-			guardas.POST(routeImport, middleware.RequirePermission("guarda", permCrearGuarda), guardaHandler.ImportRolPersonal)
-			guardas.GET("/:id", middleware.RequirePermission("guarda", permVerGuarda), guardaHandler.GetByID)
-			guardas.POST("", middleware.RequirePermission("guarda", permCrearGuarda), guardaHandler.CreateFromPersona)
-			guardas.PUT("/:id", middleware.RequirePermission("guarda", permEditarGuarda), guardaHandler.Update)
-			guardas.DELETE("/:id", middleware.RequirePermission("guarda", permEliminarGuarda), guardaHandler.Delete)
+			personalOperativoApoyo := protected.Group("/personal-operativo-apoyo")
+			personalOperativoApoyo.GET("", middleware.RequirePermission("personal-operativo-apoyo", permVerPersonalOperativoYDeApoyo), personalOperativoApoyoHandler.GetAll)
+			personalOperativoApoyo.GET("/import/template", middleware.RequirePermission("personal-operativo-apoyo", permCrearPersonalOperativoYDeApoyo), personalOperativoApoyoHandler.DownloadTemplate)
+			personalOperativoApoyo.GET("/imports", middleware.RequirePermission("personal-operativo-apoyo", permVerPersonalOperativoYDeApoyo), personalOperativoApoyoHandler.ListImports)
+			personalOperativoApoyo.POST(routeImport, middleware.RequirePermission("personal-operativo-apoyo", permCrearPersonalOperativoYDeApoyo), personalOperativoApoyoHandler.ImportRolPersonal)
+			personalOperativoApoyo.GET("/:id", middleware.RequirePermission("personal-operativo-apoyo", permVerPersonalOperativoYDeApoyo), personalOperativoApoyoHandler.GetByID)
+			personalOperativoApoyo.POST("", middleware.RequirePermission("personal-operativo-apoyo", permCrearPersonalOperativoYDeApoyo), personalOperativoApoyoHandler.CreateFromPersona)
+			personalOperativoApoyo.PUT("/:id", middleware.RequirePermission("personal-operativo-apoyo", permEditarPersonalOperativoYDeApoyo), personalOperativoApoyoHandler.Update)
+			personalOperativoApoyo.DELETE("/:id", middleware.RequirePermission("personal-operativo-apoyo", permEliminarPersonalOperativoYDeApoyo), personalOperativoApoyoHandler.Delete)
+
+			contratistas := protected.Group("/contratistas")
+			contratistas.GET("", middleware.RequirePermission("contratista", permVerContratista), contratistaHandler.GetAll)
+			contratistas.GET("/import/template", middleware.RequirePermission("contratista", permCrearContratista), contratistaHandler.DownloadTemplate)
+			contratistas.GET("/imports", middleware.RequirePermission("contratista", permVerContratista), contratistaHandler.ListImports)
+			contratistas.POST(routeImport, middleware.RequirePermission("contratista", permCrearContratista), contratistaHandler.ImportRolPersonal)
+			contratistas.GET("/:id", middleware.RequirePermission("contratista", permVerContratista), contratistaHandler.GetByID)
+			contratistas.POST("", middleware.RequirePermission("contratista", permCrearContratista), contratistaHandler.CreateFromPersona)
+			contratistas.PUT("/:id", middleware.RequirePermission("contratista", permEditarContratista), contratistaHandler.Update)
+			contratistas.DELETE("/:id", middleware.RequirePermission("contratista", permEliminarContratista), contratistaHandler.Delete)
 
 			personalAdministrativo := protected.Group("/personal-administrativo")
 			personalAdministrativo.GET("", middleware.RequirePermission("personal-administrativo", permVerPersonalAdministrativo), personalAdministrativoHandler.GetAll)

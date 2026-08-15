@@ -45,6 +45,9 @@ func RunRolePermissionSeeder(db *gorm.DB) error {
 	if err := seedVigilanciaPermissions(e); err != nil {
 		return err
 	}
+	if err := seedPersonalRolPermissions(e); err != nil {
+		return err
+	}
 	if err := seedFPIPermissions(e); err != nil {
 		return err
 	}
@@ -215,6 +218,20 @@ func seedVigilanciaPermissions(e *casbin.Enforcer) error {
 // seedFPIPermissions: perfil mínimo para el módulo FPI (Sofía/Betowa) + ver/editar mi persona.
 func seedFPIPermissions(e *casbin.Enforcer) error {
 	return seedVerPersonaForRoles(e, []string{"FPI", "BIENESTAR AL APRENDIZ"})
+}
+
+// seedPersonalRolPermissions: administración de guardas y personal administrativo (módulo Personal).
+// Los roles GUARDA y PERSONAL ADMINISTRATIVO solo ven/editan su propia persona.
+func seedPersonalRolPermissions(e *casbin.Enforcer) error {
+	for _, role := range []string{"ADMINISTRADOR", "COORDINADOR"} {
+		if err := addPermissionsForObject(e, role, authz.ObjGuarda, authz.PermisosGuarda); err != nil {
+			return err
+		}
+		if err := addPermissionsForObject(e, role, authz.ObjPersonalAdministrativo, authz.PermisosPersonalAdministrativo); err != nil {
+			return err
+		}
+	}
+	return seedVerPersonaForRoles(e, []string{authz.RolGuarda, authz.RolPersonalAdministrativo})
 }
 
 // SyncInventarioPermissionsToRoles: inventario desactivado, no hace nada.

@@ -19,6 +19,9 @@ var RoleNames = []string{
 	"BIENESTAR AL APRENDIZ",
 	// Rol solo para módulo FPI (Sofía / Betowa / complementarios)
 	"FPI",
+	// Roles del módulo Personal (secciones Guardas y Personal Administrativo)
+	"GUARDA",
+	"PERSONAL ADMINISTRATIVO",
 }
 
 // Permisos por objeto (obj). Se usan en Casbin como (roleName o userID, obj, act).
@@ -40,6 +43,12 @@ var (
 	}
 	PermisosInstructor = []string{
 		"VER INSTRUCTORES", "CREAR INSTRUCTOR", "EDITAR INSTRUCTOR", "ELIMINAR INSTRUCTOR",
+	}
+	PermisosGuarda = []string{
+		"VER GUARDAS", "CREAR GUARDA", "EDITAR GUARDA", "ELIMINAR GUARDA",
+	}
+	PermisosPersonalAdministrativo = []string{
+		"VER PERSONAL ADMINISTRATIVO", "CREAR PERSONAL ADMINISTRATIVO", "EDITAR PERSONAL ADMINISTRATIVO", "ELIMINAR PERSONAL ADMINISTRATIVO",
 	}
 	PermisosAsistencia = []string{
 		"VER ASISTENCIA", "TOMAR ASISTENCIA", "VER MI AGENDA", "VER MIS INASISTENCIAS",
@@ -71,6 +80,8 @@ const (
 	ObjFicha       = "ficha"
 	ObjAprendiz    = "aprendiz"
 	ObjInstructor  = "instructor"
+	ObjGuarda      = "guarda"
+	ObjPersonalAdministrativo = "personal-administrativo"
 	ObjAsistencia  = "asistencia"
 	ObjEleccion    = "eleccion"
 	ObjUsuario     = "usuario"
@@ -83,6 +94,12 @@ const (
 	ObjCategoria  = "categoria"
 	ObjMarca      = "marca"
 	ObjContrato   = "contrato"
+)
+
+// Roles del módulo Personal: usados al vincular una persona como guarda o personal administrativo.
+const (
+	RolGuarda                 = "GUARDA"
+	RolPersonalAdministrativo = "PERSONAL ADMINISTRATIVO"
 )
 
 // IsValidPermiso indica si (obj, act) es un permiso definido en el sistema.
@@ -112,6 +129,12 @@ func AllPermissionPairs() []struct{ Obj, Act string } {
 	}
 	for _, act := range PermisosInstructor {
 		out = append(out, struct{ Obj, Act string }{ObjInstructor, act})
+	}
+	for _, act := range PermisosGuarda {
+		out = append(out, struct{ Obj, Act string }{ObjGuarda, act})
+	}
+	for _, act := range PermisosPersonalAdministrativo {
+		out = append(out, struct{ Obj, Act string }{ObjPersonalAdministrativo, act})
 	}
 	for _, act := range PermisosAsistencia {
 		out = append(out, struct{ Obj, Act string }{ObjAsistencia, act})

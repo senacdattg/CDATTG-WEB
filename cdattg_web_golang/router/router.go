@@ -32,6 +32,14 @@ const (
 	permVerMisInasistencias    = "VER MIS INASISTENCIAS"
 	permProgramarInstructores  = "PROGRAMAR INSTRUCTORES"
 	permGestionarAprendicesFicha = "GESTIONAR APRENDICES FICHA"
+	permVerGuarda              = "VER GUARDAS"
+	permCrearGuarda            = "CREAR GUARDA"
+	permEditarGuarda           = "EDITAR GUARDA"
+	permEliminarGuarda         = "ELIMINAR GUARDA"
+	permVerPersonalAdministrativo = "VER PERSONAL ADMINISTRATIVO"
+	permCrearPersonalAdministrativo = "CREAR PERSONAL ADMINISTRATIVO"
+	permEditarPersonalAdministrativo = "EDITAR PERSONAL ADMINISTRATIVO"
+	permEliminarPersonalAdministrativo = "ELIMINAR PERSONAL ADMINISTRATIVO"
 	permVerMiAgenda            = "VER MI AGENDA"
 	permRegistrarAccesoSede    = "REGISTRAR ACCESO SEDE"
 	permVerAccesoSede          = "VER ACCESO SEDE"
@@ -56,6 +64,8 @@ func SetupRouter() *gin.Engine {
 	catalogoHandler := handlers.NewCatalogoHandler()
 	aprendizHandler := handlers.NewAprendizHandler()
 	instructorHandler := handlers.NewInstructorHandler()
+	guardaHandler := handlers.NewGuardaHandler()
+	personalAdministrativoHandler := handlers.NewPersonalAdministrativoHandler()
 	asistenciaHandler := handlers.NewAsistenciaHandler()
 	handlers.StartAsistenciaAutoFinalize(asistenciaHandler)
 	adminHandler := handlers.NewAdminHandler()
@@ -181,6 +191,26 @@ func SetupRouter() *gin.Engine {
 			instructores.POST("", middleware.RequirePermission("instructor", permCrearInstructor), instructorHandler.CreateFromPersona)
 			instructores.PUT("/:id", middleware.RequirePermission("instructor", "EDITAR INSTRUCTOR"), instructorHandler.Update)
 			instructores.DELETE("/:id", middleware.RequirePermission("instructor", "ELIMINAR INSTRUCTOR"), instructorHandler.Delete)
+
+			guardas := protected.Group("/guardas")
+			guardas.GET("", middleware.RequirePermission("guarda", permVerGuarda), guardaHandler.GetAll)
+			guardas.GET("/import/template", middleware.RequirePermission("guarda", permCrearGuarda), guardaHandler.DownloadTemplate)
+			guardas.GET("/imports", middleware.RequirePermission("guarda", permVerGuarda), guardaHandler.ListImports)
+			guardas.POST(routeImport, middleware.RequirePermission("guarda", permCrearGuarda), guardaHandler.ImportRolPersonal)
+			guardas.GET("/:id", middleware.RequirePermission("guarda", permVerGuarda), guardaHandler.GetByID)
+			guardas.POST("", middleware.RequirePermission("guarda", permCrearGuarda), guardaHandler.CreateFromPersona)
+			guardas.PUT("/:id", middleware.RequirePermission("guarda", permEditarGuarda), guardaHandler.Update)
+			guardas.DELETE("/:id", middleware.RequirePermission("guarda", permEliminarGuarda), guardaHandler.Delete)
+
+			personalAdministrativo := protected.Group("/personal-administrativo")
+			personalAdministrativo.GET("", middleware.RequirePermission("personal-administrativo", permVerPersonalAdministrativo), personalAdministrativoHandler.GetAll)
+			personalAdministrativo.GET("/import/template", middleware.RequirePermission("personal-administrativo", permCrearPersonalAdministrativo), personalAdministrativoHandler.DownloadTemplate)
+			personalAdministrativo.GET("/imports", middleware.RequirePermission("personal-administrativo", permVerPersonalAdministrativo), personalAdministrativoHandler.ListImports)
+			personalAdministrativo.POST(routeImport, middleware.RequirePermission("personal-administrativo", permCrearPersonalAdministrativo), personalAdministrativoHandler.ImportRolPersonal)
+			personalAdministrativo.GET("/:id", middleware.RequirePermission("personal-administrativo", permVerPersonalAdministrativo), personalAdministrativoHandler.GetByID)
+			personalAdministrativo.POST("", middleware.RequirePermission("personal-administrativo", permCrearPersonalAdministrativo), personalAdministrativoHandler.CreateFromPersona)
+			personalAdministrativo.PUT("/:id", middleware.RequirePermission("personal-administrativo", permEditarPersonalAdministrativo), personalAdministrativoHandler.Update)
+			personalAdministrativo.DELETE("/:id", middleware.RequirePermission("personal-administrativo", permEliminarPersonalAdministrativo), personalAdministrativoHandler.Delete)
 
 			asistencias := protected.Group("/asistencias")
 			// Dashboard de asistencia: SUPER ADMINISTRADOR y BIENESTAR AL APRENDIZ

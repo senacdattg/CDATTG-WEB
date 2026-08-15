@@ -87,6 +87,9 @@ func Migrate() error {
 		// Personas del sistema
 		&models.Instructor{},
 		&models.Aprendiz{},
+		&models.Guarda{},
+		&models.PersonalAdministrativo{},
+		&models.PersonalRolImportLog{},
 		
 		// Competencias
 		&models.Competencia{},

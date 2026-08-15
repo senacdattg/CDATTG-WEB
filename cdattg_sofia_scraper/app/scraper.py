@@ -2090,7 +2090,24 @@ def _leer_cuerpo_consulta(page: Page) -> str:
     fr = _frame_consultar_registro(page)
     if fr is not None:
         try:
-            texto = fr.inner_text("body")
+            texto = fr.inner_text("body") or ""
+            # Sofía a veces renderiza el mensaje oculto (dojoDialog display:none),
+            # que inner_text no devuelve: textContent lo incluye. Consultarlo
+            # también cuando el texto visible está vacío (mensaje 100% oculto).
+            if not texto.strip():
+                try:
+                    oculto = fr.evaluate("document.body.textContent || ''") or ""
+                    if oculto:
+                        texto = oculto
+                except Exception:
+                    pass
+            elif MSG_NO_REGISTRADO not in texto:
+                try:
+                    oculto = fr.evaluate("document.body.textContent || ''") or ""
+                    if oculto and MSG_NO_REGISTRADO in oculto:
+                        texto = f"{texto}\n{oculto}"
+                except Exception:
+                    pass
             if texto.strip():
                 return texto
         except Exception:
@@ -2186,6 +2203,31 @@ def _asegurar_form_sano(page: Page) -> bool:
     return _form_consultar_sano(page)
 
 
+def _numero_mencionado_en_no_reg(t: str) -> str:
+    """Número que Sofía menciona en el mensaje 'no se encuentra registrado'."""
+    idx = t.find(MSG_NO_REGISTRADO)
+    if idx < 0:
+        return ""
+    m = re.search(r"numero\s*:\s*([\d\s.]+)", t[max(0, idx - 160) : idx])
+    if not m:
+        return ""
+    return re.sub(r"\D", "", _normalizar_texto(m.group(1)))
+
+
+def _clasificar_es_vieja(page: Page, numero: str) -> bool:
+    """True si la respuesta visible pertenece a otro documento (mensaje o NIS)."""
+    num = _numero_compacto(numero)
+    num_dom = _dom_numero_resultado(page)
+    if num_dom and num and num_dom != num:
+        return True
+    t = _normalizar_texto(_leer_cuerpo_consulta(page))
+    if MSG_NO_REGISTRADO in t:
+        mencionado = _numero_mencionado_en_no_reg(t)
+        if mencionado and mencionado != num:
+            return True
+    return False
+
+
 def _clasificar_despues_ciclo(page: Page, numero: str) -> tuple[str, str]:
     """Clasifica solo DESPUÉS del ciclo de carga (respuesta de ESTA consulta)."""
     texto = _leer_cuerpo_consulta(page)
@@ -2193,14 +2235,20 @@ def _clasificar_despues_ciclo(page: Page, numero: str) -> tuple[str, str]:
     if _extraer_registro_desde_dom(page, numero) is not None:
         return "REGISTRADO", texto
     num = _numero_compacto(numero)
-    num_dom = _dom_numero_resultado(page)
-    if num_dom and num and num_dom != num:
-        return "PENDIENTE", texto
-    # Mensaje no-registrado gana salvo que el DOM tenga Registro de ESTA persona.
+    # Mensaje no-registrado gana salvo que el DOM tenga Registro de ESTA persona
+    # o el mensaje sea de OTRO documento (respuesta vieja sin reemplazar).
     if MSG_NO_REGISTRADO in t:
         if _extraer_registro_desde_dom(page, numero) is not None:
             return "REGISTRADO", texto
+        mencionado = _numero_mencionado_en_no_reg(t)
+        if mencionado and mencionado != num:
+            return "PENDIENTE", texto
+        # El mensaje es de ESTE número: gana aunque num_dom aún muestre el
+        # documento anterior (span viejo que Sofía tarda en reemplazar).
         return "NO_REGISTRADO", texto
+    num_dom = _dom_numero_resultado(page)
+    if num_dom and num and num_dom != num:
+        return "PENDIENTE", texto
     if num and num in _numero_compacto(texto) and _hay_marcadores_registro(t):
         if _extraer_registro(texto, numero) is not None:
             return "REGISTRADO", texto
@@ -2226,7 +2274,10 @@ def _esperar_arranque_carga(
 def _esperar_fin_carga(
     page: Page, numero: str, to_ms: int, t0: float, vio_cargando: bool
 ) -> tuple[str, str]:
-    """Fase 2: espera fin de #cargando / blockUI y clasifica."""
+    """Fase 2: espera fin de #cargando / blockUI y clasifica.
+    Solo clasifica cuando ya se ve la respuesta de ESTE documento (mensaje o
+    número resultado) o cuando un ciclo de carga fue visto; nunca antes, para
+    no leer la respuesta vieja/mensaje tardío de Sofía."""
     t1 = time.time()
     while (time.time() - t1) * 1000 < to_ms:
         if _extraer_registro_desde_dom(page, numero) is not None:
@@ -2238,10 +2289,36 @@ def _esperar_fin_carga(
         _esperar_sin_blockui(page, 3000)
         if _cargando_iframe_visible(page):
             continue
-        if vio_cargando or (time.time() - t0) * 1000 >= 1500:
+        # La pantalla aún muestra la respuesta de OTRO documento (A4J lento o caído):
+        # sigue esperando la de ESTE número antes de clasificar.
+        if _clasificar_es_vieja(page, numero):
+            page.wait_for_timeout(POLL_MS)
+            continue
+        t = _normalizar_texto(_leer_cuerpo_consulta(page))
+        num_dom = _dom_numero_resultado(page)
+        # Respuesta lista: mensaje no-registrado de este doc o número resultado.
+        # (NO clasificar solo por haber visto el ciclo de carga: Sofía renderiza
+        # la respuesta 1-3 s DESPUÉS del fin de #cargando; violeta → NO_VERIFICADO.)
+        if MSG_NO_REGISTRADO in t or num_dom:
             _pause(page, 150)
             return _clasificar_despues_ciclo(page, numero)
         page.wait_for_timeout(POLL_MS)
+    # Fase extra: la respuesta de Sofía a veces llega unos segundos DESPUÉS del
+    # ciclo (A4J lento); antes de rendirse espera el mensaje/número de ESTE doc.
+    t3 = time.time()
+    while (time.time() - t3) * 1000 < 8000:
+        if _extraer_registro_desde_dom(page, numero) is not None:
+            return "REGISTRADO", _leer_cuerpo_consulta(page)
+        t = _normalizar_texto(_leer_cuerpo_consulta(page))
+        if MSG_NO_REGISTRADO in t:
+            mencionado = _numero_mencionado_en_no_reg(t)
+            if not mencionado or mencionado == _numero_compacto(numero):
+                return _clasificar_despues_ciclo(page, numero)
+        num_dom = _dom_numero_resultado(page)
+        num = _numero_compacto(numero)
+        if num_dom and num and num_dom == num:
+            return _clasificar_despues_ciclo(page, numero)
+        page.wait_for_timeout(250)
     if _extraer_registro_desde_dom(page, numero) is not None:
         return "REGISTRADO", _leer_cuerpo_consulta(page)
     return _clasificar_despues_ciclo(page, numero)
@@ -2371,6 +2448,103 @@ def _forzar_select_value(sel, codigo: str) -> bool:
         return False
 
 
+def _set_select_silencioso(fr: Frame | Page, selec: str, valor: str) -> bool:
+    """Setea el select por valor SIN disparar el handler onchange (A4J).
+
+    Sofía re-renderiza el formulario al cambiar tipo de usuario/tipo de documento
+    (A4J) y esas respuestas llegan a veces TARDÍAS, borrando los valores recién
+    puestos. Este setter permite re-colocar el valor y estabilizar el formulario
+    justo antes del envío (sin disparar otra re-renderización).
+    """
+    if fr is None:
+        return False
+    try:
+        loc = fr.locator(selec)
+        if loc.count() == 0:
+            return False
+        return bool(
+            loc.first.evaluate(
+                """(el, valor) => {
+                    const attr = el.getAttribute('onchange');
+                    el.onchange = null;
+                    el.setAttribute('onchange', '');
+                    let ok = false;
+                    for (const o of el.options) {
+                        if (String(o.value || '').trim().toUpperCase() === String(valor).trim().toUpperCase()) {
+                            el.selectedIndex = o.index;
+                            ok = true;
+                            break;
+                        }
+                    }
+                    if (!ok && el.options.length) el.selectedIndex = 0;
+                    el.dispatchEvent(new Event('change', { bubbles: true, cancelable: true }));
+                    if (attr) el.setAttribute('onchange', attr);
+                    return ok && String(el.value || '').trim().toUpperCase() === String(valor).trim().toUpperCase();
+                }""",
+                valor,
+            )
+        )
+    except Exception:
+        return False
+
+
+def _numero_escrito_consulta(page: Page) -> str:
+    fr = _frame_consultar_registro(page)
+    if fr is None:
+        return ""
+    try:
+        campo = fr.locator(SEL_NUMERO_DOC).first
+        if campo.count() > 0:
+            return _numero_compacto(campo.input_value() or "")
+    except Exception:
+        pass
+    return ""
+
+
+def _estabilizar_formulario_consulta(page: Page, tipo: str, numero: str) -> bool:
+    """Re-coloca y verifica Persona + tipo documento + número hasta que aguanten.
+
+    Los onchange A4J de Sofía dejan respuestas tardías que re-renderizan el form
+    y borran lo recién escrito: sin esto el envío sale con campos vacíos y JSF
+    devuelve "valor requerido" (sin respuesta → NO_VERIFICADO aleatorio).
+    """
+    codigo = _codigo_desde_etiqueta_tipo(tipo)
+    esperado = _numero_compacto(numero)
+    estabilidad = 0
+    t0 = time.time()
+    while (time.time() - t0) * 1000 < 12000:
+        fr = _frame_consultar_registro(page)
+        if fr is None:
+            return False
+        try:
+            tiene_usuario = fr.locator(SEL_TIPO_USUARIO).count() > 0
+            usuario = _label_select_actual(fr.locator(SEL_TIPO_USUARIO).first) if tiene_usuario else ""
+            doc = _valor_tipo_doc_actual(page)
+            num_ok = _numero_escrito_consulta(page) == esperado
+        except Exception:
+            page.wait_for_timeout(300)
+            continue
+        if usuario == "Persona" and (not codigo or doc == codigo) and num_ok:
+            estabilidad += 1
+            if estabilidad >= 5:
+                return True
+        else:
+            estabilidad = 0
+            try:
+                if usuario != "Persona":
+                    _set_select_silencioso(fr, SEL_TIPO_USUARIO, "Persona")
+                if codigo and doc != codigo:
+                    if not _set_select_silencioso(fr, SEL_TIPO_DOC, codigo):
+                        # Options aún sin cargar: esperar el A4J en vuelo.
+                        pass
+                if not num_ok:
+                    _escribir_numero_consulta(page, numero)
+            except Exception:
+                pass
+        page.wait_for_timeout(300)
+    return False
+
+
 def _elegir_persona_en_select(page: Page, sel: Any) -> bool:
     if _texto_coincide(_label_select_actual(sel), "Persona"):
         return True
@@ -2434,6 +2608,32 @@ def _valor_tipo_doc_actual(page: Page) -> str:
         return ""
 
 
+def _esperar_opciones_tipo_documento(page: Page, timeout_ms: int = 15000) -> bool:
+    """Espera a que el select tipo de documento tenga opciones (CC/TI/CE…).
+
+    Se pueblan con el A4J del cambio de tipo de usuario; si aún están vacías
+    el setter silencioso no puede fijar el valor sin disparar otro A4J.
+    """
+    fr = _frame_consultar_registro(page)
+    if fr is None:
+        return False
+    t0 = time.time()
+    while (time.time() - t0) * 1000 < timeout_ms:
+        try:
+            n = fr.evaluate(
+                """() => {
+                    const el = document.querySelector('[id$="tipoDocumentoSOL"]');
+                    return el ? el.options.length : 0;
+                }"""
+            )
+        except Exception:
+            n = 0
+        if n and n > 1:
+            return True
+        page.wait_for_timeout(200)
+    return False
+
+
 def _forzar_tipo_doc_en_iframe(page: Page, codigo: str) -> bool:
     fr = _frame_consultar_registro(page)
     if fr is None:
@@ -2444,10 +2644,20 @@ def _forzar_tipo_doc_en_iframe(page: Page, codigo: str) -> bool:
             return False
         if _valor_tipo_doc_actual(page) == codigo:
             return True
-        if not _forzar_select_value(sel.first, codigo):
-            return False
-        _esperar_sin_blockui(page, 5000)
-        return _valor_tipo_doc_actual(page) == codigo
+        # Setter silencioso (sin onchange → sin A4J extra): primero asegura que
+        # las opciones estén cargadas (las puebla el A4J del cambio de usuario).
+        if _set_select_silencioso(fr, SEL_TIPO_DOC, codigo):
+            return _valor_tipo_doc_actual(page) == codigo
+        if not _esperar_opciones_tipo_documento(page):
+            # Sin opciones ni A4J en vuelo: dispara el onchange de usuario una vez.
+            sel_usuario = fr.locator(SEL_TIPO_USUARIO).first
+            if sel_usuario.count() > 0:
+                _forzar_select_value(sel_usuario, "Persona")
+            if not _esperar_opciones_tipo_documento(page):
+                return False
+        if _set_select_silencioso(fr, SEL_TIPO_DOC, codigo):
+            return _valor_tipo_doc_actual(page) == codigo
+        return False
     except Exception:
         return False
 
@@ -2519,6 +2729,8 @@ def _consultar_un_tipo(page: Page, tipo: str, numero: str) -> tuple[str, str, st
     err_fill = _llenar_form_consulta(page, tipo, numero)
     if err_fill:
         return _nv(err_fill)
+    if not _estabilizar_formulario_consulta(page, tipo, numero):
+        return _nv("El formulario Consultar Registro no quedó estable (A4J). Reintente.")
 
     huella_antes = _huella_respuesta(page)
     if not _click_boton_consultar_registro(page):

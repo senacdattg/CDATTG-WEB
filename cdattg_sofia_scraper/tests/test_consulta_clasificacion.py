@@ -220,7 +220,7 @@ class EsperarFinCargaTest(ConAyudaPatcheada):
 
     def test_noClasificaPorCicloSinoPorRespuestaDeEsteDoc(self) -> None:
         page = self._pagina_con_timeline()
-        clase, texto = scraper._esperar_fin_carga(page, self.NUMERO, to_ms=4000, t0=1.0, vio_cargando=False)
+        clase, texto = scraper._esperar_fin_carga(page, self.NUMERO, to_ms=4000)
         self.assertEqual(clase, "NO_REGISTRADO", f"clasificó sin la respuesta de este doc: {texto}")
         self.assertIn(self.NUMERO, texto)
         self.assertGreaterEqual(page.slept_ms, self.T_RESPUESTA, "clasificó antes de que llegara la respuesta propia")
@@ -231,13 +231,13 @@ class EsperarFinCargaTest(ConAyudaPatcheada):
         self.parchear("_leer_cuerpo_consulta", lambda p: f"numero : {self.OTRO} {scraper.MSG_NO_REGISTRADO}")
         self.parchear("_cargando_iframe_visible", lambda p: False)
         self.parchear("_dom_numero_resultado", lambda p: "")
-        clase, _ = scraper._esperar_fin_carga(page, self.NUMERO, to_ms=600, t0=1.0, vio_cargando=False)
+        clase, _ = scraper._esperar_fin_carga(page, self.NUMERO, to_ms=600)
         self.assertEqual(clase, "PENDIENTE")
 
     def test_registroInmediatoEsRegistrado(self) -> None:
         self._dom_reg = ("CC", "NOMBRE", "AP1", "AP2")
         page = _FakePage()
-        clase, _ = scraper._esperar_fin_carga(page, self.NUMERO, to_ms=4000, t0=1.0, vio_cargando=False)
+        clase, _ = scraper._esperar_fin_carga(page, self.NUMERO, to_ms=4000)
         self.assertEqual(clase, "REGISTRADO")
 
 

@@ -218,6 +218,7 @@ MSG_PRIMER_APELLIDO = "primer apellido"
 MSG_IDENT_FICHA = "identificador ficha"
 SEL_INPUT_TEXT = 'input[type="text"]'
 MSG_REINTENTE = " Reintente más tarde."
+MSG_SIN_RESPUESTA_SCRAPER = "No se obtuvo respuesta del scraper"
 MSG_NO_REG_TODOS = (
     "No está registrado en SofiaPlus (probados todos los tipos de documento)."
 )
@@ -359,36 +360,41 @@ def _redactar_cuerpo(cuerpo: str) -> str:
     return re.sub(r"(?i)(password|josso_password|clave|pass)=([^&\s]+)", r"\1=***", cuerpo)
 
 
+def _es_peticion_sofia(url: str) -> bool:
+    return _es_dominio_sofia(url) and not url.lower().endswith(_SOFIA_ASSETS)
+
+
 def _loguear_red(page: Page) -> None:
     """Registra cada petición del navegador a SofíaPlus (método, URL, body redactado, status, ms)."""
     activos: dict[int, tuple[str, float]] = {}
+    page.on("request", lambda req: _red_log_request(activos, req))
+    page.on("response", lambda resp: _red_log_response(activos, resp))
 
-    def on_request(req) -> None:
-        url = req.url
-        if not _es_dominio_sofia(url) or url.lower().endswith(_SOFIA_ASSETS):
-            return
-        metodo = req.method
-        activos[id(req)] = (url, time.time())
-        cuerpo = ""
-        if metodo in ("POST", "PUT", "PATCH"):
-            try:
-                datos = req.post_data
-                if datos:
-                    cuerpo = _redactar_cuerpo(datos)[:500]
-            except Exception:
-                pass
-        logger.info("RED>> %s %s%s", metodo, url, f" | body: {cuerpo}" if cuerpo else "")
 
-    def on_response(resp) -> None:
-        url = resp.url
-        if not _es_dominio_sofia(url) or url.lower().endswith(_SOFIA_ASSETS):
-            return
-        t0 = activos.pop(id(resp.request), None)
-        ms = f" en {(time.time() - t0[1]) * 1000:.0f}ms" if t0 else ""
-        logger.info("RED<< %s %s%s", resp.status, url, ms)
+def _red_log_request(activos: dict[int, tuple[str, float]], req) -> None:
+    url = req.url
+    if not _es_peticion_sofia(url):
+        return
+    metodo = req.method
+    activos[id(req)] = (url, time.time())
+    cuerpo = ""
+    if metodo in ("POST", "PUT", "PATCH"):
+        try:
+            datos = req.post_data
+            if datos:
+                cuerpo = _redactar_cuerpo(datos)[:500]
+        except Exception:
+            pass
+    logger.info("RED>> %s %s%s", metodo, url, f" | body: {cuerpo}" if cuerpo else "")
 
-    page.on("request", on_request)
-    page.on("response", on_response)
+
+def _red_log_response(activos: dict[int, tuple[str, float]], resp) -> None:
+    url = resp.url
+    if not _es_peticion_sofia(url):
+        return
+    t0 = activos.pop(id(resp.request), None)
+    ms = f" en {(time.time() - t0[1]) * 1000:.0f}ms" if t0 else ""
+    logger.info("RED<< %s %s%s", resp.status, url, ms)
 
 
 def _urls_pagina(page: Page) -> list[str]:
@@ -2086,32 +2092,37 @@ def _frame_consultar_registro(page: Page) -> Frame | Page | None:
     return _frame_por_url_consultar(page) or _frame_por_select_persona(page)
 
 
+def _texto_oculto_consultar(fr) -> str:
+    """textContent del iframe: incluye mensajes ocultos (dojoDialog display:none)."""
+    try:
+        return fr.evaluate("document.body.textContent || ''") or ""
+    except Exception:
+        return ""
+
+
+def _texto_frame_consultar(fr) -> str:
+    """Texto del iframe de Consultar Registro, visible + (si aplica) oculto."""
+    try:
+        texto = fr.inner_text("body") or ""
+    except Exception:
+        return ""
+    if not texto.strip():
+        # Sofía a veces renderiza el mensaje 100% oculto: textContent lo incluye.
+        return _texto_oculto_consultar(fr)
+    if MSG_NO_REGISTRADO not in texto:
+        # Mensaje oculto que confirma "no registrado" (inner_text no lo devuelve).
+        oculto = _texto_oculto_consultar(fr)
+        if oculto and MSG_NO_REGISTRADO in oculto:
+            texto = f"{texto}\n{oculto}"
+    return texto
+
+
 def _leer_cuerpo_consulta(page: Page) -> str:
     fr = _frame_consultar_registro(page)
     if fr is not None:
-        try:
-            texto = fr.inner_text("body") or ""
-            # Sofía a veces renderiza el mensaje oculto (dojoDialog display:none),
-            # que inner_text no devuelve: textContent lo incluye. Consultarlo
-            # también cuando el texto visible está vacío (mensaje 100% oculto).
-            if not texto.strip():
-                try:
-                    oculto = fr.evaluate("document.body.textContent || ''") or ""
-                    if oculto:
-                        texto = oculto
-                except Exception:
-                    pass
-            elif MSG_NO_REGISTRADO not in texto:
-                try:
-                    oculto = fr.evaluate("document.body.textContent || ''") or ""
-                    if oculto and MSG_NO_REGISTRADO in oculto:
-                        texto = f"{texto}\n{oculto}"
-                except Exception:
-                    pass
-            if texto.strip():
-                return texto
-        except Exception:
-            pass
+        texto = _texto_frame_consultar(fr)
+        if texto.strip():
+            return texto
     # Concatenar todos los frames (el shell solo no basta).
     partes: list[str] = []
     for frame in _frames(page):
@@ -2271,53 +2282,62 @@ def _esperar_arranque_carga(
     return None
 
 
-def _esperar_fin_carga(
-    page: Page, numero: str, to_ms: int, t0: float, vio_cargando: bool
-) -> tuple[str, str]:
+def _respuesta_visible_consulta(page: Page) -> bool:
+    """Respuesta lista: mensaje no-registrado o número resultado del bloque."""
+    if MSG_NO_REGISTRADO in _normalizar_texto(_leer_cuerpo_consulta(page)):
+        return True
+    return bool(_dom_numero_resultado(page))
+
+
+def _clasificar_si_respuesta_este_doc(page: Page, numero: str) -> tuple[str, str] | None:
+    """Clasifica solo si la respuesta visible ya es de ESTE documento."""
+    t = _normalizar_texto(_leer_cuerpo_consulta(page))
+    if MSG_NO_REGISTRADO in t:
+        mencionado = _numero_mencionado_en_no_reg(t)
+        if not mencionado or mencionado == _numero_compacto(numero):
+            return _clasificar_despues_ciclo(page, numero)
+    num_dom = _dom_numero_resultado(page)
+    num = _numero_compacto(numero)
+    if num_dom and num and num_dom == num:
+        return _clasificar_despues_ciclo(page, numero)
+    return None
+
+
+def _esperar_fin_carga(page: Page, numero: str, to_ms: int) -> tuple[str, str]:
     """Fase 2: espera fin de #cargando / blockUI y clasifica.
     Solo clasifica cuando ya se ve la respuesta de ESTE documento (mensaje o
-    número resultado) o cuando un ciclo de carga fue visto; nunca antes, para
-    no leer la respuesta vieja/mensaje tardío de Sofía."""
+    número resultado); nunca antes, para no leer la respuesta vieja o el
+    mensaje tardío de Sofía (renders 1-3 s después del fin del ciclo)."""
     t1 = time.time()
     while (time.time() - t1) * 1000 < to_ms:
         if _extraer_registro_desde_dom(page, numero) is not None:
             return "REGISTRADO", _leer_cuerpo_consulta(page)
         if _cargando_iframe_visible(page):
-            vio_cargando = True
             page.wait_for_timeout(POLL_MS)
             continue
         _esperar_sin_blockui(page, 3000)
-        if _cargando_iframe_visible(page):
-            continue
         # La pantalla aún muestra la respuesta de OTRO documento (A4J lento o caído):
         # sigue esperando la de ESTE número antes de clasificar.
-        if _clasificar_es_vieja(page, numero):
+        if _cargando_iframe_visible(page) or _clasificar_es_vieja(page, numero):
             page.wait_for_timeout(POLL_MS)
             continue
-        t = _normalizar_texto(_leer_cuerpo_consulta(page))
-        num_dom = _dom_numero_resultado(page)
-        # Respuesta lista: mensaje no-registrado de este doc o número resultado.
-        # (NO clasificar solo por haber visto el ciclo de carga: Sofía renderiza
-        # la respuesta 1-3 s DESPUÉS del fin de #cargando; violeta → NO_VERIFICADO.)
-        if MSG_NO_REGISTRADO in t or num_dom:
+        if _respuesta_visible_consulta(page):
             _pause(page, 150)
             return _clasificar_despues_ciclo(page, numero)
         page.wait_for_timeout(POLL_MS)
-    # Fase extra: la respuesta de Sofía a veces llega unos segundos DESPUÉS del
-    # ciclo (A4J lento); antes de rendirse espera el mensaje/número de ESTE doc.
+    return _esperar_respuesta_tardia(page, numero)
+
+
+def _esperar_respuesta_tardia(page: Page, numero: str) -> tuple[str, str]:
+    """Fase extra: Sofía a veces renderiza la respuesta segundos DESPUÉS del
+    ciclo (A4J lento); antes de rendirse espera el mensaje/número de ESTE doc."""
     t3 = time.time()
     while (time.time() - t3) * 1000 < 8000:
         if _extraer_registro_desde_dom(page, numero) is not None:
             return "REGISTRADO", _leer_cuerpo_consulta(page)
-        t = _normalizar_texto(_leer_cuerpo_consulta(page))
-        if MSG_NO_REGISTRADO in t:
-            mencionado = _numero_mencionado_en_no_reg(t)
-            if not mencionado or mencionado == _numero_compacto(numero):
-                return _clasificar_despues_ciclo(page, numero)
-        num_dom = _dom_numero_resultado(page)
-        num = _numero_compacto(numero)
-        if num_dom and num and num_dom == num:
-            return _clasificar_despues_ciclo(page, numero)
+        clasificado = _clasificar_si_respuesta_este_doc(page, numero)
+        if clasificado is not None:
+            return clasificado
         page.wait_for_timeout(250)
     if _extraer_registro_desde_dom(page, numero) is not None:
         return "REGISTRADO", _leer_cuerpo_consulta(page)
@@ -2332,13 +2352,11 @@ def _esperar_respuesta_consulta(
     if not huella_antes:
         huella_antes = _huella_respuesta(page)
 
-    t0 = time.time()
     temprano = _esperar_arranque_carga(page, numero, huella_antes, to)
     if temprano is not None:
         return temprano
 
-    vio_cargando = _cargando_iframe_visible(page)
-    return _esperar_fin_carga(page, numero, to, t0, vio_cargando)
+    return _esperar_fin_carga(page, numero, to)
 
 
 def _dump_iframe_consultar(page: Page, paso: str) -> None:
@@ -2501,6 +2519,35 @@ def _numero_escrito_consulta(page: Page) -> str:
     return ""
 
 
+def _formulario_consulta_estable(
+    fr, page: Page, codigo: str, esperado: str
+) -> tuple[bool, str, str, bool]:
+    """(estable, usuario, doc, num_ok) del formulario; False si el frame no responde."""
+    try:
+        tiene_usuario = fr.locator(SEL_TIPO_USUARIO).count() > 0
+        usuario = _label_select_actual(fr.locator(SEL_TIPO_USUARIO).first) if tiene_usuario else ""
+        doc = _valor_tipo_doc_actual(page)
+        num_ok = _numero_escrito_consulta(page) == esperado
+    except Exception:
+        return False, "", "", False
+    estable = usuario == "Persona" and (not codigo or doc == codigo) and num_ok
+    return estable, usuario, doc, num_ok
+
+
+def _recolocar_valores_formulario(fr, page: Page, usuario: str, codigo: str, doc: str, num_ok: bool, numero: str) -> None:
+    """Re-coloca Persona/tipo/número tras un re-render de A4J (best-effort)."""
+    try:
+        if usuario != "Persona":
+            _set_select_silencioso(fr, SEL_TIPO_USUARIO, "Persona")
+        if codigo and doc != codigo:
+            # Options aún sin cargar: esperar el A4J en vuelo.
+            _set_select_silencioso(fr, SEL_TIPO_DOC, codigo)
+        if not num_ok:
+            _escribir_numero_consulta(page, numero)
+    except Exception:
+        pass
+
+
 def _estabilizar_formulario_consulta(page: Page, tipo: str, numero: str) -> bool:
     """Re-coloca y verifica Persona + tipo documento + número hasta que aguanten.
 
@@ -2516,31 +2563,14 @@ def _estabilizar_formulario_consulta(page: Page, tipo: str, numero: str) -> bool
         fr = _frame_consultar_registro(page)
         if fr is None:
             return False
-        try:
-            tiene_usuario = fr.locator(SEL_TIPO_USUARIO).count() > 0
-            usuario = _label_select_actual(fr.locator(SEL_TIPO_USUARIO).first) if tiene_usuario else ""
-            doc = _valor_tipo_doc_actual(page)
-            num_ok = _numero_escrito_consulta(page) == esperado
-        except Exception:
-            page.wait_for_timeout(300)
-            continue
-        if usuario == "Persona" and (not codigo or doc == codigo) and num_ok:
+        estable, usuario, doc, num_ok = _formulario_consulta_estable(fr, page, codigo, esperado)
+        if estable:
             estabilidad += 1
             if estabilidad >= 5:
                 return True
         else:
             estabilidad = 0
-            try:
-                if usuario != "Persona":
-                    _set_select_silencioso(fr, SEL_TIPO_USUARIO, "Persona")
-                if codigo and doc != codigo:
-                    if not _set_select_silencioso(fr, SEL_TIPO_DOC, codigo):
-                        # Options aún sin cargar: esperar el A4J en vuelo.
-                        pass
-                if not num_ok:
-                    _escribir_numero_consulta(page, numero)
-            except Exception:
-                pass
+            _recolocar_valores_formulario(fr, page, usuario, codigo, doc, num_ok, numero)
         page.wait_for_timeout(300)
     return False
 
@@ -2996,7 +3026,7 @@ def verificar_documento(numero: str, cred: Credenciales, tipo_codigo: str = "") 
     _ejecutar_flujo(ctx)
     if ctx.resultados:
         return ctx.resultados[0]
-    return _no_verificado(numero, "No se obtuvo respuesta del scraper")
+    return _no_verificado(numero, MSG_SIN_RESPUESTA_SCRAPER)
 
 
 def verificar_lote(
@@ -3021,8 +3051,8 @@ def verificar_lote(
         if ctx.resultados:
             progreso.terminar(lote_id)
             return ctx.resultados
-        progreso.terminar(lote_id, error="No se obtuvo respuesta del scraper")
-        return [_no_verificado(d.numero_documento, "No se obtuvo respuesta del scraper") for d in docs]
+        progreso.terminar(lote_id, error=MSG_SIN_RESPUESTA_SCRAPER)
+        return [_no_verificado(d.numero_documento, MSG_SIN_RESPUESTA_SCRAPER) for d in docs]
 
     # Round-robin: reparte documentos adyacentes entre workers (balance de carga).
     chunks: list[list[DocumentoLote]] = [docs[i::workers] for i in range(workers)]
@@ -3036,7 +3066,7 @@ def verificar_lote(
         _ejecutar_flujo(ctx)
         if not ctx.resultados:
             ctx.resultados = [
-                _no_verificado(d.numero_documento, "No se obtuvo respuesta del scraper") for d in chunk
+                _no_verificado(d.numero_documento, MSG_SIN_RESPUESTA_SCRAPER) for d in chunk
             ]
         for j, r in enumerate(ctx.resultados):
             resultados[chunk_idx + j * workers] = r

@@ -1,6 +1,6 @@
 /**
  * @module features/personalRol/PersonalRolPage
- * @description Página genérica de CRUD usada por Guardas y Personal Administrativo.
+ * @description Página genérica de CRUD de los roles del módulo Personal.
  * @author JDTWOR
  * @created 2026-08-14
  */
@@ -22,7 +22,7 @@ interface PersonalRolPageProps {
 
 /**
  * Compone la página CRUD completa a partir de la configuración del rol.
- * @param props config del módulo (Guardas o Personal Administrativo).
+ * @param props config del módulo (Personal Operativo, Administrativo o Contratistas).
  */
 export function PersonalRolPage({ config }: Readonly<PersonalRolPageProps>) {
   const crud = usePersonalRolCrud(config);

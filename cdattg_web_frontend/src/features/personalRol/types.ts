@@ -1,6 +1,6 @@
 /**
  * @module features/personalRol/types
- * @description Tipos compartidos del módulo Personal (Guardas y Personal Administrativo).
+ * @description Tipos compartidos del módulo Personal (Operativo y de Apoyo, Administrativo y Contratistas).
  * @author JDTWOR
  * @created 2026-08-14
  */

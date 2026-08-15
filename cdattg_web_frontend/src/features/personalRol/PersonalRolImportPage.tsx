@@ -1,6 +1,6 @@
 /**
  * @module features/personalRol/PersonalRolImportPage
- * @description Página genérica de importación usada por Guardas y Personal Administrativo.
+ * @description Página genérica de importación de los roles del módulo Personal.
  * @author JDTWOR
  * @created 2026-08-14
  */
@@ -17,7 +17,7 @@ interface PersonalRolImportPageProps {
 
 /**
  * Compone la página de importación: carga de archivo, buenas prácticas e historial.
- * @param props config del módulo (Guardas o Personal Administrativo).
+ * @param props config del módulo (Personal Operativo, Administrativo o Contratistas).
  */
 export function PersonalRolImportPage({ config }: Readonly<PersonalRolImportPageProps>) {
   const [imports, setImports] = useState<PersonalRolImportLogItem[]>([]);

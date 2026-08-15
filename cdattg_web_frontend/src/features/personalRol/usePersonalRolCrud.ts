@@ -31,7 +31,7 @@ export interface PersonalRolCrud {
 
 /**
  * Obtiene la lista paginada del rol configurado y expone operaciones CRUD.
- * @param config Configuración del módulo (Guardas o Personal Administrativo).
+ * @param config Configuración del módulo (Personal Operativo, Administrativo o Contratistas).
  * @returns Estado de lista, filtros, paginación y acciones CRUD.
  */
 export function usePersonalRolCrud(config: PersonalRolModuleConfig): PersonalRolCrud {

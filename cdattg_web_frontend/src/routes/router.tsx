@@ -6,8 +6,9 @@ import { authRoutes } from './modules/auth.routes';
 import { homeRoutes } from './modules/home.routes';
 import { personasRoutes } from './modules/personas.routes';
 import { instructoresRoutes } from './modules/instructores.routes';
-import { guardasRoutes } from './modules/guardas.routes';
+import { personalOperativoApoyoRoutes } from './modules/personalOperativoApoyo.routes';
 import { personalAdministrativoRoutes } from './modules/personalAdministrativo.routes';
+import { contratistasRoutes } from './modules/contratistas.routes';
 import { aprendicesRoutes } from './modules/aprendices.routes';
 import { programasRoutes } from './modules/programas.routes';
 import { fichasRoutes } from './modules/fichas.routes';
@@ -36,8 +37,9 @@ export const appRouter = createBrowserRouter([
       ...aprendizRoutes,
       ...personasRoutes,
       ...instructoresRoutes,
-      ...guardasRoutes,
+      ...personalOperativoApoyoRoutes,
       ...personalAdministrativoRoutes,
+      ...contratistasRoutes,
       ...aprendicesRoutes,
       ...programasRoutes,
       ...fichasRoutes,

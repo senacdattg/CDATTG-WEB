@@ -854,53 +854,105 @@ class ApiService {
     return response.data.data;
   }
 
-  // Guardas
-  async getGuardas(page = 1, pageSize = 20, search?: string): Promise<PaginatedResponse<PersonalRolItem>> {
-    const response = await this.api.get<PaginatedResponse<PersonalRolItem>>('/guardas', {
+  // Personal operativo y de apoyo
+  async getPersonalOperativoApoyo(page = 1, pageSize = 20, search?: string): Promise<PaginatedResponse<PersonalRolItem>> {
+    const response = await this.api.get<PaginatedResponse<PersonalRolItem>>('/personal-operativo-apoyo', {
       params: { page, page_size: pageSize, search: search || undefined },
     });
     return response.data;
   }
 
-  async getGuardaById(id: number): Promise<PersonalRolItem> {
-    const response = await this.api.get<PersonalRolItem>(`/guardas/${id}`);
+  async getPersonalOperativoApoyoById(id: number): Promise<PersonalRolItem> {
+    const response = await this.api.get<PersonalRolItem>(`/personal-operativo-apoyo/${id}`);
     return response.data;
   }
 
-  async updateGuarda(id: number, data: UpdatePersonalRolRequest): Promise<PersonalRolItem> {
-    const response = await this.api.put<PersonalRolItem>(`/guardas/${id}`, data);
+  async updatePersonalOperativoApoyo(id: number, data: UpdatePersonalRolRequest): Promise<PersonalRolItem> {
+    const response = await this.api.put<PersonalRolItem>(`/personal-operativo-apoyo/${id}`, data);
     return response.data;
   }
 
-  async deleteGuarda(id: number): Promise<void> {
-    await this.api.delete(`/guardas/${id}`);
+  async deletePersonalOperativoApoyo(id: number): Promise<void> {
+    await this.api.delete(`/personal-operativo-apoyo/${id}`);
   }
 
-  // Crear guarda desde persona
-  async createGuardaFromPersona(data: CreatePersonalRolRequest): Promise<PersonalRolItem> {
-    const response = await this.api.post<PersonalRolItem>('/guardas', data);
+  // Crear personal operativo y de apoyo desde persona
+  async createPersonalOperativoApoyoFromPersona(data: CreatePersonalRolRequest): Promise<PersonalRolItem> {
+    const response = await this.api.post<PersonalRolItem>('/personal-operativo-apoyo', data);
     return response.data;
   }
 
-  /** Importación masiva de guardas desde Excel. */
-  async uploadGuardasImport(file: File): Promise<PersonalRolImportResult> {
+  /** Importación masiva de personal operativo y de apoyo desde Excel. */
+  async uploadPersonalOperativoApoyoImport(file: File): Promise<PersonalRolImportResult> {
     const formData = new FormData();
     formData.append('file', file);
-    const response = await this.api.post<PersonalRolImportResult>('/guardas/import', formData, {
+    const response = await this.api.post<PersonalRolImportResult>('/personal-operativo-apoyo/import', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
     });
     return response.data;
   }
 
-  async getGuardaImports(limit: number = 50): Promise<PersonalRolImportLogItem[]> {
-    const response = await this.api.get<{ data: PersonalRolImportLogItem[] }>('/guardas/imports', {
+  async getPersonalOperativoApoyoImports(limit: number = 50): Promise<PersonalRolImportLogItem[]> {
+    const response = await this.api.get<{ data: PersonalRolImportLogItem[] }>('/personal-operativo-apoyo/imports', {
       params: { limit },
     });
     return response.data.data;
   }
 
-  async downloadGuardaImportTemplate(): Promise<Blob> {
-    const response = await this.api.get<Blob>('/guardas/import/template', {
+  async downloadPersonalOperativoApoyoImportTemplate(): Promise<Blob> {
+    const response = await this.api.get<Blob>('/personal-operativo-apoyo/import/template', {
+      responseType: 'blob',
+    });
+    return response.data;
+  }
+
+  // Contratistas de prestación de servicios
+  async getContratistas(page = 1, pageSize = 20, search?: string): Promise<PaginatedResponse<PersonalRolItem>> {
+    const response = await this.api.get<PaginatedResponse<PersonalRolItem>>('/contratistas', {
+      params: { page, page_size: pageSize, search: search || undefined },
+    });
+    return response.data;
+  }
+
+  async getContratistaById(id: number): Promise<PersonalRolItem> {
+    const response = await this.api.get<PersonalRolItem>(`/contratistas/${id}`);
+    return response.data;
+  }
+
+  async updateContratista(id: number, data: UpdatePersonalRolRequest): Promise<PersonalRolItem> {
+    const response = await this.api.put<PersonalRolItem>(`/contratistas/${id}`, data);
+    return response.data;
+  }
+
+  async deleteContratista(id: number): Promise<void> {
+    await this.api.delete(`/contratistas/${id}`);
+  }
+
+  // Crear contratista desde persona
+  async createContratistaFromPersona(data: CreatePersonalRolRequest): Promise<PersonalRolItem> {
+    const response = await this.api.post<PersonalRolItem>('/contratistas', data);
+    return response.data;
+  }
+
+  /** Importación masiva de contratistas desde Excel. */
+  async uploadContratistasImport(file: File): Promise<PersonalRolImportResult> {
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await this.api.post<PersonalRolImportResult>('/contratistas/import', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return response.data;
+  }
+
+  async getContratistaImports(limit: number = 50): Promise<PersonalRolImportLogItem[]> {
+    const response = await this.api.get<{ data: PersonalRolImportLogItem[] }>('/contratistas/imports', {
+      params: { limit },
+    });
+    return response.data.data;
+  }
+
+  async downloadContratistaImportTemplate(): Promise<Blob> {
+    const response = await this.api.get<Blob>('/contratistas/import/template', {
       responseType: 'blob',
     });
     return response.data;

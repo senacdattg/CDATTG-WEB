@@ -1,6 +1,6 @@
 /**
  * @module features/personalRol/components/RolCreateDialog
- * @description Diálogo de creación de Guarda o Personal Administrativo desde una persona existente.
+ * @description Diálogo de creación de un rol de personal desde una persona existente.
  * @author JDTWOR
  * @created 2026-08-14
  */

@@ -1,18 +1,22 @@
 /**
  * @module features/personalRol/config
- * @description Configuración por rol (Guardas / Personal Administrativo) para páginas CRUD e importación.
+ * @description Configuración por rol (Personal Operativo y de Apoyo / Personal Administrativo / Contratistas).
  * @author JDTWOR
  * @created 2026-08-14
  */
 import type { ComponentType } from 'react';
-import { ShieldCheckIcon, UsersIcon } from '@heroicons/react/24/outline';
+import { ShieldCheckIcon, UsersIcon, DocumentCheckIcon } from '@heroicons/react/24/outline';
 import { apiService } from '../../services/api';
-import { guardasPaths, personalAdministrativoPaths } from '../../routes/paths';
+import {
+  personalOperativoApoyoPaths,
+  personalAdministrativoPaths,
+  contratistasPaths,
+} from '../../routes/paths';
 import type { PaginatedResponse } from '../../types';
 import type { PersonalRolImportLogItem, PersonalRolImportResult, PersonalRolItem } from './types';
 
 export interface PersonalRolModuleConfig {
-  /** Nombre singular del rol (guarda, personal administrativo). */
+  /** Nombre singular del rol (personal operativo y de apoyo, personal administrativo, contratista). */
   objectName: string;
   /** Ruta hacia la página de importación. */
   importPath: string;
@@ -47,41 +51,41 @@ export interface PersonalRolModuleConfig {
   };
 }
 
-export const guardasConfig: PersonalRolModuleConfig = {
-  objectName: 'guarda',
-  importPath: guardasPaths.importar,
-  templateFilename: 'plantilla_importar_guardas.xlsx',
+export const personalOperativoApoyoConfig: PersonalRolModuleConfig = {
+  objectName: 'personal operativo y de apoyo',
+  importPath: personalOperativoApoyoPaths.importar,
+  templateFilename: 'plantilla_importar_personal_operativo_apoyo.xlsx',
   importIcon: ShieldCheckIcon,
   labels: {
-    title: 'Guardas',
-    subtitle: 'Gestiona y administra las guardas de seguridad del SENA',
-    nuevo: 'Nueva Guarda',
-    crear: 'Crear Guarda',
-    crearModalTitle: 'Crear Guarda',
-    editarModalTitle: 'Editar guarda',
-    verModalTitle: 'Detalle de la guarda',
-    eliminarModalTitle: 'Eliminar guarda',
+    title: 'Personal Operativo y de Apoyo',
+    subtitle: 'Gestiona y administra el personal operativo y de apoyo del SENA',
+    nuevo: 'Nuevo Personal Operativo y de Apoyo',
+    crear: 'Crear Personal Operativo y de Apoyo',
+    crearModalTitle: 'Crear Personal Operativo y de Apoyo',
+    editarModalTitle: 'Editar personal operativo y de apoyo',
+    verModalTitle: 'Detalle del personal operativo y de apoyo',
+    eliminarModalTitle: 'Eliminar personal operativo y de apoyo',
     eliminarConfirm: (nombre) =>
-      `¿Está seguro de eliminar a la guarda ${nombre}? Esta acción no se puede deshacer.`,
-    importar: 'Importar guardas',
-    importarTitle: 'Importar Guardas',
+      `¿Está seguro de eliminar al personal operativo y de apoyo ${nombre}? Esta acción no se puede deshacer.`,
+    importar: 'Importar personal operativo y de apoyo',
+    importarTitle: 'Importar Personal Operativo y de Apoyo',
     importarDescription:
-      'Carga masiva de guardas desde Excel. Se crean personas si no existen y se vinculan como guardas.',
-    nivelSingular: 'guarda',
+      'Carga masiva de personal operativo y de apoyo desde Excel. Se crean personas si no existen y se vinculan.',
+    nivelSingular: 'personal operativo y de apoyo',
     buenasPracticas: [
       'La primera fila debe ser encabezados: NOMBRES Y APELLIDOS COMPLETO, TIPO DOCUMENTO, IDENTIFICACIÓN, NUMERO TELEFONO, CORREO PERSONAL, FECHA DE NACIMIENTO, GÉNERO.',
       'Tipo de documento: use "Cédula de Ciudadanía", "CC", o el nombre completo del tipo según el catálogo.',
-      'Si la persona no existe se crea; si ya es guarda se cuenta como duplicado y no se genera error.',
+      'Si la persona no existe se crea; si ya es personal operativo y de apoyo se cuenta como duplicado y no se genera error.',
     ],
   },
   api: {
-    list: (page, pageSize, search) => apiService.getGuardas(page, pageSize, search),
-    create: (personaId) => apiService.createGuardaFromPersona({ persona_id: personaId }),
-    update: (id, estado) => apiService.updateGuarda(id, { estado }),
-    remove: (id) => apiService.deleteGuarda(id),
-    listImports: () => apiService.getGuardaImports(50),
-    upload: (file) => apiService.uploadGuardasImport(file),
-    downloadTemplate: () => apiService.downloadGuardaImportTemplate(),
+    list: (page, pageSize, search) => apiService.getPersonalOperativoApoyo(page, pageSize, search),
+    create: (personaId) => apiService.createPersonalOperativoApoyoFromPersona({ persona_id: personaId }),
+    update: (id, estado) => apiService.updatePersonalOperativoApoyo(id, { estado }),
+    remove: (id) => apiService.deletePersonalOperativoApoyo(id),
+    listImports: () => apiService.getPersonalOperativoApoyoImports(50),
+    upload: (file) => apiService.uploadPersonalOperativoApoyoImport(file),
+    downloadTemplate: () => apiService.downloadPersonalOperativoApoyoImportTemplate(),
   },
 };
 
@@ -120,5 +124,43 @@ export const personalAdministrativoConfig: PersonalRolModuleConfig = {
     listImports: () => apiService.getPersonalAdministrativoImports(50),
     upload: (file) => apiService.uploadPersonalAdministrativoImport(file),
     downloadTemplate: () => apiService.downloadPersonalAdministrativoImportTemplate(),
+  },
+};
+
+export const contratistasConfig: PersonalRolModuleConfig = {
+  objectName: 'contratista',
+  importPath: contratistasPaths.importar,
+  templateFilename: 'plantilla_importar_contratistas.xlsx',
+  importIcon: DocumentCheckIcon,
+  labels: {
+    title: 'Contratistas de Prestación de Servicios',
+    subtitle: 'Gestiona y administra los contratistas de prestación de servicios del SENA',
+    nuevo: 'Nuevo Contratista',
+    crear: 'Crear Contratista',
+    crearModalTitle: 'Crear Contratista',
+    editarModalTitle: 'Editar contratista',
+    verModalTitle: 'Detalle del contratista',
+    eliminarModalTitle: 'Eliminar contratista',
+    eliminarConfirm: (nombre) =>
+      `¿Está seguro de eliminar al contratista ${nombre}? Esta acción no se puede deshacer.`,
+    importar: 'Importar contratistas',
+    importarTitle: 'Importar Contratistas',
+    importarDescription:
+      'Carga masiva de contratistas desde Excel. Se crean personas si no existen y se vinculan como contratistas.',
+    nivelSingular: 'contratista',
+    buenasPracticas: [
+      'La primera fila debe ser encabezados: NOMBRES Y APELLIDOS COMPLETO, TIPO DOCUMENTO, IDENTIFICACIÓN, NUMERO TELEFONO, CORREO PERSONAL, FECHA DE NACIMIENTO, GÉNERO.',
+      'Tipo de documento: use "Cédula de Ciudadanía", "CC", o el nombre completo del tipo según el catálogo.',
+      'Si la persona no existe se crea; si ya es contratista se cuenta como duplicado y no se genera error.',
+    ],
+  },
+  api: {
+    list: (page, pageSize, search) => apiService.getContratistas(page, pageSize, search),
+    create: (personaId) => apiService.createContratistaFromPersona({ persona_id: personaId }),
+    update: (id, estado) => apiService.updateContratista(id, { estado }),
+    remove: (id) => apiService.deleteContratista(id),
+    listImports: () => apiService.getContratistaImports(50),
+    upload: (file) => apiService.uploadContratistasImport(file),
+    downloadTemplate: () => apiService.downloadContratistaImportTemplate(),
   },
 };

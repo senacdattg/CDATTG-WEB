@@ -1,6 +1,6 @@
 /**
  * @module features/personalRol/components/RolEditDialog
- * @description Diálogo de edición de estado de un Guarda o Personal Administrativo.
+ * @description Diálogo de edición de estado de un rol de personal.
  * @author JDTWOR
  * @created 2026-08-14
  */

@@ -1,6 +1,6 @@
 /**
  * @module features/personalRol/components/RolDeleteDialog
- * @description Diálogo de confirmación de eliminación de un Guarda o Personal Administrativo.
+ * @description Diálogo de confirmación de eliminación de un rol de personal.
  * @author JDTWOR
  * @created 2026-08-14
  */

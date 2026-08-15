@@ -13,8 +13,9 @@ import {
   personasPaths,
   programasPaths,
   instructoresPaths,
-  guardasPaths,
+  personalOperativoApoyoPaths,
   personalAdministrativoPaths,
+  contratistasPaths,
   vigilanciaPaths,
   complementariosPaths,
 } from '../../routes/paths';
@@ -101,10 +102,10 @@ export const SIDEBAR_MANIFEST: SidebarManifestItem[] = [
   },
   {
     section: 'Personal',
-    path: guardasPaths.index,
-    label: 'Guardas',
-    permission: 'VER GUARDAS',
-    iconKey: 'guardas',
+    path: personalOperativoApoyoPaths.index,
+    label: 'Personal operativo y de apoyo',
+    permission: 'VER PERSONAL OPERATIVO Y DE APOYO',
+    iconKey: 'personal-operativo-apoyo',
   },
   {
     section: 'Personal',
@@ -112,6 +113,13 @@ export const SIDEBAR_MANIFEST: SidebarManifestItem[] = [
     label: 'Personal administrativo',
     permission: 'VER PERSONAL ADMINISTRATIVO',
     iconKey: 'personal-administrativo',
+  },
+  {
+    section: 'Personal',
+    path: contratistasPaths.index,
+    label: 'Contratistas de prestación de servicios',
+    permission: 'VER CONTRATISTAS PRESTACIÓN DE SERVICIOS',
+    iconKey: 'contratistas',
   },
   {
     section: 'Personal',

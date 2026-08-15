@@ -18,10 +18,12 @@ const (
 	metodoCamara = "CAMARA"
 	metodoManual = "MANUAL"
 
-	tipoAprendiz       = "APRENDIZ"
-	tipoInstructor     = "INSTRUCTOR"
-	tipoAdministrativo = "ADMINISTRATIVO"
-	tipoVisitante      = "VISITANTE"
+	tipoAprendiz              = "APRENDIZ"
+	tipoInstructor            = "INSTRUCTOR"
+	tipoAdministrativo        = "ADMINISTRATIVO"
+	tipoPersonalOperativoApoyo = "PERSONAL_OPERATIVO_APOYO"
+	tipoContratista           = "CONTRATISTA"
+	tipoVisitante             = "VISITANTE"
 
 	accionIngreso = "INGRESO"
 	accionSalida  = "SALIDA"
@@ -33,7 +35,7 @@ const (
 	errSedeObligatoria = "debe seleccionar la sede antes de escanear o registrar"
 )
 
-var tiposPersonaAcceso = []string{tipoAprendiz, tipoInstructor, tipoAdministrativo, tipoVisitante}
+var tiposPersonaAcceso = []string{tipoAprendiz, tipoInstructor, tipoAdministrativo, tipoPersonalOperativoApoyo, tipoContratista, tipoVisitante}
 
 var motivosSalidaAcceso = []string{
 	"DESCANSO",
@@ -56,13 +58,15 @@ type VigilanciaAccesoService interface {
 }
 
 type vigilanciaAccesoService struct {
-	personaRepo    repositories.PersonaRepository
-	accesoRepo     repositories.PersonaIngresoSalidaRepository
-	catalogo       repositories.CatalogoRepository
-	userAccounts   PersonaUserAccountService
-	instructorRepo repositories.InstructorRepository
-	aprendizRepo   repositories.AprendizRepository
-	fichaRepo      repositories.FichaRepository
+	personaRepo              repositories.PersonaRepository
+	accesoRepo               repositories.PersonaIngresoSalidaRepository
+	catalogo                 repositories.CatalogoRepository
+	userAccounts             PersonaUserAccountService
+	instructorRepo           repositories.InstructorRepository
+	aprendizRepo             repositories.AprendizRepository
+	fichaRepo                repositories.FichaRepository
+	personalOperativoApoyoRepo repositories.PersonalOperativoApoyoRepository
+	contratistaRepo          repositories.ContratistaRepository
 }
 
 // NewVigilanciaAccesoService construye el servicio de portería.
@@ -76,6 +80,8 @@ func NewVigilanciaAccesoService() VigilanciaAccesoService {
 		instructorRepo: repositories.NewInstructorRepository(),
 		aprendizRepo:   repositories.NewAprendizRepository(),
 		fichaRepo:      repositories.NewFichaRepository(),
+		personalOperativoApoyoRepo: repositories.NewPersonalOperativoApoyoRepository(),
+		contratistaRepo: repositories.NewContratistaRepository(),
 	}
 }
 
@@ -185,7 +191,7 @@ func (s *vigilanciaAccesoService) requireSedeID(sedeID *uint) (uint, error) {
 
 // resolverTiposPersona detecta todos los roles de la persona (puede ser aprendiz e instructor a la vez).
 func (s *vigilanciaAccesoService) resolverTiposPersona(personaID uint) []string {
-	tipos := make([]string, 0, 3)
+	tipos := make([]string, 0, 4)
 	esAprendiz := false
 	if activos, err := s.aprendizRepo.FindActivosByPersonaID(personaID); err == nil && len(activos) > 0 {
 		esAprendiz = true
@@ -197,6 +203,12 @@ func (s *vigilanciaAccesoService) resolverTiposPersona(personaID uint) []string 
 	}
 	if inst, err := s.instructorRepo.FindByPersonaID(personaID); err == nil && inst != nil {
 		tipos = append(tipos, tipoInstructor)
+	}
+	if poa, err := s.personalOperativoApoyoRepo.FindByPersonaID(personaID); err == nil && poa != nil {
+		tipos = append(tipos, tipoPersonalOperativoApoyo)
+	}
+	if ct, err := s.contratistaRepo.FindByPersonaID(personaID); err == nil && ct != nil {
+		tipos = append(tipos, tipoContratista)
 	}
 	if len(tipos) == 0 {
 		return []string{tipoVisitante}
@@ -464,7 +476,7 @@ func (s *vigilanciaAccesoService) Ingreso(req dto.AccesoIngresoRequest, registra
 		return nil, err
 	}
 
-	// Tipo automático: aprendiz / instructor / visitante (no se pide en portería).
+	// Tipo automático: aprendiz / instructor / personal operativo y de apoyo / contratista / visitante (no se pide en portería).
 	tipo := s.sugerirTipoPersona(persona.ID)
 
 	now := time.Now()

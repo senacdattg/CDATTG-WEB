@@ -172,7 +172,30 @@ func tipoFormacionEfectivo(v string) string {
 	return t
 }
 
+// calcularEstadoFicha deriva el estado efectivo: si hay override manual (status_manual) se respeta;
+// si no, se calcula automáticamente por vigencia (sin fechas → activa, fecha_fin pasada o fecha_inicio
+// futura → inactiva). Compara por día UTC para igualar la regla CURRENT_DATE del repositorio.
+func calcularEstadoFicha(f *models.FichaCaracterizacion, hoy time.Time) bool {
+	if f == nil {
+		return true
+	}
+	if f.StatusManual != nil {
+		return *f.StatusManual
+	}
+	inicioHoy := hoy.Truncate(24 * time.Hour)
+	if f.FechaFin != nil && f.FechaFin.Before(inicioHoy) {
+		return false
+	}
+	if f.FechaInicio != nil && f.FechaInicio.After(inicioHoy) {
+		return false
+	}
+	return true
+}
+
 func (s *fichaService) FindAll(page, pageSize int, programaID *uint, instructorID *uint, search string, tipoFormacion string) ([]dto.FichaCaracterizacionResponse, int64, error) {
+	if err := s.fichaRepo.SincronizarVigencia(); err != nil {
+		return nil, 0, err
+	}
 	tipo := strings.TrimSpace(tipoFormacion)
 	if tipo != "" {
 		norm, err := normalizeTipoFormacion(tipo)
@@ -206,6 +229,9 @@ func (s *fichaService) FindAll(page, pageSize int, programaID *uint, instructorI
 }
 
 func (s *fichaService) FindByID(id uint) (*dto.FichaCaracterizacionResponse, error) {
+	if err := s.fichaRepo.SincronizarVigencia(); err != nil {
+		return nil, err
+	}
 	f, err := s.fichaRepo.FindByID(id)
 	if err != nil {
 		return nil, errors.New(msgFichaNoEncontrada)
@@ -222,6 +248,9 @@ func (s *fichaService) FindByID(id uint) (*dto.FichaCaracterizacionResponse, err
 }
 
 func (s *fichaService) FindByIDWithDetail(id uint) (*dto.FichaCaracterizacionResponse, error) {
+	if err := s.fichaRepo.SincronizarVigencia(); err != nil {
+		return nil, err
+	}
 	f, err := s.fichaRepo.FindByIDWithInstructoresAndAprendices(id)
 	if err != nil {
 		return nil, errors.New(msgFichaNoEncontrada)
@@ -279,11 +308,8 @@ func (s *fichaService) buildNewFichaFromRequest(req dto.FichaCaracterizacionRequ
 		return models.FichaCaracterizacion{}, errors.New(msgInstructorLiderObligatorio)
 	}
 	f := s.fichaRequestToModel(req)
-	if req.Status != nil {
-		f.Status = *req.Status
-	} else {
-		f.Status = true
-	}
+	f.StatusManual = req.StatusManual
+	f.Status = calcularEstadoFicha(&f, time.Now())
 	return f, nil
 }
 
@@ -364,9 +390,11 @@ func (s *fichaService) Update(id uint, req dto.FichaCaracterizacionRequest) (*dt
 	// Evitar que Save intente sincronizar la relación HasMany ya cargada (puede interferir con Replace posterior).
 	f.FichaDiasFormacion = nil
 	f.TotalHoras = req.TotalHoras
-	if req.Status != nil {
-		f.Status = *req.Status
+	if req.StatusManual != nil || req.Status != nil {
+		f.StatusManual = req.StatusManual
 	}
+	// El estado efectivo siempre se recalcula: respeta el override manual o las fechas de vigencia.
+	f.Status = calcularEstadoFicha(f, time.Now())
 	if err := s.fichaRepo.Update(f); err != nil {
 		return nil, fmt.Errorf("error al actualizar ficha: %w", err)
 	}
@@ -875,6 +903,7 @@ func (s *fichaService) fichaToResponse(f models.FichaCaracterizacion, cantidadAp
 		JornadaID:            f.JornadaID,
 		TotalHoras:           f.TotalHoras,
 		Status:               f.Status,
+		StatusManual:         f.StatusManual,
 		CantidadAprendices:   cantidadAprendices,
 		DiasFormacionIDs:     []uint{},
 	}

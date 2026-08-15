@@ -34,6 +34,9 @@ type FichaRepository interface {
 	ExistsByFichaExcludingID(ficha string, excludeID uint) bool
 	// CountAll cuenta fichas activas (status=true, no eliminadas); sedeID opcional filtra por sede.
 	CountAll(sedeID *uint) (int64, error)
+	// SincronizarVigencia recalcula status de todas las fichas según el override manual
+	// (status_manual) o la vigencia automática por fecha_inicio/fecha_fin.
+	SincronizarVigencia() error
 }
 
 const (
@@ -283,4 +286,23 @@ func (r *fichaRepository) CountAll(sedeID *uint) (int64, error) {
 		return 0, err
 	}
 	return n, nil
+}
+
+// SincronizarVigencia aplica la regla de estado: status_manual (nulo = automático por fechas).
+func (r *fichaRepository) SincronizarVigencia() error {
+	sql := `UPDATE fichas_caracterizacion
+		SET status = CASE
+			WHEN status_manual IS NOT NULL THEN status_manual
+			WHEN fecha_fin IS NOT NULL AND fecha_fin < CURRENT_DATE THEN false
+			WHEN fecha_inicio IS NOT NULL AND fecha_inicio > CURRENT_DATE THEN false
+			ELSE true
+		END
+		WHERE deleted_at IS NULL
+		  AND status <> CASE
+			WHEN status_manual IS NOT NULL THEN status_manual
+			WHEN fecha_fin IS NOT NULL AND fecha_fin < CURRENT_DATE THEN false
+			WHEN fecha_inicio IS NOT NULL AND fecha_inicio > CURRENT_DATE THEN false
+			ELSE true
+		  END`
+	return r.db.Exec(sql).Error
 }

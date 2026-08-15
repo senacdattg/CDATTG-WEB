@@ -1336,6 +1336,12 @@ export interface VerificarAspiranteRequest {
   tipo_documento?: string;
 }
 
+// Documento a reintentar de un lote anterior (NO_VERIFICADO / NO_REGISTRADO).
+export interface ReintentarDocumento {
+  numero_documento: string;
+  tipo_documento?: string;
+}
+
 export interface VerificarAspiranteResponse {
   numero_documento: string;
   estado: VerificacionEstado;
@@ -1416,4 +1422,11 @@ export interface ConsultarInscripcionesLoteResponse {
   no_encontrados: number;
   no_verificados: number;
   resultados: ConsultarInscripcionesResponse[];
+}
+
+// Fila a reintentar de un lote anterior de inscripciones (NO_VERIFICADO / NO_ENCONTRADO).
+export interface ReintentarInscripcionDocumento {
+  numero_documento: string;
+  programa: string;
+  tipo_documento?: string;
 }

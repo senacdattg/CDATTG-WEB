@@ -71,6 +71,8 @@ import type {
   VerificarLoteResponse,
   LoteIniciadoResponse,
   ProgresoLoteResponse,
+  ReintentarDocumento,
+  ReintentarInscripcionDocumento,
   GuardarCredencialSofiaRequest,
   CredencialSofiaEstado,
   ConsultarInscripcionesRequest,
@@ -1545,6 +1547,24 @@ class ApiService {
     const response = await this.api.get<{ data: VerificarLoteResponse }>(
       `/complementarios/verificar-lote/resultados/${loteId}`,
       { timeout: 15000 },
+    );
+    return response.data.data;
+  }
+
+  async reintentarVerificacionLote(documentos: ReintentarDocumento[]): Promise<LoteIniciadoResponse> {
+    const response = await this.api.post<{ data: LoteIniciadoResponse }>(
+      '/complementarios/verificar-lote/reintentar',
+      { documentos },
+      { timeout: 30000 },
+    );
+    return response.data.data;
+  }
+
+  async reintentarInscripcionesLote(documentos: ReintentarInscripcionDocumento[]): Promise<LoteIniciadoResponse> {
+    const response = await this.api.post<{ data: LoteIniciadoResponse }>(
+      '/complementarios/inscripciones/consultar-lote/reintentar',
+      { documentos },
+      { timeout: 30000 },
     );
     return response.data.data;
   }

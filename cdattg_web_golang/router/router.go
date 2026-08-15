@@ -312,10 +312,12 @@ func SetupRouter() *gin.Engine {
 				complementarios.POST("/consultar-inscripciones", complementariosHandler.ConsultarInscripciones)
 				complementarios.GET("/inscripciones/plantilla", complementariosHandler.DescargarPlantillaInscripciones)
 				complementarios.POST("/inscripciones/consultar-lote", complementariosHandler.ConsultarInscripcionesLote)
+				complementarios.POST("/inscripciones/consultar-lote/reintentar", complementariosHandler.ReintentarInscripciones)
 				complementarios.GET("/inscripciones/consultar-lote/progreso/:lote_id", complementariosHandler.ProgresoLote)
 				complementarios.GET("/inscripciones/consultar-lote/resultados/:lote_id", complementariosHandler.ResultadosLoteInscripciones)
 				complementarios.GET("/plantilla", complementariosHandler.DescargarPlantilla)
 				complementarios.POST("/verificar-lote", complementariosHandler.VerificarLote)
+				complementarios.POST("/verificar-lote/reintentar", complementariosHandler.ReintentarVerificacion)
 				complementarios.GET("/verificar-lote/progreso/:lote_id", complementariosHandler.ProgresoLote)
 				complementarios.GET("/verificar-lote/resultados/:lote_id", complementariosHandler.ResultadosLote)
 

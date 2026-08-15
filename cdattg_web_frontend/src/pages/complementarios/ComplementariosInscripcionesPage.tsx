@@ -88,7 +88,44 @@ function useLoteConProgreso<T>(
     }
   }, [iniciar, consultarProgreso, consultarResultados, detenerPolling]);
 
-  return { procesando, progreso, error, res, ejecutar, setError, setRes };
+  // Reintento: mismo polling, pero conserva los resultados previos y los une al
+  // terminar (merge) en lugar de reemplazarlos; cada fila se actualiza en posición.
+  const reintentar = useCallback(
+    async (lanzar: () => Promise<LoteIniciadoResponse>, merge: (prev: T | null, nuevos: T) => T) => {
+      setProcesando(true);
+      setError('');
+      setProgreso(null);
+      try {
+        const iniciado = await lanzar();
+        setProgreso({ lote_id: iniciado.lote_id, total: iniciado.total, procesados: 0, terminado: false });
+
+        pollingRef.current = setInterval(async () => {
+          try {
+            const p = await consultarProgreso(iniciado.lote_id);
+            setProgreso(p);
+            if (p.terminado) {
+              detenerPolling();
+              const r = await consultarResultados(iniciado.lote_id);
+              setRes((prev) => merge(prev, r));
+              setProcesando(false);
+              setProgreso(null);
+            }
+          } catch (err: unknown) {
+            detenerPolling();
+            setProcesando(false);
+            setProgreso(null);
+            setError(axiosErrorMessage(err, 'No se pudo consultar el avance del escaneo.'));
+          }
+        }, 2000);
+      } catch (err: unknown) {
+        setProcesando(false);
+        setError(axiosErrorMessage(err, 'No se pudo lanzar el reintento.'));
+      }
+    },
+    [consultarProgreso, consultarResultados, detenerPolling],
+  );
+
+  return { procesando, progreso, error, res, ejecutar, reintentar, setError, setRes };
 }
 
 /** Barra de avance + documento en curso (visible mientras procesa un lote). */
@@ -747,7 +784,7 @@ const CargaMasivaPanel = () => {
   const [file, setFile] = useState<File | null>(null);
   const [descargando, setDescargando] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const { procesando, progreso, error, res, ejecutar, setError, setRes } =
+  const { procesando, progreso, error, res, ejecutar, reintentar, setError, setRes } =
     useLoteConProgreso<ConsultarInscripcionesLoteResponse>(
       async () => {
         if (!file) {
@@ -758,6 +795,54 @@ const CargaMasivaPanel = () => {
       (loteId) => apiService.progresoInscripcionesLote(loteId),
       (loteId) => apiService.resultadosInscripcionesLote(loteId),
     );
+
+  // Une los resultados de un lote (inicial o reintento) conservando el orden de
+  // las filas originales (clave documento+programa): cada fila se actualiza en
+  // su misma posición.
+  const renuevaResultados = useCallback(
+    (prev: ConsultarInscripcionesLoteResponse | null, nuevos: ConsultarInscripcionesLoteResponse) => {
+      const clave = (r: { numero_documento: string; programa_consultado: string }) =>
+        `${r.numero_documento}\u0000${r.programa_consultado}`;
+      const base = prev?.resultados ?? [];
+      const porClave = new Map(nuevos.resultados.map((r) => [clave(r), r]));
+      const combinados = base.map((r) => porClave.get(clave(r)) ?? r);
+      for (const r of nuevos.resultados) {
+        if (!base.some((b) => clave(b) === clave(r))) {
+          combinados.push(r);
+        }
+      }
+      const out: ConsultarInscripcionesLoteResponse = {
+        total: combinados.length,
+        encontrados: 0,
+        no_encontrados: 0,
+        no_verificados: 0,
+        resultados: combinados,
+      };
+      for (const r of combinados) {
+        if (r.estado === 'ENCONTRADO') out.encontrados += 1;
+        else if (r.estado === 'NO_ENCONTRADO') out.no_encontrados += 1;
+        else out.no_verificados += 1;
+      }
+      return out;
+    },
+    [],
+  );
+
+  // Reintenta solo los NO_VERIFICADO / NO_ENCONTRADO (los ENCONTRADO se dejan
+  // intactos en su fila). Al terminar, cada fila se actualiza en su posición.
+  const handleReintentarPendientes = async () => {
+    const pendientes = (res?.resultados ?? []).filter(
+      (r) => r.estado === 'NO_VERIFICADO' || r.estado === 'NO_ENCONTRADO',
+    );
+    if (!pendientes.length) return;
+    await reintentar(
+      () =>
+        apiService.reintentarInscripcionesLote(
+          pendientes.map((r) => ({ numero_documento: r.numero_documento, programa: r.programa_consultado })),
+        ),
+      renuevaResultados,
+    );
+  };
 
   const handleDescargarPlantilla = async () => {
     setDescargando(true);
@@ -871,7 +956,17 @@ const CargaMasivaPanel = () => {
       {res && (
         <div className="space-y-3">
           {pillsResumen(res)}
-          <div className="flex justify-end">
+          <div className="flex justify-end gap-2">
+            <button
+              type="button"
+              className="btn-secondary flex items-center gap-1"
+              onClick={handleReintentarPendientes}
+              disabled={procesando || !res.resultados.some((r) => r.estado === 'NO_VERIFICADO' || r.estado === 'NO_ENCONTRADO')}
+            >
+              <ArrowPathIcon className={procesando ? 'w-4 h-4 animate-spin' : 'w-4 h-4'} aria-hidden />
+              Reintentar pendientes (
+              {res.resultados.filter((r) => r.estado === 'NO_VERIFICADO' || r.estado === 'NO_ENCONTRADO').length})
+            </button>
             <button type="button" className="btn-secondary flex items-center gap-1" onClick={handleExportarCSV}>
               <ArrowDownTrayIcon className="w-4 h-4" aria-hidden /> Descargar resultados (CSV)
             </button>

@@ -206,6 +206,38 @@ function pillsResumen(res: { total: number; encontrados: number; no_encontrados:
   );
 }
 
+// Une los resultados de un lote (inicial o reintento) conservando el orden de
+// las filas originales (clave documento+programa): cada fila se actualiza en su
+// misma posición y las filas fuera de la lista nueva se conservan intactas.
+function renuevaResultadosInscripciones(
+  prev: ConsultarInscripcionesLoteResponse | null,
+  nuevos: ConsultarInscripcionesLoteResponse,
+): ConsultarInscripcionesLoteResponse {
+  const clave = (r: { numero_documento: string; programa_consultado: string }) =>
+    `${r.numero_documento}\u0000${r.programa_consultado}`;
+  const base = prev?.resultados ?? [];
+  const porClave = new Map(nuevos.resultados.map((r) => [clave(r), r]));
+  const combinados = base.map((r) => porClave.get(clave(r)) ?? r);
+  for (const r of nuevos.resultados) {
+    if (!base.some((b) => clave(b) === clave(r))) {
+      combinados.push(r);
+    }
+  }
+  const out: ConsultarInscripcionesLoteResponse = {
+    total: combinados.length,
+    encontrados: 0,
+    no_encontrados: 0,
+    no_verificados: 0,
+    resultados: combinados,
+  };
+  for (const r of combinados) {
+    if (r.estado === 'ENCONTRADO') out.encontrados += 1;
+    else if (r.estado === 'NO_ENCONTRADO') out.no_encontrados += 1;
+    else out.no_verificados += 1;
+  }
+  return out;
+}
+
 function descargarBlob(blob: Blob, nombre: string) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -287,7 +319,8 @@ const ContinuacionFase1Panel = ({
   onDescartar: () => void;
 }) => {
   const [programa, setPrograma] = useState('');
-  const { procesando, progreso, error, res, ejecutar } = useLoteConProgreso<ConsultarInscripcionesLoteResponse>(
+  const { procesando, progreso, error, res, ejecutar, reintentar } =
+    useLoteConProgreso<ConsultarInscripcionesLoteResponse>(
     async () => {
       const p = programa.trim();
       if (!p) {
@@ -310,6 +343,23 @@ const ContinuacionFase1Panel = ({
   );
 
   const procesar = () => void ejecutar();
+
+  // Reintenta solo los NO_VERIFICADO (por ejemplo si la red se cayó a mitad de
+  // la búsqueda de esa persona); los ENCONTRADO y NO_ENCONTRADO son definitivos
+  // y se conservan intactos en su fila.
+  const noVerificados = (res?.resultados ?? []).filter((r) => r.estado === 'NO_VERIFICADO').length;
+
+  const handleReintentarNoVerificados = async () => {
+    const pendientes = (res?.resultados ?? []).filter((r) => r.estado === 'NO_VERIFICADO');
+    if (!pendientes.length) return;
+    await reintentar(
+      () =>
+        apiService.reintentarInscripcionesLote(
+          pendientes.map((r) => ({ numero_documento: r.numero_documento, programa: r.programa_consultado })),
+        ),
+      renuevaResultadosInscripciones,
+    );
+  };
 
   return (
     <div className="card space-y-4 border border-emerald-300 dark:border-emerald-700 bg-emerald-50/50 dark:bg-emerald-950/30">
@@ -378,6 +428,20 @@ const ContinuacionFase1Panel = ({
       {res && (
         <div className="space-y-3 text-sm">
           {pillsResumen(res)}
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              className="btn-secondary inline-flex items-center gap-1"
+              onClick={handleReintentarNoVerificados}
+              disabled={procesando || noVerificados === 0}
+            >
+              <ArrowPathIcon className={procesando ? 'w-4 h-4 animate-spin' : 'w-4 h-4'} aria-hidden />
+              Reintentar no verificados ({noVerificados})
+            </button>
+            <span className="text-xs text-gray-500 dark:text-gray-400">
+              Reintenta solo los «No verificados» (ej. caída de red). «Encontrado» y «No encontrado» son definitivos.
+            </span>
+          </div>
           <div className="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-600">
             <table className="min-w-full text-sm">
               <thead>
@@ -799,34 +863,7 @@ const CargaMasivaPanel = () => {
   // Une los resultados de un lote (inicial o reintento) conservando el orden de
   // las filas originales (clave documento+programa): cada fila se actualiza en
   // su misma posición.
-  const renuevaResultados = useCallback(
-    (prev: ConsultarInscripcionesLoteResponse | null, nuevos: ConsultarInscripcionesLoteResponse) => {
-      const clave = (r: { numero_documento: string; programa_consultado: string }) =>
-        `${r.numero_documento}\u0000${r.programa_consultado}`;
-      const base = prev?.resultados ?? [];
-      const porClave = new Map(nuevos.resultados.map((r) => [clave(r), r]));
-      const combinados = base.map((r) => porClave.get(clave(r)) ?? r);
-      for (const r of nuevos.resultados) {
-        if (!base.some((b) => clave(b) === clave(r))) {
-          combinados.push(r);
-        }
-      }
-      const out: ConsultarInscripcionesLoteResponse = {
-        total: combinados.length,
-        encontrados: 0,
-        no_encontrados: 0,
-        no_verificados: 0,
-        resultados: combinados,
-      };
-      for (const r of combinados) {
-        if (r.estado === 'ENCONTRADO') out.encontrados += 1;
-        else if (r.estado === 'NO_ENCONTRADO') out.no_encontrados += 1;
-        else out.no_verificados += 1;
-      }
-      return out;
-    },
-    [],
-  );
+  // (renuevaResultadosInscripciones es compartida con el panel de continuación.)
 
   // Reintenta solo los NO_VERIFICADO / NO_ENCONTRADO (los ENCONTRADO se dejan
   // intactos en su fila). Al terminar, cada fila se actualiza en su posición.
@@ -840,7 +877,7 @@ const CargaMasivaPanel = () => {
         apiService.reintentarInscripcionesLote(
           pendientes.map((r) => ({ numero_documento: r.numero_documento, programa: r.programa_consultado })),
         ),
-      renuevaResultados,
+      renuevaResultadosInscripciones,
     );
   };
 

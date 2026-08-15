@@ -1,3 +1,7 @@
+// @module personal_administrativo
+// @description Modelo de base de datos para la entidad Personal Administrativo.
+// @author JDTWOR
+// @created 2026-08-14
 package models
 
 // PersonalAdministrativo representa una persona vinculada como personal administrativo.

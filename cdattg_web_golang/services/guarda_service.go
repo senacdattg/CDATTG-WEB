@@ -1,3 +1,7 @@
+// @module guarda_service
+// @description Lógica de negocio de Guardas: creación desde Persona con rol Casbin, CRUD y mapeo a DTO.
+// @author JDTWOR
+// @created 2026-08-14
 package services
 
 import (

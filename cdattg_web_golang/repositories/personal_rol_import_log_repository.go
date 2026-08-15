@@ -1,3 +1,7 @@
+// @module personal_rol_import_log_repository
+// @description Acceso a datos del log de importaciones de Guardas/Personal Administrativo.
+// @author JDTWOR
+// @created 2026-08-14
 package repositories
 
 import (

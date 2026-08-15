@@ -1,3 +1,7 @@
+// @module personal_administrativo_repository
+// @description Acceso a datos de Personal Administrativo (listado paginado con JOIN a Persona y CRUD).
+// @author JDTWOR
+// @created 2026-08-14
 package repositories
 
 import (

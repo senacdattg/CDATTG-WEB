@@ -1,3 +1,7 @@
+// @module guarda
+// @description Modelo de base de datos para la entidad Guarda (persona vinculada a seguridad).
+// @author JDTWOR
+// @created 2026-08-14
 package models
 
 // Guarda representa una persona vinculada como guarda de seguridad.

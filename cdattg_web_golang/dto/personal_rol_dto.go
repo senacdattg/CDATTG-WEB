@@ -1,3 +1,7 @@
+// @module personal_rol_dto
+// @description DTOs de Guardas y Personal Administrativo (listado, creación y actualización).
+// @author JDTWOR
+// @created 2026-08-14
 package dto
 
 // RolPersonalItem respuesta de guarda o personal administrativo para listados.

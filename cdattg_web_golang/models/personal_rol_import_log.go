@@ -1,3 +1,7 @@
+// @module personal_rol_import_log
+// @description Modelo de base de datos para el log de importaciones de Guardas/Personal Administrativo.
+// @author JDTWOR
+// @created 2026-08-14
 package models
 
 import "time"

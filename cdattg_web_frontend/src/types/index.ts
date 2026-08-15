@@ -425,6 +425,8 @@ export interface FichaCaracterizacionRequest {
   jornada_id?: number | null;
   total_horas?: number;
   status?: boolean;
+  /** true/false fuerza el estado manualmente; null = automático según fecha inicio/fin. */
+  status_manual?: boolean | null;
   dias_formacion_ids?: number[];
   dias_formacion_nombres?: string[];
   dias_formacion?: FichaDiaFormacionItem[];
@@ -454,6 +456,8 @@ export interface FichaCaracterizacionResponse {
   jornada_nombre?: string;
   total_horas?: number;
   status: boolean;
+  /** true/false = override manual; null = automático según fecha inicio/fin. */
+  status_manual?: boolean | null;
   dias_formacion_ids?: number[];
   dias_formacion_nombres?: string[];
   dias_formacion?: FichaDiaFormacionItem[];

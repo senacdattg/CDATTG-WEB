@@ -552,6 +552,82 @@ export interface UpdateInstructorRequest {
   estado?: boolean;
 }
 
+// Guarda (item para listados)
+export interface GuardaItem {
+  id: number;
+  nombre: string;
+  numero_documento?: string;
+  estado?: boolean;
+}
+
+// Crear guarda desde persona
+export interface CreateGuardaRequest {
+  persona_id: number;
+}
+
+// Actualizar guarda (estado)
+export interface UpdateGuardaRequest {
+  estado?: boolean;
+}
+
+// Resultado de importación masiva de guardas desde Excel
+export interface GuardaImportResult {
+  processed_count: number;
+  duplicates_count: number;
+  error_count: number;
+  status: string;
+}
+
+// Ítem del historial de importaciones de guardas
+export interface GuardaImportLogItem {
+  id: number;
+  filename: string;
+  processed_count: number;
+  duplicates_count: number;
+  error_count: number;
+  status: string;
+  usuario_nombre: string;
+  created_at: string;
+}
+
+// Personal administrativo (item para listados)
+export interface PersonalAdministrativoItem {
+  id: number;
+  nombre: string;
+  numero_documento?: string;
+  estado?: boolean;
+}
+
+// Crear personal administrativo desde persona
+export interface CreatePersonalAdministrativoRequest {
+  persona_id: number;
+}
+
+// Actualizar personal administrativo (estado)
+export interface UpdatePersonalAdministrativoRequest {
+  estado?: boolean;
+}
+
+// Resultado de importación masiva de personal administrativo desde Excel
+export interface PersonalAdministrativoImportResult {
+  processed_count: number;
+  duplicates_count: number;
+  error_count: number;
+  status: string;
+}
+
+// Ítem del historial de importaciones de personal administrativo
+export interface PersonalAdministrativoImportLogItem {
+  id: number;
+  filename: string;
+  processed_count: number;
+  duplicates_count: number;
+  error_count: number;
+  status: string;
+  usuario_nombre: string;
+  created_at: string;
+}
+
 // Asistencia
 export interface AsistenciaReglasResponse {
   relaxar_restriccion_asistencia: boolean;

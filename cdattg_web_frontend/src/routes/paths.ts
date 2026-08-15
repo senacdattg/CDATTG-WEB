@@ -12,6 +12,16 @@ export const instructoresPaths = {
   importar: '/instructores/importar',
 } as const;
 
+export const guardasPaths = {
+  index: '/guardas',
+  importar: '/guardas/importar',
+} as const;
+
+export const personalAdministrativoPaths = {
+  index: '/personal-administrativo',
+  importar: '/personal-administrativo/importar',
+} as const;
+
 export const aprendicesPaths = {
   index: '/aprendices',
 } as const;

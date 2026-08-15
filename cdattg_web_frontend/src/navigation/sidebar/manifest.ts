@@ -13,6 +13,8 @@ import {
   personasPaths,
   programasPaths,
   instructoresPaths,
+  guardasPaths,
+  personalAdministrativoPaths,
   vigilanciaPaths,
   complementariosPaths,
 } from '../../routes/paths';
@@ -96,6 +98,20 @@ export const SIDEBAR_MANIFEST: SidebarManifestItem[] = [
     label: 'Instructores',
     permission: 'VER FICHAS',
     iconKey: 'instructores',
+  },
+  {
+    section: 'Personal',
+    path: guardasPaths.index,
+    label: 'Guardas',
+    permission: 'VER GUARDAS',
+    iconKey: 'guardas',
+  },
+  {
+    section: 'Personal',
+    path: personalAdministrativoPaths.index,
+    label: 'Personal administrativo',
+    permission: 'VER PERSONAL ADMINISTRATIVO',
+    iconKey: 'personal-administrativo',
   },
   {
     section: 'Personal',

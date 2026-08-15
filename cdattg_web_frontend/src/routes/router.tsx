@@ -6,6 +6,8 @@ import { authRoutes } from './modules/auth.routes';
 import { homeRoutes } from './modules/home.routes';
 import { personasRoutes } from './modules/personas.routes';
 import { instructoresRoutes } from './modules/instructores.routes';
+import { guardasRoutes } from './modules/guardas.routes';
+import { personalAdministrativoRoutes } from './modules/personalAdministrativo.routes';
 import { aprendicesRoutes } from './modules/aprendices.routes';
 import { programasRoutes } from './modules/programas.routes';
 import { fichasRoutes } from './modules/fichas.routes';
@@ -34,6 +36,8 @@ export const appRouter = createBrowserRouter([
       ...aprendizRoutes,
       ...personasRoutes,
       ...instructoresRoutes,
+      ...guardasRoutes,
+      ...personalAdministrativoRoutes,
       ...aprendicesRoutes,
       ...programasRoutes,
       ...fichasRoutes,

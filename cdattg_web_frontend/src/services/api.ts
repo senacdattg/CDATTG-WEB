@@ -15,6 +15,16 @@ import type {
   PersonaImportProgress,
   InstructorImportResult,
   InstructorImportLogItem,
+  GuardaItem,
+  CreateGuardaRequest,
+  UpdateGuardaRequest,
+  GuardaImportResult,
+  GuardaImportLogItem,
+  PersonalAdministrativoItem,
+  CreatePersonalAdministrativoRequest,
+  UpdatePersonalAdministrativoRequest,
+  PersonalAdministrativoImportResult,
+  PersonalAdministrativoImportLogItem,
   ProgramaFormacionRequest,
   ProgramaFormacionResponse,
   ProgramaImportResult,
@@ -845,6 +855,110 @@ class ApiService {
       params: { limit },
     });
     return response.data.data;
+  }
+
+  // Guardas
+  async getGuardas(page = 1, pageSize = 20, search?: string): Promise<PaginatedResponse<GuardaItem>> {
+    const response = await this.api.get<PaginatedResponse<GuardaItem>>('/guardas', {
+      params: { page, page_size: pageSize, search: search || undefined },
+    });
+    return response.data;
+  }
+
+  async getGuardaById(id: number): Promise<GuardaItem> {
+    const response = await this.api.get<GuardaItem>(`/guardas/${id}`);
+    return response.data;
+  }
+
+  async updateGuarda(id: number, data: UpdateGuardaRequest): Promise<GuardaItem> {
+    const response = await this.api.put<GuardaItem>(`/guardas/${id}`, data);
+    return response.data;
+  }
+
+  async deleteGuarda(id: number): Promise<void> {
+    await this.api.delete(`/guardas/${id}`);
+  }
+
+  // Crear guarda desde persona
+  async createGuardaFromPersona(data: CreateGuardaRequest): Promise<{ id: number; nombre: string }> {
+    const response = await this.api.post<{ id: number; nombre: string }>('/guardas', data);
+    return response.data;
+  }
+
+  /** Importación masiva de guardas desde Excel. */
+  async uploadGuardasImport(file: File): Promise<GuardaImportResult> {
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await this.api.post<GuardaImportResult>('/guardas/import', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return response.data;
+  }
+
+  async getGuardaImports(limit: number = 50): Promise<GuardaImportLogItem[]> {
+    const response = await this.api.get<{ data: GuardaImportLogItem[] }>('/guardas/imports', {
+      params: { limit },
+    });
+    return response.data.data;
+  }
+
+  async downloadGuardaImportTemplate(): Promise<Blob> {
+    const response = await this.api.get<Blob>('/guardas/import/template', {
+      responseType: 'blob',
+    });
+    return response.data;
+  }
+
+  // Personal administrativo
+  async getPersonalAdministrativo(page = 1, pageSize = 20, search?: string): Promise<PaginatedResponse<PersonalAdministrativoItem>> {
+    const response = await this.api.get<PaginatedResponse<PersonalAdministrativoItem>>('/personal-administrativo', {
+      params: { page, page_size: pageSize, search: search || undefined },
+    });
+    return response.data;
+  }
+
+  async getPersonalAdministrativoById(id: number): Promise<PersonalAdministrativoItem> {
+    const response = await this.api.get<PersonalAdministrativoItem>(`/personal-administrativo/${id}`);
+    return response.data;
+  }
+
+  async updatePersonalAdministrativo(id: number, data: UpdatePersonalAdministrativoRequest): Promise<PersonalAdministrativoItem> {
+    const response = await this.api.put<PersonalAdministrativoItem>(`/personal-administrativo/${id}`, data);
+    return response.data;
+  }
+
+  async deletePersonalAdministrativo(id: number): Promise<void> {
+    await this.api.delete(`/personal-administrativo/${id}`);
+  }
+
+  // Crear personal administrativo desde persona
+  async createPersonalAdministrativoFromPersona(data: CreatePersonalAdministrativoRequest): Promise<{ id: number; nombre: string }> {
+    const response = await this.api.post<{ id: number; nombre: string }>('/personal-administrativo', data);
+    return response.data;
+  }
+
+  /** Importación masiva de personal administrativo desde Excel. */
+  async uploadPersonalAdministrativoImport(file: File): Promise<PersonalAdministrativoImportResult> {
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await this.api.post<PersonalAdministrativoImportResult>('/personal-administrativo/import', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return response.data;
+  }
+
+  async getPersonalAdministrativoImports(limit: number = 50): Promise<PersonalAdministrativoImportLogItem[]> {
+    const response = await this.api.get<{ data: PersonalAdministrativoImportLogItem[] }>('/personal-administrativo/imports', {
+      params: { limit },
+    });
+    return response.data.data;
+  }
+
+  async downloadPersonalAdministrativoImportTemplate(): Promise<Blob> {
+    const response = await this.api.get<Blob>('/personal-administrativo/import/template', {
+      responseType: 'blob',
+    });
+    return response.data;
   }
 
   // Asistencias

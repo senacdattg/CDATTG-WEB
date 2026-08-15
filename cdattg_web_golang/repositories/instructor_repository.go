@@ -2,6 +2,7 @@ package repositories
 
 import (
 	"strings"
+	"time"
 
 	"github.com/sena/cdattg-web-golang/database"
 	"github.com/sena/cdattg-web-golang/models"
@@ -22,11 +23,16 @@ type InstructorRepository interface {
 }
 
 type instructorRepository struct {
-	db *gorm.DB
+	db               *gorm.DB
+	lastSyncVigencia time.Time
+	now              func() time.Time
 }
 
 func NewInstructorRepository() InstructorRepository {
-	return &instructorRepository{db: database.GetDB()}
+	return &instructorRepository{
+		db:  database.GetDB(),
+		now: time.Now,
+	}
 }
 
 func (r *instructorRepository) FindAll() ([]models.Instructor, error) {
@@ -98,12 +104,21 @@ func (r *instructorRepository) Delete(id uint) error {
 }
 
 // SincronizarVigencia apaga el status de instructores con fecha_fin_contrato ya vencida (misma regla CURRENT_DATE).
+// Se ejecuta como máximo una vez por intervalo (throttle) para no recargar cada petición.
 func (r *instructorRepository) SincronizarVigencia() error {
-	return r.db.Model(&models.Instructor{}).
+	ahora := r.now()
+	if !sincronizacionVigenciaPermitida(r.lastSyncVigencia, ahora, intervaloSyncVigencia) {
+		return nil
+	}
+	if err := r.db.Model(&models.Instructor{}).
 		Where("status = ?", true).
 		Where("fecha_fin_contrato IS NOT NULL").
-		Where("fecha_fin_contrato < CURRENT_DATE").
-		Update("status", false).Error
+		Where("fecha_fin_contrato::date < CURRENT_DATE").
+		Update("status", false).Error; err != nil {
+		return err
+	}
+	r.lastSyncVigencia = ahora
+	return nil
 }
 
 func (r *instructorRepository) CountActivos(sedeIDs []uint) (int64, error) {

@@ -129,7 +129,7 @@ function useLoteConProgreso<T>(
 }
 
 /** Barra de avance + documento en curso (visible mientras procesa un lote). */
-function ProgresoLoteBar({ progreso }: { progreso: ProgresoLoteResponse | null }) {
+function ProgresoLoteBar({ progreso }: Readonly<{ progreso: ProgresoLoteResponse | null }>) {
   if (!progreso) return null;
   return (
     <div className="space-y-1">
@@ -719,7 +719,7 @@ const CredencialesPanel = () => {
   );
 };
 
-const ConsultaPanel = ({ prefijoFase1 }: { prefijoFase1: Fase1HandoffDoc | null }) => {
+const ConsultaPanel = ({ prefijoFase1 }: Readonly<{ prefijoFase1: Fase1HandoffDoc | null }>) => {
   const [programa, setPrograma] = useState('');
   const [numero, setNumero] = useState(prefijoFase1?.numero_documento ?? '');
   const [tipo, setTipo] = useState(prefijoFase1?.tipo_documento || 'CC');
@@ -1047,7 +1047,7 @@ const CargaMasivaPanel = () => {
   );
 };
 
-const ResultadoInscripciones = ({ res }: { res: ConsultarInscripcionesResponse }) => {
+const ResultadoInscripciones = ({ res }: Readonly<{ res: ConsultarInscripcionesResponse }>) => {
   let icon = <ExclamationTriangleIcon className="w-6 h-6 text-red-600" aria-hidden />;
   if (res.estado === 'ENCONTRADO') {
     icon = <CheckCircleIcon className="w-6 h-6 text-green-600" aria-hidden />;

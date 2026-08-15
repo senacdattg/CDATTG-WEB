@@ -174,7 +174,7 @@ func tipoFormacionEfectivo(v string) string {
 
 // calcularEstadoFicha deriva el estado efectivo: si hay override manual (status_manual) se respeta;
 // si no, se calcula automáticamente por vigencia (sin fechas → activa, fecha_fin pasada o fecha_inicio
-// futura → inactiva). Compara por día UTC para igualar la regla CURRENT_DATE del repositorio.
+// futura → inactiva). Compara por día calendario para igualar la regla ::date del repositorio.
 func calcularEstadoFicha(f *models.FichaCaracterizacion, hoy time.Time) bool {
 	if f == nil {
 		return true
@@ -182,11 +182,10 @@ func calcularEstadoFicha(f *models.FichaCaracterizacion, hoy time.Time) bool {
 	if f.StatusManual != nil {
 		return *f.StatusManual
 	}
-	inicioHoy := hoy.Truncate(24 * time.Hour)
-	if f.FechaFin != nil && f.FechaFin.Before(inicioHoy) {
+	if fechaFinVencida(f.FechaFin, hoy) {
 		return false
 	}
-	if f.FechaInicio != nil && f.FechaInicio.After(inicioHoy) {
+	if fechaInicioFutura(f.FechaInicio, hoy) {
 		return false
 	}
 	return true

@@ -17,6 +17,8 @@ type InstructorRepository interface {
 	Update(instructor *models.Instructor) error
 	Delete(id uint) error
 	CountActivos(sedeIDs []uint) (int64, error)
+	// SincronizarVigencia inactiva instructores cuyo contrato ya venció (fecha_fin_contrato < hoy).
+	SincronizarVigencia() error
 }
 
 type instructorRepository struct {
@@ -93,6 +95,15 @@ func (r *instructorRepository) Update(instructor *models.Instructor) error {
 
 func (r *instructorRepository) Delete(id uint) error {
 	return r.db.Delete(&models.Instructor{}, id).Error
+}
+
+// SincronizarVigencia apaga el status de instructores con fecha_fin_contrato ya vencida (misma regla CURRENT_DATE).
+func (r *instructorRepository) SincronizarVigencia() error {
+	return r.db.Model(&models.Instructor{}).
+		Where("status = ?", true).
+		Where("fecha_fin_contrato IS NOT NULL").
+		Where("fecha_fin_contrato < CURRENT_DATE").
+		Update("status", false).Error
 }
 
 func (r *instructorRepository) CountActivos(sedeIDs []uint) (int64, error) {

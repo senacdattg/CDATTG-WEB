@@ -40,6 +40,9 @@ function esMensajeErrorInterno(msg: string): boolean {
 }
 
 function mensajeDesdeRespuestaAxios(data: unknown, fallback: string, status?: number): string | null {
+  if (status === 413) {
+    return 'El archivo supera el tamaño máximo (10 MB).';
+  }
   if (typeof data === 'string') {
     const trimmed = data.trim();
     if (trimmed.startsWith('<') && trimmed.toLowerCase().includes('<html')) {

@@ -48,6 +48,9 @@ func RunRolePermissionSeeder(db *gorm.DB) error {
 	if err := seedFPIPermissions(e); err != nil {
 		return err
 	}
+	if err := seedSemilleroPermissions(e); err != nil {
+		return err
+	}
 
 	if err := e.SavePolicy(); err != nil {
 		return err
@@ -83,6 +86,9 @@ func seedAdminOrCoordinatorStack(e *casbin.Enforcer, role string, withUsuario bo
 		return err
 	}
 	if err := addPermissionsForObject(e, role, authz.ObjAsistencia, authz.PermisosAsistencia); err != nil {
+		return err
+	}
+	if err := addPermissionsForObject(e, role, authz.ObjSemillero, authz.PermisosSemillero); err != nil {
 		return err
 	}
 	if withUsuario {

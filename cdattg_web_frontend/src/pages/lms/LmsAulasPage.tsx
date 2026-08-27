@@ -10,14 +10,15 @@ import { LmsAulasListView } from './LmsAulasListView';
 import { LmsFichaDetalleModal } from './LmsFichaDetalleModal';
 
 /**
- * Modal de ficha solo si hay un id seleccionado.
+ * @module pages/lms/LmsAulasPage
+ * @description Listado Mis aulas, análogo a Tomar asistencia.
+ * @author CRANDEYS
+ * @created 2026-08-26
  */
-function modalFicha(fichaId: number | null, onClose: () => void) {
-  if (typeof fichaId === 'number') {
-    return <LmsFichaDetalleModal fichaId={fichaId} onClose={onClose} />;
-  }
-  return null;
-}
+import { useState } from 'react';
+import { useLmsAulas } from './useLmsAulas';
+import { LmsAulasListView } from './LmsAulasListView';
+import { LmsFichaDetalleModal } from './LmsFichaDetalleModal';
 
 /**
  * Página contenedora de Mis aulas.
@@ -25,10 +26,15 @@ function modalFicha(fichaId: number | null, onClose: () => void) {
 export function LmsAulasPage() {
   const page = useLmsAulas();
   const [fichaVer, setFichaVer] = useState<number | null>(null);
+  let modal = null;
+  if (fichaVer) {
+    modal = <LmsFichaDetalleModal fichaId={fichaVer} onClose={() => setFichaVer(null)} />;
+  }
   return (
     <>
       <LmsAulasListView page={page} onVerFicha={setFichaVer} />
-      {modalFicha(fichaVer, () => setFichaVer(null))}
+      {modal}
     </>
   );
 }
+

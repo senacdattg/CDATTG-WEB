@@ -4,7 +4,7 @@
  * Si no hay foto, pongo fondo negro (antes era verde y se veía al pasar).
  * @author Cristian Deysdayr Jiménez
  */
-import { Link } from 'react-router-dom';
+import { AppLink } from '../../components/AppLink';
 import { portalMediaUrl } from '../../services/portalApi';
 import type { PortalBannerItem } from '../../types/portal';
 import { claseCapaCarrusel, hrefCarruselSeguro } from './portalCarouselLogic';
@@ -19,7 +19,7 @@ type Props = Readonly<{ slide: PortalBannerItem; activa: boolean; debajo?: boole
 function BotonDestacado({ href, texto }: Readonly<{ href: string; texto: string }>) {
   const clase = 'mt-5 inline-flex w-fit rounded-lg bg-white px-4 py-2 text-sm font-semibold text-sena-green shadow hover:bg-gray-50';
   if (href.startsWith('/')) {
-    return <Link to={href} className={clase}>{texto}</Link>;
+    return <AppLink path={href} className={clase}>{texto}</AppLink>;
   }
   // target _blank: Instagram u otra web; noreferrer por seguridad.
   return <a href={href} className={clase} target="_blank" rel="noreferrer">{texto}</a>;

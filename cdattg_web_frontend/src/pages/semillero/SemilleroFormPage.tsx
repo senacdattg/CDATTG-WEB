@@ -5,7 +5,8 @@
  * @author Cristian Deysdayr Jiménez
  */
 import { useEffect, useState, type ComponentProps } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
+import { AppLink } from '../../components/AppLink';
 import { portalApi } from '../../services/portalApi';
 import { semilleroAdminPaths } from '../../routes/paths';
 import { axiosErrorMessage } from '../../utils/httpError';
@@ -61,7 +62,7 @@ export function SemilleroFormPage() {
 
   return (
     <main className="space-y-6">
-      <Link to={semilleroAdminPaths.index} className="btn-secondary">Volver</Link>
+      <AppLink path={semilleroAdminPaths.index} className="btn-secondary">Volver</AppLink>
       <h1 className="text-3xl font-bold text-gray-900 dark:text-white">{editId ? 'Editar semillero' : 'Nuevo semillero'}</h1>
       {error ? <p role="alert" className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-red-700">{error}</p> : null}
       <form className="card space-y-4" onSubmit={(e) => void onSubmit(e)}>

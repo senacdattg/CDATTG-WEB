@@ -4,7 +4,7 @@
  * @author Cristian Deysdayr Jiménez
  */
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { AppLink } from '../../components/AppLink';
 import { investigacionApi } from '../../services/investigacionApi';
 import { portalPaths } from '../../routes/paths';
 import { axiosErrorMessage } from '../../utils/httpError';
@@ -27,7 +27,7 @@ export function PortalPresentacionPage() {
 
   return (
     <main className="mx-auto max-w-6xl space-y-6 px-4 py-8">
-      <Link to={portalPaths.investigacion} className="btn-secondary">Volver</Link>
+      <AppLink path={portalPaths.investigacion} className="btn-secondary">Volver</AppLink>
       <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Presentación institucional</h1>
       {error ? <p role="alert" className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-red-700">{error}</p> : null}
       {!item && !error ? (

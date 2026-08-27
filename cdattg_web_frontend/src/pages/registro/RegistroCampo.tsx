@@ -24,34 +24,32 @@ export function claseInput(error?: string): string {
   return error ? 'input-field border-red-400' : 'input-field';
 }
 
+const CLASE_ETIQUETA = 'mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300';
+const CLASE_AYUDA = 'mt-1.5 text-xs text-gray-500 dark:text-gray-400';
+const CLASE_ERROR = 'mt-1.5 text-xs text-red-600 dark:text-red-400';
+
 /**
  * Etiqueta, el control a ancho completo, texto de ayuda y aviso de error.
- * @param htmlFor Id del input (para que al pulsar la etiqueta enfoque)
- * @param texto Nombre del campo (ej. “Celular”)
+ * @param htmlFor Identificador del input (al pulsar la etiqueta, enfoca)
+ * @param texto Nombre del campo (ej. Celular)
  * @param extra Ayuda debajo, si hace falta
- * @param opcional Si es true, escribo “(opcional)” al lado
- * @param error Mensaje en rojo; role="alert" para el lector de pantalla
+ * @param opcional Si es true, escribo (opcional) al lado
+ * @param error Mensaje en rojo para el lector de pantalla
  * @param children El input o select
  * @returns El bloque del campo
  */
 export function RegistroCampo({ htmlFor, texto, extra, opcional, error, children }: Props) {
-  // Ids para aria-describedby: ayuda y error no se mezclan.
   const ayudaId = extra ? `${htmlFor}-ayuda` : undefined;
   const errorId = error ? `${htmlFor}-error` : undefined;
   return (
     <div className="w-full">
-      <label htmlFor={htmlFor} className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">
+      <label {...{ htmlFor, className: CLASE_ETIQUETA }}>
         {texto}
-        {/* Segundo nombre y teléfono no son obligatorios; lo dejo claro aquí. */}
         {opcional ? <span className="font-normal text-gray-500"> (opcional)</span> : null}
       </label>
       {children}
-      {extra ? (
-        <p id={ayudaId} className="mt-1.5 text-xs text-gray-500 dark:text-gray-400">{extra}</p>
-      ) : null}
-      {error ? (
-        <p id={errorId} role="alert" className="mt-1.5 text-xs text-red-600 dark:text-red-400">{error}</p>
-      ) : null}
+      {extra ? <p {...{ id: ayudaId, className: CLASE_AYUDA }}>{extra}</p> : null}
+      {error ? <p {...{ id: errorId, role: 'alert', className: CLASE_ERROR }}>{error}</p> : null}
     </div>
   );
 }

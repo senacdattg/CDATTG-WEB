@@ -5,7 +5,7 @@
  * @author Cristian Deysdayr Jiménez
  */
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { AppLink } from '../../components/AppLink';
 import { portalApi } from '../../services/portalApi';
 import { semilleroAdminPaths } from '../../routes/paths';
 import { axiosErrorMessage } from '../../utils/httpError';
@@ -35,7 +35,7 @@ export function PortalContenidoPage() {
 
   return (
     <main className="space-y-6">
-      <Link to={semilleroAdminPaths.index} className="btn-secondary">Volver a semilleros</Link>
+      <AppLink path={semilleroAdminPaths.index} className="btn-secondary">Volver a semilleros</AppLink>
       <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Presentación de investigación</h1>
       {error ? <p role="alert" className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-red-700">{error}</p> : null}
       <form

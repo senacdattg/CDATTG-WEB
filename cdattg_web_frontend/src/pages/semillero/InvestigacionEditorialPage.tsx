@@ -5,7 +5,7 @@
  * @author Cristian Deysdayr Jiménez
  */
 import { useEffect, useState, type ComponentProps } from 'react';
-import { Link } from 'react-router-dom';
+import { AppLink } from '../../components/AppLink';
 import { investigacionApi } from '../../services/investigacionApi';
 import { semilleroAdminPaths } from '../../routes/paths';
 import { axiosErrorMessage } from '../../utils/httpError';
@@ -68,7 +68,7 @@ export function InvestigacionEditorialPage({ kind }: Props) {
 
   return (
     <main className="space-y-6">
-      <Link to={semilleroAdminPaths.index} className="btn-secondary">Volver a semilleros</Link>
+      <AppLink path={semilleroAdminPaths.index} className="btn-secondary">Volver a semilleros</AppLink>
       <header className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-3xl font-bold text-gray-900 dark:text-white">{meta.titulo}</h1>
         {form ? null : <button type="button" className="btn-primary" onClick={() => setForm({ ...editorialVacio })}>Nuevo</button>}

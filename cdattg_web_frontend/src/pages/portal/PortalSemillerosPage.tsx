@@ -5,7 +5,7 @@
  * @author Cristian Deysdayr Jiménez
  */
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { AppLink } from '../../components/AppLink';
 import { portalApi } from '../../services/portalApi';
 import { portalPaths } from '../../routes/paths';
 import { axiosErrorMessage } from '../../utils/httpError';
@@ -29,7 +29,7 @@ export function PortalSemillerosPage() {
 
   return (
     <main className="mx-auto max-w-6xl space-y-6 px-4 py-8">
-      <Link to={portalPaths.investigacion} className="btn-secondary">Volver a Investigación</Link>
+      <AppLink path={portalPaths.investigacion} className="btn-secondary">Volver a Investigación</AppLink>
       <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Semilleros de investigación</h1>
       {error ? <p role="alert" className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-red-700">{error}</p> : null}
       {rows.length === 0 && !error ? (

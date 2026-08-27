@@ -5,7 +5,7 @@
  * @author Cristian Deysdayr Jiménez
  */
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { AppLink } from '../../components/AppLink';
 import { portalApi } from '../../services/portalApi';
 import { portalPaths } from '../../routes/paths';
 import { axiosErrorMessage } from '../../utils/httpError';
@@ -45,7 +45,7 @@ export function PortalHomePage() {
           <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
             Semilleros, revista, boletines, podcast, convocatorias y actividades del Centro.
           </p>
-          <Link to={portalPaths.investigacion} className="btn-primary mt-4 inline-flex">Ir a Investigación</Link>
+          <AppLink path={portalPaths.investigacion} className="btn-primary mt-4 inline-flex">Ir a Investigación</AppLink>
         </section>
       </div>
     </>

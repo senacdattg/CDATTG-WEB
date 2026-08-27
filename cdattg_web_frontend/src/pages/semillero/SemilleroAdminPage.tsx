@@ -5,7 +5,7 @@
  * @author Cristian Deysdayr Jiménez
  */
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { AppLink } from '../../components/AppLink';
 import { portalApi } from '../../services/portalApi';
 import { semilleroAdminPaths } from '../../routes/paths';
 import { axiosErrorMessage } from '../../utils/httpError';
@@ -47,7 +47,7 @@ export function SemilleroAdminPage() {
       <header className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Semilleros</h1>
         <nav className="flex gap-2">
-          <Link to={semilleroAdminPaths.nuevo} className="btn-primary">Nuevo semillero</Link>
+          <AppLink path={semilleroAdminPaths.nuevo} className="btn-primary">Nuevo semillero</AppLink>
         </nav>
       </header>
       {error ? <p role="alert" className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-red-700">{error}</p> : null}
@@ -60,7 +60,7 @@ export function SemilleroAdminPage() {
               <span className="ml-2 text-xs uppercase text-gray-500">{s.estado_publicacion}</span>
             </p>
             <p className="flex gap-2">
-              <Link to={semilleroAdminPaths.editar(s.id)} className="btn-secondary">Editar</Link>
+              <AppLink path={semilleroAdminPaths.editar(s.id)} className="btn-secondary">Editar</AppLink>
               <button type="button" className="btn-danger" onClick={() => void borrar(s.id)}>Eliminar</button>
             </p>
           </li>

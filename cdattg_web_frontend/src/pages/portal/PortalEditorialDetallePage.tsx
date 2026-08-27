@@ -5,7 +5,8 @@
  * @author Cristian Deysdayr Jiménez
  */
 import { useEffect, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
+import { AppLink } from '../../components/AppLink';
 import { investigacionApi } from '../../services/investigacionApi';
 import { portalMediaUrl } from '../../services/portalApi';
 import { portalPaths } from '../../routes/paths';
@@ -34,7 +35,7 @@ export function PortalEditorialDetallePage({ cfg }: Props) {
 
   return (
     <main className="mx-auto max-w-6xl space-y-6 px-4 py-8">
-      <Link to={portalPaths.investigacion} className="btn-secondary">Volver</Link>
+      <AppLink path={portalPaths.investigacion} className="btn-secondary">Volver</AppLink>
       {error ? <p role="alert" className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-red-700">{error}</p> : null}
       {item ? (
         <article className="card space-y-3">

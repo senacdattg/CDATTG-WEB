@@ -5,7 +5,7 @@
  * @author Cristian Deysdayr Jiménez
  */
 import { ArrowRightIcon, UserPlusIcon } from '@heroicons/react/24/outline';
-import { Link } from 'react-router-dom';
+import { AppLink } from '../../components/AppLink';
 import { portalPaths } from '../../routes/paths';
 import { TOTAL_PASOS } from './registroForm';
 
@@ -39,9 +39,9 @@ export function RegistroAcciones({ paso, saving, onAtras }: Props) {
           Atrás
         </button>
       ) : (
-        <Link to={portalPaths.index} className="block w-full text-center text-sm text-gray-600 hover:underline dark:text-gray-400">
+        <AppLink path={portalPaths.index} className="block w-full text-center text-sm text-gray-600 hover:underline dark:text-gray-400">
           Volver al inicio
-        </Link>
+        </AppLink>
       )}
       <p className="text-center text-xs text-gray-500 dark:text-gray-400">
         Sus datos se tratan conforme a la{' '}
@@ -50,7 +50,7 @@ export function RegistroAcciones({ paso, saving, onAtras }: Props) {
         </a>.
       </p>
       <p className="text-center text-sm">
-        <Link to="/login" className="text-primary-700 hover:underline dark:text-primary-300">Ya tengo cuenta</Link>
+        <AppLink path="/login" className="text-primary-700 hover:underline dark:text-primary-300">Ya tengo cuenta</AppLink>
       </p>
     </div>
   );

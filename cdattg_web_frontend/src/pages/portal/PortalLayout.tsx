@@ -5,7 +5,8 @@
  * Lo usan las rutas de portal.routes. ThemeToggle está al lado de Iniciar sesión.
  * @author Cristian Deysdayr Jiménez
  */
-import { Link, NavLink, Outlet } from 'react-router-dom';
+import { Outlet } from 'react-router-dom';
+import { AppLink, AppNavLink } from '../../components/AppLink';
 import {
   HomeIcon,
   BeakerIcon,
@@ -45,35 +46,33 @@ export function PortalLayout() {
         {/* Mismo ancho max-w-6xl que el carrusel y las tarjetas. */}
         <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-3">
           {/* Logo: clic vuelve al inicio del portal. */}
-          <Link to={portalPaths.index} className="flex items-center gap-2">
+          <AppLink path={portalPaths.index} className="flex items-center gap-2">
             <img src={LogoSena} alt="SENA" className="h-9 w-9" />
             <span className="text-sm font-semibold text-gray-800 dark:text-white sm:text-base">
               SENA Regional Guaviare
             </span>
-          </Link>
-          {/* Menú del medio: Inicio e Investigación. */}
+          </AppLink>
           <nav className="flex flex-wrap items-center gap-5" aria-label="Portal">
-            <NavLink to={portalPaths.index} end className={claseNav}>
+            <AppNavLink path={portalPaths.index} end className={claseNav}>
               <HomeIcon className="h-4 w-4" /> Inicio
-            </NavLink>
-            <NavLink to={portalPaths.investigacion} className={claseNav}>
+            </AppNavLink>
+            <AppNavLink path={portalPaths.investigacion} className={claseNav}>
               <BeakerIcon className="h-4 w-4" /> Investigación
-            </NavLink>
+            </AppNavLink>
           </nav>
-          {/* Derecha: entrar / registrarse, o ir al sistema si ya hay sesión. */}
           <nav className="flex items-center gap-4 text-sm text-gray-600 dark:text-gray-300">
             {isAuthenticated ? (
-              <Link to={getHomeRouteForUser(roles, permissions)} className="hover:text-gray-900 dark:hover:text-white">
+              <AppLink path={getHomeRouteForUser(roles, permissions)} className="hover:text-gray-900 dark:hover:text-white">
                 Ir al sistema
-              </Link>
+              </AppLink>
             ) : (
               <>
-                <Link to="/login" className="inline-flex items-center gap-1.5 hover:text-gray-900 dark:hover:text-white">
+                <AppLink path="/login" className="inline-flex items-center gap-1.5 hover:text-gray-900 dark:hover:text-white">
                   <ArrowRightEndOnRectangleIcon className="h-4 w-4" /> Iniciar Sesión
-                </Link>
-                <Link to={registroPath} className="inline-flex items-center gap-1.5 hover:text-gray-900 dark:hover:text-white">
+                </AppLink>
+                <AppLink path={registroPath} className="inline-flex items-center gap-1.5 hover:text-gray-900 dark:hover:text-white">
                   <UserPlusIcon className="h-4 w-4" /> Registrarse
-                </Link>
+                </AppLink>
               </>
             )}
             {/* Luna/sol: mismo botón que en login, para el portal. */}

@@ -235,7 +235,6 @@ func RequirePermission(obj, act string) gin.HandlerFunc {
 // (sin VER FICHAS) puede cargar los días de formación y guardarlos.
 // También permite acceso con permisos de vigilancia (portería necesita regionales/sedes).
 func RequirePermissionCatalogosFicha() gin.HandlerFunc {
-	acts := authz.PermisosFicha
 	return func(c *gin.Context) {
 		userID, ok := requireAuthenticatedUserID(c)
 		if !ok {
@@ -246,21 +245,9 @@ func RequirePermissionCatalogosFicha() gin.HandlerFunc {
 			return
 		}
 		sub := strconv.FormatUint(uint64(userID), 10)
-		for _, act := range acts {
-			if allowed, errEnf := authz.Enforce(e, sub, authz.ObjFicha, act); errEnf == nil && allowed {
-				c.Next()
-				return
-			}
-		}
-		if allowed, errEnf := authz.Enforce(e, sub, authz.ObjAsistencia, actVerAsistencia); errEnf == nil && allowed {
+		if catalogosFichaPermitidos(e, sub) {
 			c.Next()
 			return
-		}
-		for _, act := range authz.PermisosVigilancia {
-			if allowed, errEnf := authz.Enforce(e, sub, authz.ObjVigilancia, act); errEnf == nil && allowed {
-				c.Next()
-				return
-			}
 		}
 		c.JSON(http.StatusForbidden, gin.H{"error": "No tiene permiso para acceder a catálogos de fichas"})
 		c.Abort()
@@ -318,7 +305,7 @@ func RequirePermissionLeerFichaIndividual() gin.HandlerFunc {
 				return
 			}
 		}
-		if fichaID, ok := uintFromParam(c, "id"); ok && instructorTieneFichaAsignada(c, fichaID) {
+		if fichaID, ok := uintFromParam(c, "id"); ok && usuarioPuedeVerFichaComoMiembro(c, fichaID) {
 			c.Next()
 			return
 		}
@@ -472,6 +459,10 @@ func RequirePermissionListInstructoresFicha() gin.HandlerFunc {
 				c.Next()
 				return
 			}
+			if fichaID, ok := uintFromParam(c, "id"); ok && usuarioPuedeVerFichaComoMiembro(c, fichaID) {
+				c.Next()
+				return
+			}
 		}
 		c.JSON(http.StatusForbidden, gin.H{
 			"error": "No tiene permiso para GESTIONAR INSTRUCTORES FICHA en ficha",
@@ -497,7 +488,7 @@ func RequirePermissionListAprendicesFicha() gin.HandlerFunc {
 			}
 		}
 		if c.Request.Method == http.MethodGet {
-			if fichaID, ok := uintFromParam(c, "id"); ok && instructorTieneFichaAsignada(c, fichaID) {
+			if fichaID, ok := uintFromParam(c, "id"); ok && usuarioPuedeVerFichaComoMiembro(c, fichaID) {
 				c.Next()
 				return
 			}

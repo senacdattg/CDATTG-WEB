@@ -1,11 +1,11 @@
 /**
  * @module pages/lms/useLmsActividad
- * @description Carga el detalle de una actividad del aula.
+ * @description Carga una actividad y permite entregar o deshacer el trabajo.
  * @author CRANDEYS
  * @created 2026-08-26
  */
 import { useCallback, useEffect, useState } from 'react';
-import { fetchLmsActividad } from '../../services/lmsApi';
+import { deshacerLmsEntrega, entregarLmsActividad, fetchLmsActividad } from '../../services/lmsApi';
 import { axiosErrorMessage } from '../../utils/httpError';
 import type { LmsActividadDetalle } from '../../types/lms';
 
@@ -18,6 +18,7 @@ export function useLmsActividad(fichaId: number | null, actividadId: number | nu
   const [detalle, setDetalle] = useState<LmsActividadDetalle | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [saving, setSaving] = useState(false);
 
   const recargar = useCallback(async () => {
     if (!fichaId || !actividadId) {
@@ -41,5 +42,36 @@ export function useLmsActividad(fichaId: number | null, actividadId: number | nu
     void recargar();
   }, [recargar]);
 
-  return { detalle, loading, error, recargar };
+  const entregar = useCallback(
+    async (files: File[]) => {
+      if (!fichaId || !actividadId) return;
+      const body = new FormData();
+      files.forEach((f) => body.append('archivos', f));
+      setSaving(true);
+      try {
+        await entregarLmsActividad(fichaId, actividadId, body);
+        await recargar();
+      } catch (cause: unknown) {
+        throw new Error(axiosErrorMessage(cause, 'No se pudo entregar'));
+      } finally {
+        setSaving(false);
+      }
+    },
+    [fichaId, actividadId, recargar],
+  );
+
+  const deshacer = useCallback(async () => {
+    if (!fichaId || !actividadId) return;
+    setSaving(true);
+    try {
+      await deshacerLmsEntrega(fichaId, actividadId);
+      await recargar();
+    } catch (cause: unknown) {
+      throw new Error(axiosErrorMessage(cause, 'No se pudo deshacer la entrega'));
+    } finally {
+      setSaving(false);
+    }
+  }, [fichaId, actividadId, recargar]);
+
+  return { detalle, loading, error, saving, recargar, entregar, deshacer };
 }

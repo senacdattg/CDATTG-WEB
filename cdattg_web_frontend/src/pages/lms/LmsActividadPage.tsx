@@ -9,6 +9,7 @@ import { ArrowLeftIcon, ClockIcon } from '@heroicons/react/24/outline';
 import { lmsPaths } from '../../routes/paths';
 import { labelEstadoEntrega } from './lmsActividadEstado';
 import { useLmsActividad } from './useLmsActividad';
+import { LmsActividadAlumno } from './LmsActividadAlumno';
 import { LmsActividadCabecera } from './LmsActividadCabecera';
 
 /**
@@ -51,6 +52,15 @@ export function LmsActividadPage() {
               {d.cuerpo?.trim() ? d.cuerpo : 'Ninguno'}
             </p>
           </section>
+          {d.puede_publicar ? null : (
+            <LmsActividadAlumno
+              fichaId={fid}
+              detalle={d}
+              saving={page.saving}
+              onEntregar={page.entregar}
+              onDeshacer={page.deshacer}
+            />
+          )}
         </>
       ) : null}
     </main>

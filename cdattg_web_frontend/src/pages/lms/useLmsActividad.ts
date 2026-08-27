@@ -1,11 +1,11 @@
 /**
  * @module pages/lms/useLmsActividad
- * @description Carga una actividad y permite entregar o deshacer el trabajo.
+ * @description Carga una actividad y permite entregar, deshacer o calificar.
  * @author CRANDEYS
  * @created 2026-08-26
  */
 import { useCallback, useEffect, useState } from 'react';
-import { deshacerLmsEntrega, entregarLmsActividad, fetchLmsActividad } from '../../services/lmsApi';
+import { calificarLmsEntrega, deshacerLmsEntrega, entregarLmsActividad, fetchLmsActividad } from '../../services/lmsApi';
 import { axiosErrorMessage } from '../../utils/httpError';
 import type { LmsActividadDetalle } from '../../types/lms';
 
@@ -73,5 +73,21 @@ export function useLmsActividad(fichaId: number | null, actividadId: number | nu
     }
   }, [fichaId, actividadId, recargar]);
 
-  return { detalle, loading, error, saving, recargar, entregar, deshacer };
+  const calificar = useCallback(
+    async (entregaId: number, calificacion: number | null, comentario: string) => {
+      if (!fichaId || !actividadId) return;
+      setSaving(true);
+      try {
+        await calificarLmsEntrega(fichaId, actividadId, entregaId, { calificacion, comentario });
+        await recargar();
+      } catch (cause: unknown) {
+        throw new Error(axiosErrorMessage(cause, 'No se pudo guardar la nota'));
+      } finally {
+        setSaving(false);
+      }
+    },
+    [fichaId, actividadId, recargar],
+  );
+
+  return { detalle, loading, error, saving, recargar, entregar, deshacer, calificar };
 }

@@ -1,6 +1,6 @@
 /**
  * @module pages/lms/LmsActividadPage
- * @description Vista de actividad: instrucciones, puntos y plazo.
+ * @description Vista de actividad: instrucciones, entrega o revisión.
  * @author CRANDEYS
  * @created 2026-08-26
  */
@@ -11,6 +11,7 @@ import { labelEstadoEntrega } from './lmsActividadEstado';
 import { useLmsActividad } from './useLmsActividad';
 import { LmsActividadAlumno } from './LmsActividadAlumno';
 import { LmsActividadCabecera } from './LmsActividadCabecera';
+import { LmsActividadInstructor } from './LmsActividadInstructor';
 
 /**
  * Página de una publicación del aula.
@@ -52,7 +53,9 @@ export function LmsActividadPage() {
               {d.cuerpo?.trim() ? d.cuerpo : 'Ninguno'}
             </p>
           </section>
-          {d.puede_publicar ? null : (
+          {d.puede_publicar ? (
+            <LmsActividadInstructor fichaId={fid} detalle={d} saving={page.saving} onCalificar={page.calificar} />
+          ) : (
             <LmsActividadAlumno
               fichaId={fid}
               detalle={d}

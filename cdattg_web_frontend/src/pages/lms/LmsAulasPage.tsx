@@ -7,7 +7,7 @@
 import { useState } from 'react';
 import { useLmsAulas } from './useLmsAulas';
 import { LmsAulasListView } from './LmsAulasListView';
-import { LmsFichaDetalleModal } from './LmsFichaDetalleModal';
+import { LmsFichaModal } from './LmsFichaModal';
 
 /**
  * Página contenedora de Mis aulas.
@@ -15,14 +15,10 @@ import { LmsFichaDetalleModal } from './LmsFichaDetalleModal';
 export function LmsAulasPage() {
   const page = useLmsAulas();
   const [fichaVer, setFichaVer] = useState<number | null>(null);
-  let modal = null;
-  if (fichaVer) {
-    modal = <LmsFichaDetalleModal fichaId={fichaVer} onClose={() => setFichaVer(null)} />;
-  }
   return (
     <>
       <LmsAulasListView page={page} onVerFicha={setFichaVer} />
-      {modal}
+      <LmsFichaModal fichaId={fichaVer} onClose={() => setFichaVer(null)} />
     </>
   );
 }

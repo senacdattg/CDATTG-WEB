@@ -101,6 +101,7 @@ func SetupRouter() *gin.Engine {
 		protected := api.Group("")
 		protected.Use(middleware.AuthMiddleware())
 		{
+			registerPortalRoutes(api, protected, catalogoHandler)
 			personas := protected.Group("/personas")
 			{
 				personas.GET("", middleware.RequirePermission("persona", permVerPersonas), personaHandler.GetAll)

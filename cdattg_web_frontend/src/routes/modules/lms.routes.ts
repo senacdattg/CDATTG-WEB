@@ -34,10 +34,23 @@ export const lmsRoutes: RouteObject = {
         {
           path: ':fichaId',
           handle: { breadcrumb: { label: 'Aula' } },
-          lazy: async () => {
-            const { LmsAulaPage } = await import('../../pages/lms/LmsAulaPage');
-            return { Component: LmsAulaPage };
-          },
+          children: [
+            {
+              index: true,
+              lazy: async () => {
+                const { LmsAulaPage } = await import('../../pages/lms/LmsAulaPage');
+                return { Component: LmsAulaPage };
+              },
+            },
+            {
+              path: 'actividades/:actividadId',
+              handle: { breadcrumb: { label: 'Actividad' } },
+              lazy: async () => {
+                const { LmsActividadPage } = await import('../../pages/lms/LmsActividadPage');
+                return { Component: LmsActividadPage };
+              },
+            },
+          ],
         },
       ],
     },

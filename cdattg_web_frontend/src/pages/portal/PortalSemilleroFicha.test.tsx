@@ -1,6 +1,6 @@
 /**
- * @module pages/portal/PortalSemilleroFicha.test
- * @description Render de la ficha pública de semillero.
+ * Aquí miro que la ficha pública pinte el nombre del semillero.
+ * Prueba PortalSemilleroFicha.tsx.
  * @author Cristian Deysdayr Jiménez
  */
 import { createElement } from 'react';

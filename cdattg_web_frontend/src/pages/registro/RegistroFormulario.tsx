@@ -1,6 +1,7 @@
 /**
- * @module pages/registro/RegistroFormulario
- * @description Asistente de crear cuenta: progreso, paso activo y envío.
+ * Este es el asistente de crear cuenta: barra de progreso, el paso de ahora y el envío.
+ * Lo puse debajo del título de RegistroPage. Los pasos están en RegistroIdentidad, etc.
+ * El envío llama al API, borra el borrador e inicia sesión.
  * @author Cristian Deysdayr Jiménez
  */
 import { useState, type ComponentProps } from 'react';
@@ -18,21 +19,28 @@ import { useRegistroWizard } from './useRegistroWizard';
 
 /**
  * Formulario por pasos con borrador local (sin contraseña).
+ * @returns El card del registro
  */
 export function RegistroFormulario() {
+  // login: después de crear la cuenta, la dejo dentro del sistema.
   const { login } = useAuth();
   const nav = useNavigate();
+  // saving: mientras el API responde, desactivo “Registrarme ahora”.
   const [saving, setSaving] = useState(false);
   const w = useRegistroWizard();
+  // País y departamento del formulario: así cargo departamentos y municipios.
   const cats = useRegistroCatalogos(w.form.pais_id, w.form.departamento_id);
 
   async function onSubmit(e: Parameters<NonNullable<ComponentProps<'form'>['onSubmit']>>[0]) {
     e.preventDefault();
+    // En pasos 0–3, Siguiente no envía: solo avanza si el paso está bien.
     if (w.paso < TOTAL_PASOS - 1) { w.avanzar(); return; }
+    // puedeEnviar deja el mensaje en pantalla; si hay texto, no llamo al API.
     if (w.puedeEnviar()) return;
     setSaving(true);
     w.setError('');
     try {
+      // direccion vacía: no la pedimos (paso Ubicación).
       await registrarUsuario({ ...w.form, direccion: '' });
       w.limpiarBorrador();
       const home = await login({ email: w.form.email.trim(), password: w.form.password });
@@ -45,6 +53,7 @@ export function RegistroFormulario() {
   }
 
   const bind = { errores: w.errores, tocar: w.tocar };
+  // El aviso rojo puede ser del wizard o de que no cargaron las listas.
   const alerta = w.error || cats.errorCatalogo;
   return (
     <form className="card space-y-8" onSubmit={(e) => void onSubmit(e)}>

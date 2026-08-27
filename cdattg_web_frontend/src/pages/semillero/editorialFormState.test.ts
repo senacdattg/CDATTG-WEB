@@ -1,6 +1,6 @@
 /**
- * @module pages/semillero/editorialFormState.test
- * @description Payload editorial sin id.
+ * Aquí compruebo que al guardar un contenido editorial no se mande el id.
+ * Prueba editorialFormState.ts.
  * @author Cristian Deysdayr Jiménez
  */
 import { describe, expect, it } from 'vitest';

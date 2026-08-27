@@ -1,6 +1,7 @@
 /**
- * @module pages/semillero/semilleroFormState
- * @description Estado inicial del formulario de semillero.
+ * Aquí dejo el semillero vacío para crear uno nuevo, y cómo mandarlo al API.
+ * Lo saqué del formulario para no mezclar la pantalla con los datos.
+ * claveFila es solo de la UI; semilleroARequest la quita antes de enviar.
  * @author Cristian Deysdayr Jiménez
  */
 import type {
@@ -10,6 +11,7 @@ import type {
   SemilleroProyectoItem,
 } from '../../types/portal';
 
+// Plantilla de “Nuevo semillero”. id 0 = todavía no existe en base de datos.
 export const semilleroVacio: SemilleroItem = {
   id: 0,
   nombre: '',
@@ -32,38 +34,29 @@ export const semilleroVacio: SemilleroItem = {
   proyectos: [],
 };
 
-/**
- * Identificador de fila nueva (no se persiste).
- */
+/** Identificador de una fila nueva (React); no se guarda en el servidor. */
 export function claveFila(): string {
   return crypto.randomUUID();
 }
 
 /**
  * Clave React: uuid local o id de base de datos.
+ * @param id Id persistido, si ya existe
+ * @param clave Uuid de una fila que acaban de añadir
  */
 export function claveHijo(id?: number, clave?: string): string {
   if (clave) return clave;
   return id != null && id > 0 ? `id-${id}` : 'nueva';
 }
 
-/**
- * Línea vacía lista para editar.
- */
 export function lineaVacia(): SemilleroLineaItem {
   return { clave: claveFila(), nombre: '', descripcion: '', estado_publicacion: 'publicado' };
 }
 
-/**
- * Integrante vacío listo para editar.
- */
 export function integranteVacio(): SemilleroIntegranteItem {
   return { clave: claveFila(), nombre: '', rol: '', correo: '', programa: '', estado_publicacion: 'publicado' };
 }
 
-/**
- * Proyecto vacío listo para editar.
- */
 export function proyectoVacio(): SemilleroProyectoItem {
   return {
     clave: claveFila(),
@@ -74,9 +67,7 @@ export function proyectoVacio(): SemilleroProyectoItem {
   };
 }
 
-/**
- * Quita la clave de UI antes de enviar JSON.
- */
+/** Quita la clave de UI antes de enviar JSON. */
 function sinClave<T extends { clave?: string }>(row: T): Omit<T, 'clave'> {
   const copy = { ...row };
   delete copy.clave;
@@ -84,7 +75,8 @@ function sinClave<T extends { clave?: string }>(row: T): Omit<T, 'clave'> {
 }
 
 /**
- * Cuerpo JSON para crear o actualizar.
+ * Cuerpo JSON para crear o actualizar. Sin id: va en la URL si es edición.
+ * @param form Lo que el admin llenó
  */
 export function semilleroARequest(form: SemilleroItem) {
   return {

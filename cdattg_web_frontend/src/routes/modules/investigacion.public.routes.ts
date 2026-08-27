@@ -1,12 +1,14 @@
 /**
- * @module routes/modules/investigacion.public
- * @description Hijos públicos de /investigacion.
+ * Aquí están las páginas de /investigacion: home, presentación, semilleros,
+ * revista, boletines, podcast, convocatorias y actividades.
+ * lista y detalle reutilizan las mismas pantallas; lo que cambia es EDITORIAL_PUBLICO.
  * @author Cristian Deysdayr Jiménez
  */
 import { createElement } from 'react';
 import type { RouteObject } from 'react-router-dom';
 import { EDITORIAL_PUBLICO } from '../../pages/portal/portalEditorialRutas';
 
+/** Listado (ej. /investigacion/revista). */
 function lista(cfgKey: keyof typeof EDITORIAL_PUBLICO): RouteObject['lazy'] {
   return async () => {
     const { PortalEditorialListaPage } = await import('../../pages/portal/PortalEditorialListaPage');
@@ -15,6 +17,7 @@ function lista(cfgKey: keyof typeof EDITORIAL_PUBLICO): RouteObject['lazy'] {
   };
 }
 
+/** Ficha (ej. /investigacion/revista/3). */
 function detalle(cfgKey: keyof typeof EDITORIAL_PUBLICO): RouteObject['lazy'] {
   return async () => {
     const { PortalEditorialDetallePage } = await import('../../pages/portal/PortalEditorialDetallePage');

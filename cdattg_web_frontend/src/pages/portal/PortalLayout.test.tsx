@@ -1,6 +1,6 @@
 /**
- * @module pages/portal/PortalLayout.test
- * @description Navegación de la entrada pública.
+ * Aquí miro que la cabecera del portal traiga Inicio, Investigación, login,
+ * registro y el botón de claro/oscuro. Fingo que nadie ha iniciado sesión.
  * @author Cristian Deysdayr Jiménez
  */
 import { createElement } from 'react';
@@ -18,7 +18,7 @@ vi.mock('../../context/AuthContext', () => ({
 }));
 
 describe('PortalLayout', () => {
-  it('muestra marca, investigación, login y registro', () => {
+  it('muestra marca, investigación, login, registro y modo', () => {
     const html = renderToStaticMarkup(
       createElement(MemoryRouter, { initialEntries: ['/'] }, createElement(PortalLayout)),
     );
@@ -26,5 +26,6 @@ describe('PortalLayout', () => {
     expect(html).toContain('Investigación');
     expect(html).toContain('Iniciar Sesión');
     expect(html).toContain('Registrarse');
+    expect(html).toContain('Cambiar a modo oscuro');
   });
 });

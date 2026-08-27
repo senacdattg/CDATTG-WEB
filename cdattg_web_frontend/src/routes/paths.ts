@@ -150,6 +150,7 @@ export const complementariosPaths = {
   inscripciones: '/complementarios/inscripciones',
 } as const;
 
+/** Direcciones del portal público (inicio, investigación, revista, semilleros). */
 export const portalPaths = {
   index: '/',
   investigacion: '/investigacion',

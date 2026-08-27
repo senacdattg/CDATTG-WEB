@@ -1,6 +1,7 @@
 /**
- * @module pages/portal/PortalSemilleroDetallePage
- * @description Ficha pública: líneas, integrantes y proyectos.
+ * Esta es la página de un semillero concreto (por el slug de la URL).
+ * Lo hice para cargar el detalle y pasárselo a PortalSemilleroFicha.
+ * Si no existe o no está publicado, muestro el error.
  * @author Cristian Deysdayr Jiménez
  */
 import { useEffect, useState } from 'react';
@@ -12,9 +13,11 @@ import type { SemilleroItem } from '../../types/portal';
 import { PortalSemilleroFicha } from './PortalSemilleroFicha';
 
 /**
- * Detalle de un semillero publicado.
+ * Pido el semillero público y pinto la ficha.
+ * @returns Página /investigacion/semilleros/:slug
  */
 export function PortalSemilleroDetallePage() {
+  // slug: SCBA, SIGEMU, etc. (viene en la URL).
   const { slug } = useParams();
   const [item, setItem] = useState<SemilleroItem | null>(null);
   const [error, setError] = useState('');

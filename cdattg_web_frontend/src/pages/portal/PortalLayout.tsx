@@ -1,6 +1,8 @@
 /**
- * @module pages/portal/PortalLayout
- * @description Cabecera pública (entrada del sitio, sin sidebar).
+ * Esta es la cabecera del portal público (sin menú lateral).
+ * Lo hice para que Inicio, Investigación, login, registro y el modo claro/oscuro
+ * se vean igual en todas las páginas públicas.
+ * Lo usan las rutas de portal.routes. ThemeToggle está al lado de Iniciar sesión.
  * @author Cristian Deysdayr Jiménez
  */
 import { Link, NavLink, Outlet } from 'react-router-dom';
@@ -11,31 +13,45 @@ import {
   UserPlusIcon,
 } from '@heroicons/react/24/outline';
 import LogoSena from '../../../logo-sena-verde-complementario-svg-2022.svg';
+import { ThemeToggle } from '../../components/ThemeToggle';
 import { useAuth } from '../../context/AuthContext';
 import { portalPaths, registroPath } from '../../routes/paths';
 import { getHomeRouteForUser } from '../../utils/roles';
 
+/**
+ * Pinto Inicio/Investigación en verde si esa es la página actual.
+ * @param isActive Si el enlace coincide con la URL
+ * @returns Clases del enlace
+ */
 function claseNav({ isActive }: { isActive: boolean }): string {
+  // Verde SENA si estoy en esa página; gris si no.
   return `inline-flex items-center gap-1.5 text-sm ${
     isActive ? 'font-semibold text-sena-green' : 'text-gray-600 hover:text-gray-900 dark:text-gray-300'
   }`;
 }
 
 /**
- * Shell: marca SENA, investigación, login y registro.
+ * Marco SENA, menú, login/registro (o “Ir al sistema”) y luna/sol.
+ * @returns Cabecera + el contenido de la página (Outlet)
  */
 export function PortalLayout() {
+  // Si ya inició sesión, en vez de login muestro “Ir al sistema”.
   const { isAuthenticated, roles, permissions } = useAuth();
   return (
+    // Fondo gris claro (o oscuro si activaron el modo noche).
     <div className="min-h-screen bg-[#f4f6f8] dark:bg-gray-900">
+      {/* sticky: la cabecera se queda arriba al bajar. */}
       <header className="sticky top-0 z-20 border-b border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800">
+        {/* Mismo ancho max-w-6xl que el carrusel y las tarjetas. */}
         <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-3">
+          {/* Logo: clic vuelve al inicio del portal. */}
           <Link to={portalPaths.index} className="flex items-center gap-2">
             <img src={LogoSena} alt="SENA" className="h-9 w-9" />
             <span className="text-sm font-semibold text-gray-800 dark:text-white sm:text-base">
               SENA Regional Guaviare
             </span>
           </Link>
+          {/* Menú del medio: Inicio e Investigación. */}
           <nav className="flex flex-wrap items-center gap-5" aria-label="Portal">
             <NavLink to={portalPaths.index} end className={claseNav}>
               <HomeIcon className="h-4 w-4" /> Inicio
@@ -44,6 +60,7 @@ export function PortalLayout() {
               <BeakerIcon className="h-4 w-4" /> Investigación
             </NavLink>
           </nav>
+          {/* Derecha: entrar / registrarse, o ir al sistema si ya hay sesión. */}
           <nav className="flex items-center gap-4 text-sm text-gray-600 dark:text-gray-300">
             {isAuthenticated ? (
               <Link to={getHomeRouteForUser(roles, permissions)} className="hover:text-gray-900 dark:hover:text-white">
@@ -59,9 +76,12 @@ export function PortalLayout() {
                 </Link>
               </>
             )}
+            {/* Luna/sol: mismo botón que en login, para el portal. */}
+            <ThemeToggle />
           </nav>
         </div>
       </header>
+      {/* Aquí React pinta la página de abajo (inicio, investigación, etc.). */}
       <Outlet />
     </div>
   );

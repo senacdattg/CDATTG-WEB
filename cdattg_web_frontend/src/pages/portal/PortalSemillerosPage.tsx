@@ -1,6 +1,7 @@
 /**
- * @module pages/portal/PortalSemillerosPage
- * @description Listado público de semilleros (Investigación).
+ * Este es el listado completo de semilleros en el portal.
+ * Lo hice aparte del home de investigación para no llenar esa página.
+ * Pide la lista a portalApi.semillerosPublicos().
  * @author Cristian Deysdayr Jiménez
  */
 import { useEffect, useState } from 'react';
@@ -13,7 +14,8 @@ import { PortalEmptyState } from './PortalEmptyState';
 import { PortalSemilleroCard } from './PortalSemilleroCard';
 
 /**
- * Catálogo público de semilleros.
+ * Cargo semilleros publicados y los pinto en tarjetas.
+ * @returns Página /investigacion/semilleros
  */
 export function PortalSemillerosPage() {
   const [rows, setRows] = useState<SemilleroItem[]>([]);

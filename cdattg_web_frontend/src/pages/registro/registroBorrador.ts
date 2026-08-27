@@ -1,6 +1,6 @@
 /**
- * @module pages/registro/registroBorrador
- * @description Borrador local del registro. Nunca persiste la contraseña.
+ * Aquí guardo lo que la persona ya escribió al registrarse, para que no se pierda si cierra la página.
+ * Nunca guardo la contraseña. La clave es cdattg.registro.borrador.
  * @author Cristian Deysdayr Jiménez
  */
 import type { RegisterPayload } from '../../services/registerApi';
@@ -16,6 +16,9 @@ export type RegistroBorrador = Readonly<{
 
 /**
  * Guarda el avance sin clave de acceso.
+ * @param form Lo escrito hasta ahora
+ * @param paso En qué paso quedó
+ * @param ids Casillas de caracterización
  */
 export function guardarBorrador(form: RegisterPayload, paso: number, ids: readonly number[]): void {
   const store = almacenamiento();
@@ -25,7 +28,7 @@ export function guardarBorrador(form: RegisterPayload, paso: number, ids: readon
 }
 
 /**
- * Recupera un borrador válido o null.
+ * Recupera un borrador válido o null (JSON roto, o no hay nada).
  */
 export function leerBorrador(): RegistroBorrador | null {
   const store = almacenamiento();
@@ -39,13 +42,12 @@ export function leerBorrador(): RegistroBorrador | null {
   }
 }
 
-/**
- * Elimina el borrador tras un registro exitoso.
- */
+/** Lo borro cuando el registro ya salió bien, para no rellenar con datos viejos. */
 export function borrarBorrador(): void {
   almacenamiento()?.removeItem(REGISTRO_BORRADOR_KEY);
 }
 
+/** Si alguien editó el JSON a mano, descarto lo que no cuadre. */
 function parsearBorrador(raw: unknown): RegistroBorrador | null {
   if (!raw || typeof raw !== 'object') return null;
   const o = raw as { form?: unknown; paso?: unknown; ids?: unknown };
@@ -86,6 +88,7 @@ function tomarIds(f: Record<string, unknown>): Partial<RegisterPayload> {
 function str(v: unknown): string { return typeof v === 'string' ? v : ''; }
 function num(v: unknown): number { return typeof v === 'number' && Number.isFinite(v) ? v : 0; }
 
+/** En pruebas o SSR no hay window; no exploto. */
 function almacenamiento(): Storage | null {
   try {
     return globalThis.window === undefined ? null : globalThis.window.localStorage;

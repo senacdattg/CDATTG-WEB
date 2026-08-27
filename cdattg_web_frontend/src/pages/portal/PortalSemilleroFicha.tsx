@@ -1,6 +1,7 @@
 /**
- * @module pages/portal/PortalSemilleroFicha
- * @description Bloques de la ficha pública de un semillero.
+ * Aquí armo la ficha pública: foto, misión, líneas, integrantes y proyectos.
+ * Lo saqué de la página de detalle para no mezclar la carga del API con el dibujo.
+ * Solo pinto lo que venga publicado (los hijos ya los filtra el backend).
  * @author Cristian Deysdayr Jiménez
  */
 import type { SemilleroItem, SemilleroLineaItem } from '../../types/portal';
@@ -9,7 +10,7 @@ import { portalMediaUrl } from '../../services/portalApi';
 type Props = Readonly<{ item: SemilleroItem }>;
 
 /**
- * Cabecera: imagen, nombre y líder.
+ * Arriba: foto, nombre, sigla, resumen y líder.
  */
 function SemilleroCabecera({ item }: Props) {
   return (
@@ -18,6 +19,7 @@ function SemilleroCabecera({ item }: Props) {
       <div>
         <h1 className="text-3xl font-bold text-gray-900 dark:text-white">{item.nombre}</h1>
         {item.sigla ? <p className="text-sm font-semibold text-sena-green">{item.sigla}</p> : null}
+        {/* Si no hay resumen, uso la descripción larga. */}
         <p className="mt-2 whitespace-pre-wrap text-gray-600 dark:text-gray-300">{item.resumen || item.descripcion || '—'}</p>
         {item.instructor_lider ? <p className="mt-1 text-sm text-gray-500">Líder: {item.instructor_lider}</p> : null}
       </div>
@@ -26,7 +28,7 @@ function SemilleroCabecera({ item }: Props) {
 }
 
 /**
- * Misión y visión si hay texto.
+ * Misión y visión, solo si hay texto.
  */
 function SemilleroMisionVision({ item }: Props) {
   if (!item.mision && !item.vision) return null;
@@ -39,7 +41,7 @@ function SemilleroMisionVision({ item }: Props) {
 }
 
 /**
- * Lista de líneas de investigación.
+ * Lista de líneas de investigación del grupo.
  */
 function SemilleroLineas({ lineas }: Readonly<{ lineas: SemilleroLineaItem[] }>) {
   return (
@@ -54,7 +56,8 @@ function SemilleroLineas({ lineas }: Readonly<{ lineas: SemilleroLineaItem[] }>)
 }
 
 /**
- * Ficha completa: cabecera, textos e hijas publicadas.
+ * Junto cabecera, textos, integrantes y proyectos.
+ * @param item Semillero ya cargado
  */
 export function PortalSemilleroFicha({ item }: Props) {
   return (

@@ -1,6 +1,7 @@
 /**
- * @module pages/semillero/SemilleroFormPage
- * @description Alta o edición de un semillero y sus relaciones.
+ * Esta pantalla sirve para crear o editar un semillero (nombre, foto, líneas, etc.).
+ * Si la URL trae id, cargo el que ya existe; si no, empiezo vacío.
+ * Los campos están en SemilleroFichaCampos y SemilleroHijosCampos.
  * @author Cristian Deysdayr Jiménez
  */
 import { useEffect, useState, type ComponentProps } from 'react';
@@ -14,7 +15,8 @@ import { SemilleroHijosCampos } from './SemilleroHijosCampos';
 import { SemilleroFichaCampos } from './SemilleroFichaCampos';
 
 /**
- * Formulario de semillero.
+ * Formulario de semillero (alta o edición).
+ * @returns Página de guardar semillero
  */
 export function SemilleroFormPage() {
   const { id } = useParams();
@@ -22,6 +24,7 @@ export function SemilleroFormPage() {
   const [form, setForm] = useState<SemilleroItem>(semilleroVacio);
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
+  // 0 = alta; otro número = el id de la URL.
   const editId = id ? Number(id) : 0;
 
   useEffect(() => {

@@ -1,6 +1,7 @@
 /**
- * @module pages/semillero/InvestigacionEditorialPage
- * @description CRUD admin de un submódulo editorial BIOGIGAS.
+ * Esta es la pantalla para cargar revista, boletines, podcast, banners, etc.
+ * Es la misma pantalla; lo que cambia es el kind (revistas, boletines…).
+ * Lo que se publica aquí es lo que ve la gente en el portal.
  * @author Cristian Deysdayr Jiménez
  */
 import { useEffect, useState, type ComponentProps } from 'react';
@@ -17,10 +18,13 @@ type Props = Readonly<{ kind: EditorialKind }>;
 
 /**
  * Listado + formulario de revista, boletín, podcast, convocatoria, actividad o banner.
+ * @param kind Qué sección del menú admin estamos viendo
+ * @returns Lista o formulario según haya algo en edición
  */
 export function InvestigacionEditorialPage({ kind }: Props) {
   const meta = editorialMeta(kind);
   const [rows, setRows] = useState<BiogjgasItem[]>([]);
+  // null = estoy en la lista; un objeto = estoy creando o editando.
   const [form, setForm] = useState<BiogjgasItem | null>(null);
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
@@ -30,6 +34,7 @@ export function InvestigacionEditorialPage({ kind }: Props) {
   }
 
   useEffect(() => {
+    // Si cambio de revista a boletines, vuelvo a pedir la lista.
     cargar().catch((cause: unknown) => setError(axiosErrorMessage(cause, 'No se pudo listar')));
   }, [kind]);
 

@@ -1,6 +1,6 @@
 /**
- * @module pages/semillero/semilleroFormState.test
- * @description Payload de alta de semillero.
+ * Aquí compruebo cómo se arma el semillero nuevo para mandarlo al API.
+ * Prueba semilleroFormState.ts.
  * @author Cristian Deysdayr Jiménez
  */
 import { describe, expect, it } from 'vitest';

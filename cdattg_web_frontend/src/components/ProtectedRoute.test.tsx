@@ -1,6 +1,6 @@
 /**
- * @module components/ProtectedRoute.test
- * @description Sin sesión, el sistema abre el portal público.
+ * Aquí confirmo que, sin sesión, la entrada es el portal y no el login.
+ * Prueba rutaPublicaDeEntrada de ProtectedRoute.
  * @author Cristian Deysdayr Jiménez
  */
 import { describe, expect, it } from 'vitest';

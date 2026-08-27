@@ -1,6 +1,6 @@
 /**
- * @module pages/registro/RegistroAvisoDatos.test
- * @description Aviso, progreso y acciones del asistente.
+ * Aquí miro el aviso de datos, la barra de pasos y los botones Atrás / Siguiente.
+ * Prueba RegistroAvisoDatos, RegistroAcciones y RegistroProgreso.
  * @author Cristian Deysdayr Jiménez
  */
 import { createElement } from 'react';

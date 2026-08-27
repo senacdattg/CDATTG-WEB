@@ -1,6 +1,7 @@
 /**
- * @module pages/portal/PortalInvestigacionPage
- * @description Home público de Investigación: banners, semilleros y explora.
+ * Esta es la entrada pública de Investigación BIOGIGAS.
+ * Lo hice para mostrar banners, semilleros y el menú Explora (revista, boletines, etc.).
+ * Pide los datos a investigacionApi.home(). El carrusel es el mismo del inicio.
  * @author Cristian Deysdayr Jiménez
  */
 import { useEffect, useState } from 'react';
@@ -14,16 +15,19 @@ import { PortalEmptyState } from './PortalEmptyState';
 import { EXPLORA_INVESTIGACION } from './portalExplora';
 import { PortalSemilleroCard } from './PortalSemilleroCard';
 
+// Estado inicial: nada cargado todavía.
 const vacio: InvestigacionHomeResponse = { banners: [], semilleros: [], presentacion: null };
 
 /**
- * Entrada pública al área BIOGIGAS.
+ * Cargo home de investigación y pinto carrusel, tarjetas y enlaces.
+ * @returns Página /investigacion
  */
 export function PortalInvestigacionPage() {
   const [data, setData] = useState<InvestigacionHomeResponse>(vacio);
   const [error, setError] = useState('');
 
   useEffect(() => {
+    // Home público de BIOGIGAS (banners + semilleros publicados).
     investigacionApi.home()
       .then(setData)
       .catch((cause: unknown) => setError(axiosErrorMessage(cause, 'No se pudo cargar investigación')));
@@ -33,7 +37,9 @@ export function PortalInvestigacionPage() {
     <>
       <PortalCarousel banners={data.banners} />
       <div className="mx-auto max-w-6xl space-y-8 px-4 py-8">
-        {error ? <p role="alert" className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-red-700">{error}</p> : null}
+        {error ? (
+          <p role="alert" className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-red-700">{error}</p>
+        ) : null}
         <section>
           <div className="mb-4 flex items-end justify-between">
             <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Semilleros de investigación</h2>
@@ -49,6 +55,7 @@ export function PortalInvestigacionPage() {
             </ul>
           )}
         </section>
+        {/* Enlaces a presentación, revista, boletines, etc. (portalExplora). */}
         <section className="card">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Explora el área de investigación</h2>
           <ul className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">

@@ -1,6 +1,7 @@
 /**
- * @module pages/semillero/SemilleroAdminPage
- * @description Listado autenticado de semilleros.
+ * Esta es la lista de semilleros para quien administra (ya con sesión).
+ * Desde aquí se crea, edita o se va a presentación y revista.
+ * No es el listado público de /investigacion/semilleros.
  * @author Cristian Deysdayr Jiménez
  */
 import { useEffect, useState } from 'react';
@@ -11,7 +12,8 @@ import { axiosErrorMessage } from '../../utils/httpError';
 import type { SemilleroItem } from '../../types/portal';
 
 /**
- * Administración de semilleros.
+ * Administración de semilleros: listar, editar y eliminar.
+ * @returns La pantalla /admin de semilleros
  */
 export function SemilleroAdminPage() {
   const [rows, setRows] = useState<SemilleroItem[]>([]);
@@ -30,6 +32,7 @@ export function SemilleroAdminPage() {
   }, []);
 
   async function borrar(id: number) {
+    // confirm del navegador: si dice que no, no llamo al API.
     if (!globalThis.confirm('¿Eliminar este semillero?')) return;
     try {
       await portalApi.eliminarSemillero(id);
@@ -52,6 +55,7 @@ export function SemilleroAdminPage() {
         {rows.map((s) => (
           <li key={s.id} className="flex flex-wrap items-center justify-between gap-2 px-4 py-3">
             <p>
+              {/* Si tiene sigla, la pongo delante (SCBA · nombre). */}
               <span className="font-medium text-gray-900 dark:text-white">{s.sigla ? `${s.sigla} · ` : ''}{s.nombre}</span>
               <span className="ml-2 text-xs uppercase text-gray-500">{s.estado_publicacion}</span>
             </p>

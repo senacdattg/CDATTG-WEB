@@ -1,6 +1,6 @@
 /**
- * @module pages/registro/caracterizacionSeleccion.test
- * @description Casos feliz, borde y error de la selección de categorías.
+ * Aquí compruebo que NINGUNA quite las demás casillas y que el API reciba un solo id.
+ * Prueba caracterizacionSeleccion.ts.
  * @author Cristian Deysdayr Jiménez
  */
 import { describe, expect, it } from 'vitest';

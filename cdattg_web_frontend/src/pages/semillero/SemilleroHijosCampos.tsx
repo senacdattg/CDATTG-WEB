@@ -1,6 +1,7 @@
 /**
- * @module pages/semillero/SemilleroHijosCampos
- * @description Líneas, integrantes y proyectos del formulario.
+ * Aquí el admin carga las líneas, integrantes y proyectos del semillero.
+ * Cada uno puede ir en publicado o no; solo lo publicado sale en el portal.
+ * Lo usa SemilleroFormPage debajo de SemilleroFichaCampos.
  * @author Cristian Deysdayr Jiménez
  */
 import type { Dispatch, SetStateAction } from 'react';
@@ -12,6 +13,9 @@ type Props = Readonly<{ form: SemilleroItem; setForm: Dispatch<SetStateAction<Se
 
 /**
  * Listas editables anidadas, cada una con estado de publicación.
+ * @param form Semillero en edición
+ * @param setForm Actualiza el padre (líneas/integrantes/proyectos)
+ * @returns Tres bloques de filas
  */
 export function SemilleroHijosCampos({ form, setForm }: Props) {
   const lineas = form.lineas ?? [];
@@ -19,6 +23,7 @@ export function SemilleroHijosCampos({ form, setForm }: Props) {
   const proyectos = form.proyectos ?? [];
   return (
     <div className="space-y-4">
+      {/* Cada fila copia el arreglo, cambia el índice i y guarda. Así no muto el state. */}
       <section>
         <h2 className="font-semibold">Líneas</h2>
         {lineas.map((l, i) => (

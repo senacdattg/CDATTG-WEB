@@ -1,6 +1,6 @@
 /**
- * @module pages/portal/PortalPresentacionPage
- * @description Presentación institucional pública (solo si está publicada).
+ * Esta es la presentación del área (misión, visión, historia) para el público.
+ * Solo se ve si el admin la dejó en publicado. Si no, pongo el recuadro vacío.
  * @author Cristian Deysdayr Jiménez
  */
 import { useEffect, useState } from 'react';
@@ -12,7 +12,8 @@ import type { PortalPresentacionItem } from '../../types/portal';
 import { PortalEmptyState } from './PortalEmptyState';
 
 /**
- * Misión, visión e historia del área.
+ * Pido la presentación y, si existe, la muestro por secciones.
+ * @returns Página /investigacion/presentacion
  */
 export function PortalPresentacionPage() {
   const [item, setItem] = useState<PortalPresentacionItem | null>(null);
@@ -29,7 +30,9 @@ export function PortalPresentacionPage() {
       <Link to={portalPaths.investigacion} className="btn-secondary">Volver</Link>
       <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Presentación institucional</h1>
       {error ? <p role="alert" className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-red-700">{error}</p> : null}
-      {!item && !error ? <PortalEmptyState titulo="Sin presentación" detalle="El administrador publicará la misión y la visión del área." /> : null}
+      {!item && !error ? (
+        <PortalEmptyState titulo="Sin presentación" detalle="El administrador publicará la misión y la visión del área." />
+      ) : null}
       {item ? (
         <article className="card space-y-4 whitespace-pre-wrap text-gray-700 dark:text-gray-300">
           {item.mision ? <section><h2 className="font-semibold text-gray-900 dark:text-white">Misión</h2><p>{item.mision}</p></section> : null}

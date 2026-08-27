@@ -1,6 +1,6 @@
 /**
- * @module pages/registro/RegistroCampos.test
- * @description Solo el paso activo queda visible.
+ * Aquí compruebo que RegistroCampos pinte solo el paso de ahora.
+ * No monto el wizard completo: le paso un formulario vacío y el número de paso.
  * @author Cristian Deysdayr Jiménez
  */
 import { createElement } from 'react';

@@ -1,6 +1,6 @@
 /**
- * @module pages/portal/portalMediaUrl.test
- * @description Resolución de URL de imágenes del portal.
+ * Aquí miro que las fotos del portal armen bien la dirección (http, vacío o /api/...).
+ * Prueba portalMediaUrl de portalApi.
  * @author Cristian Deysdayr Jiménez
  */
 import { describe, expect, it } from 'vitest';

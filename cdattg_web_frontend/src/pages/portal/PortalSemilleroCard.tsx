@@ -1,6 +1,7 @@
 /**
- * @module pages/portal/PortalSemilleroCard
- * @description Tarjeta pública de un semillero (sigla, color, ficha).
+ * Esta es la tarjetita de un semillero en el listado público (foto o sigla de color).
+ * Lo hice para que SCBA, SIGEMU y los demás se vean igual en el home y en el listado.
+ * Al hacer clic voy a /investigacion/semilleros/{slug}.
  * @author Cristian Deysdayr Jiménez
  */
 import { Link } from 'react-router-dom';
@@ -11,15 +12,18 @@ import type { SemilleroItem } from '../../types/portal';
 type Props = Readonly<{ item: SemilleroItem }>;
 
 /**
- * Card estilo catálogo (SCBA, SIGEMU, etc.).
+ * Pinto foto o recuadro con la sigla, nombre y un resumen corto.
+ * @param item Semillero publicado
  */
 export function PortalSemilleroCard({ item }: Props) {
+  // Verde SENA si el admin no puso color.
   const color = item.color_identidad || '#39A900';
   return (
     <Link to={portalPaths.semillero(item.slug)} className="card block overflow-hidden hover:shadow-md">
       {item.imagen_url ? (
         <img src={portalMediaUrl(item.imagen_url)} alt="" className="h-28 w-full object-cover" />
       ) : (
+        // Sin foto: recuadro del color del grupo con la sigla.
         <div className="flex h-28 items-center justify-center text-3xl font-extrabold text-white" style={{ background: color }}>
           {item.sigla || item.nombre.slice(0, 4)}
         </div>

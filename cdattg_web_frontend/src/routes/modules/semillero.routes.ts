@@ -1,6 +1,7 @@
 /**
- * @module routes/modules/semillero
- * @description Rutas autenticadas de administración de semilleros e investigación.
+ * Aquí están las pantallas del sistema para quien administra investigación:
+ * semilleros, presentación, banners, revista, boletines, podcast, etc.
+ * Van con sesión y permiso GESTIONAR SEMILLERO. No son el portal público.
  * @author Cristian Deysdayr Jiménez
  */
 import { createElement } from 'react';

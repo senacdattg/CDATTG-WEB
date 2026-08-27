@@ -1,6 +1,6 @@
 /**
- * @module pages/semillero/editorialKindMeta.test
- * @description Metadatos de submódulos de investigación.
+ * Aquí miro que cada sección de admin tenga título y ruta (Revista, Boletines…).
+ * Prueba editorialKindMeta.ts.
  * @author Cristian Deysdayr Jiménez
  */
 import { describe, expect, it } from 'vitest';

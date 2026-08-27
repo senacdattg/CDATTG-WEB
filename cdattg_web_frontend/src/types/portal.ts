@@ -1,6 +1,7 @@
 /**
- * @module types/portal
- * @description Contratos JSON del portal público y semilleros.
+ * Aquí están las formas de los datos del portal: banners, presentación y semilleros.
+ * Lo hice para que el front y el API hablen igual (publicado, borrador, archivado).
+ * Lo usan portalApi, investigacionApi y las páginas públicas.
  * @author Cristian Deysdayr Jiménez
  */
 

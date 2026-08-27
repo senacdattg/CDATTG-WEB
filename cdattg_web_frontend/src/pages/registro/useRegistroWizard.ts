@@ -1,6 +1,6 @@
 /**
- * @module pages/registro/useRegistroWizard
- * @description Estado del asistente: paso, borrador y validación al salir del campo.
+ * Aquí guardo en qué paso va el registro, el borrador (sin la contraseña) y si el campo está bien.
+ * Lo usa RegistroFormulario. El borrador está en registroBorrador (localStorage).
  * @author Cristian Deysdayr Jiménez
  */
 import { useEffect, useState } from 'react';
@@ -11,6 +11,7 @@ import { registroVacio, TOTAL_PASOS, type RegistroErrores } from './registroForm
 import { mensajeCampoRegistro, mensajePasoInvalido, mensajeRegistroInvalido, CAMPOS_POR_PASO } from './registroValidate';
 import type { ParametroItem } from '../../types';
 
+/** Arranco con lo guardado, o vacío. La clave nunca vuelve del borrador. */
 function estadoInicial() {
   const d = leerBorrador();
   return {
@@ -22,8 +23,10 @@ function estadoInicial() {
 
 /**
  * Orquesta el flujo por pasos del registro.
+ * @returns Formulario, paso, errores y acciones (avanzar, atrás, enviar)
  */
 export function useRegistroWizard() {
+  // useState(estadoInicial) para no leer localStorage en cada render.
   const [ini] = useState(estadoInicial);
   const [form, setForm] = useState<RegisterPayload>(ini.form);
   const [paso, setPaso] = useState(ini.paso);
@@ -32,6 +35,7 @@ export function useRegistroWizard() {
   const [error, setError] = useState('');
 
   useEffect(() => {
+    // Si no escribió nada y sigue en el paso 0, no ensucio localStorage.
     const hayDatos = form.numero_documento || form.email || paso > 0;
     if (hayDatos) guardarBorrador(form, paso, ids);
   }, [form, paso, ids]);
@@ -39,6 +43,7 @@ export function useRegistroWizard() {
   const setCampo = (k: keyof RegisterPayload, v: string | number) => {
     const next = { ...form, [k]: v };
     setForm(next);
+    // Si ese campo ya tenía error, lo vuelvo a validar al escribir.
     setErrores((e) => (e[k] ? { ...e, [k]: mensajeCampoRegistro(next, k) } : e));
   };
 

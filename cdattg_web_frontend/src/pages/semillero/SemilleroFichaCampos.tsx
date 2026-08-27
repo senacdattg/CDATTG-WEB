@@ -1,6 +1,7 @@
 /**
- * @module pages/semillero/SemilleroFichaCampos
- * @description Datos de la ficha principal del semillero.
+ * Estos son los datos de la ficha del semillero (nombre, sigla, color, misión).
+ * Los hijos (líneas, integrantes, proyectos) están en SemilleroHijosCampos.
+ * Lo usa SemilleroFormPage.
  * @author Cristian Deysdayr Jiménez
  */
 import type { SemilleroItem } from '../../types/portal';
@@ -10,6 +11,10 @@ type Props = Readonly<{ form: SemilleroItem; setForm: (next: SemilleroItem) => v
 
 /**
  * Nombre, sigla, textos institucionales y estado.
+ * @param form Semillero en edición
+ * @param setForm Reemplaza el objeto completo
+ * @param onImagen Sube el archivo (lo hace la página, no yo)
+ * @returns Campos de la ficha
  */
 export function SemilleroFichaCampos({ form, setForm, onImagen }: Props) {
   const set = (patch: Partial<SemilleroItem>) => setForm({ ...form, ...patch });
@@ -21,6 +26,7 @@ export function SemilleroFichaCampos({ form, setForm, onImagen }: Props) {
       </label>
       <div className="grid gap-3 sm:grid-cols-2">
         <input className="input-field" placeholder="Sigla (SCBA, SIGEMU…)" value={form.sigla} onChange={(e) => set({ sigla: e.target.value })} />
+        {/* Vacío = el backend arma el slug a partir del nombre. */}
         <input className="input-field" placeholder="Slug (vacío = automático)" value={form.slug} onChange={(e) => set({ slug: e.target.value })} />
         <input className="input-field" placeholder="Instructor líder" value={form.instructor_lider} onChange={(e) => set({ instructor_lider: e.target.value })} />
         <input className="input-field" placeholder="Correo de contacto" value={form.correo_contacto} onChange={(e) => set({ correo_contacto: e.target.value })} />

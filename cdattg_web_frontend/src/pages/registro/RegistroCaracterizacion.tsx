@@ -1,6 +1,7 @@
 /**
- * @module pages/registro/RegistroCaracterizacion
- * @description Categorías demográficas (un grupo de selección).
+ * Estas son las casillas de caracterización (paso 5, junto con la contraseña).
+ * NINGUNA quita las demás: eso lo hace caracterizacionSeleccion, no este archivo.
+ * Lo pinta RegistroCampos cuando el paso es 4.
  * @author Cristian Deysdayr Jiménez
  */
 import { UserGroupIcon } from '@heroicons/react/24/outline';
@@ -15,7 +16,12 @@ type Props = Readonly<{
 }>;
 
 /**
- * Caracterización: varias marcas, NINGUNA exclusiva.
+ * Caracterización: varias marcas a la vez. Si ninguna corresponde, eligen NINGUNA.
+ * @param cars Lista del catálogo
+ * @param ids Ids ya marcados
+ * @param onToggle Lo llama el wizard (alternarCaracterizacion)
+ * @param error Si no marcaron nada y el paso lo exige
+ * @returns La sección Caracterización
  */
 export function RegistroCaracterizacion({ cars, ids, onToggle, error }: Props) {
   return (
@@ -26,6 +32,7 @@ export function RegistroCaracterizacion({ cars, ids, onToggle, error }: Props) {
       <div className="grid grid-cols-1 gap-3 rounded-lg border border-gray-200 p-3 sm:grid-cols-2 dark:border-gray-600">
         {cars.map((c) => (
           <label key={c.id} className="flex cursor-pointer items-start gap-2">
+            {/* checkbox, no radio: pueden marcar varias, salvo NINGUNA. */}
             <input
               type="checkbox"
               checked={ids.includes(c.id)}

@@ -1,6 +1,7 @@
 /**
- * @module pages/registro/registroValidate
- * @description Validación por campo, por paso y del formulario completo.
+ * Aquí miro si cada campo del registro está bien (correo, documento, contraseña, etc.).
+ * Lo usa el asistente al salir de un campo y al pulsar Siguiente.
+ * Un string vacío significa “está bien”.
  * @author Cristian Deysdayr Jiménez
  */
 import type { RegisterPayload } from '../../services/registerApi';
@@ -13,50 +14,55 @@ export const CAMPOS_POR_PASO: readonly (readonly (keyof RegisterPayload)[])[] = 
   ['parametro_id', 'password', 'password_confirm'],
 ];
 
-/**
- * Error de un campo al salir de él, o vacío si es válido.
- */
-export function mensajeCampoRegistro(p: RegisterPayload, k: keyof RegisterPayload): string {
-  switch (k) {
-    case 'tipo_documento': return p.tipo_documento ? '' : 'Seleccione el tipo de documento';
-    case 'numero_documento': return textoSinSeparadores(p.numero_documento, 'el número de documento');
-    case 'fecha_nacimiento': return mensajeEdad(p.fecha_nacimiento);
-    case 'genero': return p.genero ? '' : 'Seleccione el género';
-    case 'primer_nombre': return p.primer_nombre.trim() ? '' : 'Indique el primer nombre';
-    case 'primer_apellido': return p.primer_apellido.trim() ? '' : 'Indique el primer apellido';
-    case 'celular': return textoSinSeparadores(p.celular, 'el celular');
-    case 'telefono': return p.telefono.trim() ? textoSinSeparadores(p.telefono, 'el teléfono') : '';
-    case 'email': return mensajeEmail(p.email);
-    case 'pais_id': return p.pais_id ? '' : 'Seleccione el país';
-    case 'departamento_id': return p.departamento_id ? '' : 'Seleccione el departamento';
-    case 'municipio_id': return p.municipio_id ? '' : 'Seleccione el municipio';
-    case 'parametro_id': return p.parametro_id ? '' : 'Marque al menos una caracterización';
-    case 'password': return mensajeClave(p.password);
-    case 'password_confirm': return p.password === p.password_confirm ? '' : 'Las contraseñas no coinciden';
-    default: return '';
-  }
+type Validador = (p: RegisterPayload) => string;
+
+const porCampo: Partial<Record<keyof RegisterPayload, Validador>> = {
+  tipo_documento: (p) => (p.tipo_documento ? '' : 'Seleccione el tipo de documento'),
+  numero_documento: (p) => textoSinSeparadores(p.numero_documento, 'el número de documento'),
+  fecha_nacimiento: (p) => mensajeEdad(p.fecha_nacimiento),
+  genero: (p) => (p.genero ? '' : 'Seleccione el género'),
+  primer_nombre: (p) => (p.primer_nombre.trim() ? '' : 'Indique el primer nombre'),
+  primer_apellido: (p) => (p.primer_apellido.trim() ? '' : 'Indique el primer apellido'),
+  celular: (p) => textoSinSeparadores(p.celular, 'el celular'),
+  telefono: (p) => (p.telefono.trim() ? textoSinSeparadores(p.telefono, 'el teléfono') : ''),
+  email: (p) => mensajeEmail(p.email),
+  pais_id: (p) => (p.pais_id ? '' : 'Seleccione el país'),
+  departamento_id: (p) => (p.departamento_id ? '' : 'Seleccione el departamento'),
+  municipio_id: (p) => (p.municipio_id ? '' : 'Seleccione el municipio'),
+  parametro_id: (p) => (p.parametro_id ? '' : 'Marque al menos una caracterización'),
+  password: (p) => mensajeClave(p.password),
+  password_confirm: (p) => (p.password === p.password_confirm ? '' : 'Las contraseñas no coinciden'),
+};
+
+/** Primer texto no vacío de una lista. */
+function primerMensaje(msgs: readonly string[]): string {
+  return msgs.find(Boolean) ?? '';
 }
 
 /**
- * Primer error del paso indicado.
+ * Error de un campo al salir de él, o vacío si es válido.
+ * @param p Formulario completo
+ * @param k Campo que acaban de tocar
+ * @returns Mensaje para pintar en rojo, o ''
  */
+export function mensajeCampoRegistro(p: RegisterPayload, k: keyof RegisterPayload): string {
+  return porCampo[k]?.(p) ?? '';
+}
+
 export function mensajePasoInvalido(paso: number, p: RegisterPayload): string {
   const campos = CAMPOS_POR_PASO[paso];
   if (!campos) return '';
-  return campos.map((k) => mensajeCampoRegistro(p, k)).find((m) => m) ?? '';
+  return primerMensaje(campos.map((k) => mensajeCampoRegistro(p, k)));
 }
 
-/**
- * Mensaje de error o vacío si el payload es válido.
- */
 export function mensajeRegistroInvalido(p: RegisterPayload): string {
-  return CAMPOS_POR_PASO.map((_, i) => mensajePasoInvalido(i, p)).find((m) => m) ?? '';
+  return primerMensaje(CAMPOS_POR_PASO.map((_, i) => mensajePasoInvalido(i, p)));
 }
 
 function textoSinSeparadores(v: string, etiqueta: string): string {
   const t = v.trim();
   if (!t) return `Indique ${etiqueta}`;
-  if (/[\s.\-]/.test(t)) return 'Escríbalo sin puntos, guiones ni espacios';
+  if (/[\s.-]/.test(t)) return 'Escríbalo sin puntos, guiones ni espacios';
   return '';
 }
 

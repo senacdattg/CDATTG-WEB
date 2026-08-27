@@ -1,6 +1,7 @@
 /**
- * @module pages/registro/registroValidate.test
- * @description Casos feliz, borde y error del registro por campo y paso.
+ * Aquí pruebo que el registro acepte un formulario completo y rechace edad,
+ * correo mal escrito, documento con puntos y claves distintas.
+ * Prueba registroValidate.ts.
  * @author Cristian Deysdayr Jiménez
  */
 import { describe, expect, it } from 'vitest';

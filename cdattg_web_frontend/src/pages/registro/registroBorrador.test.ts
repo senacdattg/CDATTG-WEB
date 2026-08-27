@@ -1,6 +1,7 @@
 /**
- * @module pages/registro/registroBorrador.test
- * @description Persistencia del borrador: feliz, borde y error.
+ * Aquí pruebo el borrador del registro: que se guarde, que no lleve la clave,
+ * y que un JSON roto no tumbe la página.
+ * Prueba registroBorrador.ts.
  * @author Cristian Deysdayr Jiménez
  */
 import { describe, expect, it, beforeEach } from 'vitest';

@@ -1,6 +1,6 @@
 /**
- * @module types/biogjgas
- * @description Contenidos editoriales del área de investigación.
+ * Aquí están las formas de revista, boletines, podcast, convocatorias, actividades y banners.
+ * Lo usa investigacionApi y las pantallas de admin y del portal.
  * @author Cristian Deysdayr Jiménez
  */
 import type { PortalEstado } from './portal';

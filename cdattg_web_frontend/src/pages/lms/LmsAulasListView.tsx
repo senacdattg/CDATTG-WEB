@@ -28,7 +28,8 @@ export function LmsAulasListView({ page, onVerFicha }: Props) {
   const volverTo = getInicioNavigationPath(roles, permissions, lmsPaths.aulas);
   const { aulas, loading, error } = page;
   const [filtroTipo, setFiltroTipo] = useState<LmsFiltroTipo>('TODOS');
-  const visibles = useMemo(() => filtrarAulas(aulas, filtroTipo, ''), [aulas, filtroTipo]);
+  const [busqueda, setBusqueda] = useState('');
+  const visibles = useMemo(() => filtrarAulas(aulas, filtroTipo, busqueda), [aulas, filtroTipo, busqueda]);
 
   return (
     <main className="space-y-6">
@@ -67,6 +68,19 @@ export function LmsAulasListView({ page, onVerFicha }: Props) {
           />
         ))}
       </nav>
+      <p>
+        <label htmlFor="lms-buscar-aulas" className="sr-only">
+          Buscar por ficha o programa
+        </label>
+        <input
+          id="lms-buscar-aulas"
+          type="search"
+          className="input-field max-w-md"
+          placeholder="Buscar por ficha o programa…"
+          value={busqueda}
+          onChange={(e) => setBusqueda(e.target.value)}
+        />
+      </p>
       <ul className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {visibles.map((aula) => (
           <li key={aula.ficha_id}>

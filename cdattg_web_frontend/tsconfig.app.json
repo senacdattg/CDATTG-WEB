@@ -7,7 +7,6 @@
     "module": "ESNext",
     "types": ["vite/client"],
     "skipLibCheck": true,
-    "composite": true,
     "paths": {
       "jspdf": ["./node_modules/jspdf/types/index.d.ts"],
       "jspdf-autotable": ["./node_modules/jspdf-autotable/dist/index.d.ts"]
@@ -29,6 +28,6 @@
     "noFallthroughCasesInSwitch": true,
     "noUncheckedSideEffectImports": true
   },
-  "include": ["src"],
+  "include": ["src/**/*.ts", "src/**/*.tsx"],
   "exclude": ["src/**/*.test.ts", "src/**/*.test.tsx"]
 }

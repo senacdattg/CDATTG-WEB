@@ -1,8 +1,7 @@
 /**
  * @module services/investigacionApi
  * @description Cliente del área BIOGIGAS (home público y CRUD editorial).
- * @author CRANDEYS
- * @created 2026-08-26
+ * @author Cristian Deysdayr Jiménez
  */
 import axios from 'axios';
 import { API_BASE_URL } from '../config/api';

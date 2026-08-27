@@ -1,8 +1,7 @@
 /**
  * @module pages/semillero/editorialFormState
  * @description Estado vacío de un contenido editorial.
- * @author CRANDEYS
- * @created 2026-08-26
+ * @author Cristian Deysdayr Jiménez
  */
 import type { BiogjgasItem } from '../../types/biogjgas';
 

@@ -1,7 +1,6 @@
 /**
  * services: pruebas de mapeo de listados editoriales.
- * @author CRANDEYS
- * @created 2026-08-27
+ * @author Cristian Deysdayr Jiménez
  */
 package services
 

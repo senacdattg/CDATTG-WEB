@@ -1,8 +1,7 @@
 /**
  * @module pages/portal/PortalSemilleroCard
  * @description Tarjeta pública de un semillero (sigla, color, ficha).
- * @author CRANDEYS
- * @created 2026-08-26
+ * @author Cristian Deysdayr Jiménez
  */
 import { Link } from 'react-router-dom';
 import { portalPaths } from '../../routes/paths';

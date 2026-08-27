@@ -1,7 +1,6 @@
 /**
  * services: guardado de imágenes del portal (storage/portal).
- * @author CRANDEYS
- * @created 2026-08-26
+ * @author Cristian Deysdayr Jiménez
  */
 package services
 

@@ -1,8 +1,7 @@
 /**
  * @module pages/semillero/editorialKindMeta.test
  * @description Metadatos de submódulos de investigación.
- * @author CRANDEYS
- * @created 2026-08-26
+ * @author Cristian Deysdayr Jiménez
  */
 import { describe, expect, it } from 'vitest';
 import { EDITORIAL_ADMIN, editorialMeta } from './editorialKindMeta';

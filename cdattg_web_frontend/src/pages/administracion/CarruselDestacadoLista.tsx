@@ -1,8 +1,7 @@
 /**
  * @module pages/administracion/CarruselDestacadoLista
  * @description Tarjetas de diapositivas del carrusel de destacados.
- * @author CRANDEYS
- * @created 2026-08-26
+ * @author Cristian Deysdayr Jiménez
  */
 import { portalMediaUrl } from '../../services/portalApi';
 import type { PortalBannerItem } from '../../types/portal';

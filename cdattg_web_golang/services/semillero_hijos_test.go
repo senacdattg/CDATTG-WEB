@@ -1,7 +1,6 @@
 /**
  * services: pruebas de líneas, integrantes y proyectos.
- * @author CRANDEYS
- * @created 2026-08-26
+ * @author Cristian Deysdayr Jiménez
  */
 package services
 

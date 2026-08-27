@@ -1,8 +1,7 @@
 /**
  * @module pages/portal/PortalEditorialDetallePage
  * @description Detalle público de un contenido editorial publicado.
- * @author CRANDEYS
- * @created 2026-08-26
+ * @author Cristian Deysdayr Jiménez
  */
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';

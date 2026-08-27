@@ -1,7 +1,6 @@
 /**
  * seeders: permiso GESTIONAR SEMILLERO para admin y coordinador.
- * @author CRANDEYS
- * @created 2026-08-26
+ * @author Cristian Deysdayr Jiménez
  */
 package seeders
 

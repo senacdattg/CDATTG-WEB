@@ -1,7 +1,6 @@
 /**
  * models: integrante de un semillero (aprendiz, instructor u otro).
- * @author CRANDEYS
- * @created 2026-08-26
+ * @author Cristian Deysdayr Jiménez
  */
 package models
 

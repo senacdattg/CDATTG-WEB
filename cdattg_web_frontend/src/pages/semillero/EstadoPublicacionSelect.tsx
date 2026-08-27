@@ -1,8 +1,7 @@
 /**
  * @module pages/semillero/EstadoPublicacionSelect
  * @description Selector borrador / publicado / archivado.
- * @author CRANDEYS
- * @created 2026-08-26
+ * @author Cristian Deysdayr Jiménez
  */
 import type { PortalEstado } from '../../types/portal';
 

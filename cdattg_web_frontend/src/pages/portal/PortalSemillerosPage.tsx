@@ -1,8 +1,7 @@
 /**
  * @module pages/portal/PortalSemillerosPage
  * @description Listado público de semilleros (Investigación).
- * @author CRANDEYS
- * @created 2026-08-26
+ * @author Cristian Deysdayr Jiménez
  */
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';

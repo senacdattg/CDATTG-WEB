@@ -1,8 +1,7 @@
 /**
  * @module services/registerApi
  * @description Alta pública de usuario y contraseña.
- * @author CRANDEYS
- * @created 2026-08-26
+ * @author Cristian Deysdayr Jiménez
  */
 import axios from 'axios';
 import { API_BASE_URL } from '../config/api';

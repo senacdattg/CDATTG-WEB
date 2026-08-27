@@ -1,8 +1,7 @@
 /**
  * @module routes/modules/portal
  * @description Rutas públicas del portal (sin ProtectedLayout).
- * @author CRANDEYS
- * @created 2026-08-26
+ * @author Cristian Deysdayr Jiménez
  */
 import { createElement } from 'react';
 import type { RouteObject } from 'react-router-dom';

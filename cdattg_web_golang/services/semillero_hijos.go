@@ -1,7 +1,6 @@
 /**
  * services: hijos (líneas, integrantes, proyectos) de un semillero.
- * @author CRANDEYS
- * @created 2026-08-26
+ * @author Cristian Deysdayr Jiménez
  */
 package services
 

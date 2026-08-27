@@ -1,8 +1,7 @@
 /**
  * @module pages/semillero/editorialKindMeta
  * @description Metadatos de submódulos editoriales en el admin.
- * @author CRANDEYS
- * @created 2026-08-26
+ * @author Cristian Deysdayr Jiménez
  */
 import type { EditorialKind } from '../../types/biogjgas';
 import { semilleroAdminPaths } from '../../routes/paths';

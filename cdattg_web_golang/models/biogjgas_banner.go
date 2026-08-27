@@ -1,7 +1,6 @@
 /**
  * models: banner del home de Investigación (BIOGIGAS), no el carrusel SENA.
- * @author CRANDEYS
- * @created 2026-08-26
+ * @author Cristian Deysdayr Jiménez
  */
 package models
 

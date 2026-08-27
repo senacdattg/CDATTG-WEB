@@ -1,8 +1,7 @@
 /**
  * @module routes/modules/investigacion.public
  * @description Hijos públicos de /investigacion.
- * @author CRANDEYS
- * @created 2026-08-26
+ * @author Cristian Deysdayr Jiménez
  */
 import { createElement } from 'react';
 import type { RouteObject } from 'react-router-dom';

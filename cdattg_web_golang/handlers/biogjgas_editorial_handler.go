@@ -1,7 +1,6 @@
 /**
  * handlers: CRUD admin de contenidos BIOGIGAS.
- * @author CRANDEYS
- * @created 2026-08-26
+ * @author Cristian Deysdayr Jiménez
  */
 package handlers
 

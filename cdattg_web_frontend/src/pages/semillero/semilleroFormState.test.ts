@@ -1,8 +1,7 @@
 /**
  * @module pages/semillero/semilleroFormState.test
  * @description Payload de alta de semillero.
- * @author CRANDEYS
- * @created 2026-08-26
+ * @author Cristian Deysdayr Jiménez
  */
 import { describe, expect, it } from 'vitest';
 import { claveHijo, semilleroARequest, semilleroVacio } from './semilleroFormState';

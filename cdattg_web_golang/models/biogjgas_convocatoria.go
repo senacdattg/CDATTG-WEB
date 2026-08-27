@@ -1,7 +1,6 @@
 /**
  * models: convocatoria del área (opcionalmente ligada a un semillero).
- * @author CRANDEYS
- * @created 2026-08-26
+ * @author Cristian Deysdayr Jiménez
  */
 package models
 

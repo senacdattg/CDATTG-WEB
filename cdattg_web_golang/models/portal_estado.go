@@ -1,7 +1,6 @@
 /**
  * models: estados de publicación del portal y semilleros.
- * @author CRANDEYS
- * @created 2026-08-26
+ * @author Cristian Deysdayr Jiménez
  */
 package models
 

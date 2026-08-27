@@ -1,8 +1,7 @@
 /**
  * @module pages/semillero/InvestigacionEditorialCampos
  * @description Campos según el submódulo editorial.
- * @author CRANDEYS
- * @created 2026-08-26
+ * @author Cristian Deysdayr Jiménez
  */
 import { portalApi, portalMediaUrl } from '../../services/portalApi';
 import type { BiogjgasItem, EditorialKind } from '../../types/biogjgas';

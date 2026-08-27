@@ -1,8 +1,7 @@
 /**
  * @module pages/administracion/carruselFormState
  * @description Estado inicial de una diapositiva del carrusel.
- * @author CRANDEYS
- * @created 2026-08-26
+ * @author Cristian Deysdayr Jiménez
  */
 import type { PortalBannerItem } from '../../types/portal';
 

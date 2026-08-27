@@ -1,8 +1,7 @@
 /**
  * @module pages/portal/portalCarouselLogic
  * @description Índice e intervalo del carrusel de banners.
- * @author CRANDEYS
- * @created 2026-08-26
+ * @author Cristian Deysdayr Jiménez
  */
 
 export const CARRUSEL_INTERVALO_MS = 5000;

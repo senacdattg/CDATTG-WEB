@@ -1,7 +1,6 @@
 /**
  * models: semillero de investigación visible en el portal público.
- * @author CRANDEYS
- * @created 2026-08-26
+ * @author Cristian Deysdayr Jiménez
  */
 package models
 

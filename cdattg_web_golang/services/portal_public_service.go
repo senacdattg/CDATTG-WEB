@@ -1,7 +1,6 @@
 /**
  * services: lecturas públicas del portal y semilleros publicados.
- * @author CRANDEYS
- * @created 2026-08-26
+ * @author Cristian Deysdayr Jiménez
  */
 package services
 

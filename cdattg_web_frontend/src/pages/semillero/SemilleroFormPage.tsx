@@ -1,8 +1,7 @@
 /**
  * @module pages/semillero/SemilleroFormPage
  * @description Alta o edición de un semillero y sus relaciones.
- * @author CRANDEYS
- * @created 2026-08-26
+ * @author Cristian Deysdayr Jiménez
  */
 import { useEffect, useState, type ComponentProps } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';

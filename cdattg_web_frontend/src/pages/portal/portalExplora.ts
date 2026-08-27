@@ -1,8 +1,7 @@
 /**
  * @module pages/portal/portalExplora
  * @description Enlaces del bloque «Explora el área de investigación».
- * @author CRANDEYS
- * @created 2026-08-26
+ * @author Cristian Deysdayr Jiménez
  */
 import { portalPaths } from '../../routes/paths';
 

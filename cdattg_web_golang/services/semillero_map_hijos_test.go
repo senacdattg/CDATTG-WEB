@@ -1,7 +1,6 @@
 /**
  * services: filtro de hijos publicados en la ficha pública.
- * @author CRANDEYS
- * @created 2026-08-26
+ * @author Cristian Deysdayr Jiménez
  */
 package services
 

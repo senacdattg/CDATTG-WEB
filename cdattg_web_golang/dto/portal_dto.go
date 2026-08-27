@@ -1,7 +1,6 @@
 /**
  * dto: payloads del portal público y admin de banners/presentación.
- * @author CRANDEYS
- * @created 2026-08-26
+ * @author Cristian Deysdayr Jiménez
  */
 package dto
 

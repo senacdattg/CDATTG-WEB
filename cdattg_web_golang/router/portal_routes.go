@@ -1,7 +1,6 @@
 /**
  * router: rutas públicas y admin del portal / semillero / registro.
- * @author CRANDEYS
- * @created 2026-08-26
+ * @author Cristian Deysdayr Jiménez
  */
 package router
 

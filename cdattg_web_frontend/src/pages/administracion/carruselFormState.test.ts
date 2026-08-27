@@ -1,8 +1,7 @@
 /**
  * @module pages/administracion/carruselFormState.test
  * @description Payload del carrusel de destacados.
- * @author CRANDEYS
- * @created 2026-08-26
+ * @author Cristian Deysdayr Jiménez
  */
 import { describe, expect, it } from 'vitest';
 import { destacadosARequest, destacadosVacio } from './carruselFormState';

@@ -1,8 +1,7 @@
 /**
  * @module pages/portal/PortalCarousel
  * @description Carrusel con fundido cruzado (inicio SENA e Investigación).
- * @author CRANDEYS
- * @created 2026-08-26
+ * @author Cristian Deysdayr Jiménez
  */
 import { useEffect, useState } from 'react';
 import type { PortalBannerItem } from '../../types/portal';

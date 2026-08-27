@@ -1,8 +1,7 @@
 /**
  * @module pages/semillero/SemilleroFichaCampos
  * @description Datos de la ficha principal del semillero.
- * @author CRANDEYS
- * @created 2026-08-26
+ * @author Cristian Deysdayr Jiménez
  */
 import type { SemilleroItem } from '../../types/portal';
 import { EstadoPublicacionSelect } from './EstadoPublicacionSelect';

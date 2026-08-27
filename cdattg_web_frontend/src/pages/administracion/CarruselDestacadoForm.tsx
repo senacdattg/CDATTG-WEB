@@ -1,8 +1,7 @@
 /**
  * @module pages/administracion/CarruselDestacadoForm
  * @description Formulario de una diapositiva (imagen, textos y botón).
- * @author CRANDEYS
- * @created 2026-08-26
+ * @author Cristian Deysdayr Jiménez
  */
 import type { ComponentProps } from 'react';
 import { portalApi, portalMediaUrl } from '../../services/portalApi';

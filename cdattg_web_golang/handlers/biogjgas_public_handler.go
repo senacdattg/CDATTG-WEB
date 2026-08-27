@@ -1,7 +1,6 @@
 /**
  * handlers: lecturas públicas del área de investigación BIOGIGAS.
- * @author CRANDEYS
- * @created 2026-08-26
+ * @author Cristian Deysdayr Jiménez
  */
 package handlers
 

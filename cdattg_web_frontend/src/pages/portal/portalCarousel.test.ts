@@ -1,8 +1,7 @@
 /**
  * @module pages/portal/portalCarousel.test
  * @description Avance del carrusel (feliz, borde, vacío).
- * @author CRANDEYS
- * @created 2026-08-26
+ * @author Cristian Deysdayr Jiménez
  */
 import { describe, expect, it } from 'vitest';
 import { claseCapaCarrusel, hrefCarruselSeguro, siguienteIndiceCarrusel } from './portalCarouselLogic';

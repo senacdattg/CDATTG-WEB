@@ -1,8 +1,7 @@
 /**
  * @module pages/portal/PortalCarouselSlide
  * @description Una diapositiva del carrusel (imagen, textos y botón).
- * @author CRANDEYS
- * @created 2026-08-27
+ * @author Cristian Deysdayr Jiménez
  */
 import { Link } from 'react-router-dom';
 import { portalMediaUrl } from '../../services/portalApi';

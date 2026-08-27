@@ -1,8 +1,7 @@
 /**
  * @module pages/portal/portalEditorialRutas
  * @description Kind público y rutas de detalle editorial.
- * @author CRANDEYS
- * @created 2026-08-26
+ * @author Cristian Deysdayr Jiménez
  */
 import type { EditorialKind } from '../../types/biogjgas';
 import { portalPaths } from '../../routes/paths';

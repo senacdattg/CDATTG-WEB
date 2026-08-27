@@ -1,7 +1,6 @@
 /**
  * services: URLs de botón del carrusel (solo http(s) o ruta interna).
- * @author CRANDEYS
- * @created 2026-08-26
+ * @author Cristian Deysdayr Jiménez
  */
 package services
 

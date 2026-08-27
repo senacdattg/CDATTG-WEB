@@ -1,7 +1,6 @@
 /**
  * handlers: GET de imágenes del portal con extensión (.jpg).
- * @author CRANDEYS
- * @created 2026-08-26
+ * @author Cristian Deysdayr Jiménez
  */
 package handlers
 

@@ -1,8 +1,7 @@
 /**
  * @module pages/portal/portalMediaUrl.test
  * @description Resolución de URL de imágenes del portal.
- * @author CRANDEYS
- * @created 2026-08-26
+ * @author Cristian Deysdayr Jiménez
  */
 import { describe, expect, it } from 'vitest';
 import { portalMediaUrl } from '../../services/portalApi';

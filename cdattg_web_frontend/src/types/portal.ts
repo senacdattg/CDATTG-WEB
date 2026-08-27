@@ -1,8 +1,7 @@
 /**
  * @module types/portal
  * @description Contratos JSON del portal público y semilleros.
- * @author CRANDEYS
- * @created 2026-08-26
+ * @author Cristian Deysdayr Jiménez
  */
 
 export type PortalEstado = 'borrador' | 'publicado' | 'archivado';

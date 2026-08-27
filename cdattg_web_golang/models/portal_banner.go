@@ -1,7 +1,6 @@
 /**
  * models: banner de la vitrina pública (imágenes y vigencia).
- * @author CRANDEYS
- * @created 2026-08-26
+ * @author Cristian Deysdayr Jiménez
  */
 package models
 

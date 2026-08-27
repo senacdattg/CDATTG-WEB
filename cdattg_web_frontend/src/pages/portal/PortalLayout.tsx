@@ -1,8 +1,7 @@
 /**
  * @module pages/portal/PortalLayout
  * @description Cabecera pública (entrada del sitio, sin sidebar).
- * @author CRANDEYS
- * @created 2026-08-26
+ * @author Cristian Deysdayr Jiménez
  */
 import { Link, NavLink, Outlet } from 'react-router-dom';
 import {

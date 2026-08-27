@@ -1,8 +1,7 @@
 /**
  * @module pages/portal/PortalSemilleroDetallePage
  * @description Ficha pública: líneas, integrantes y proyectos.
- * @author CRANDEYS
- * @created 2026-08-26
+ * @author Cristian Deysdayr Jiménez
  */
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';

@@ -1,8 +1,7 @@
 /**
  * @module pages/semillero/semilleroFormState
  * @description Estado inicial del formulario de semillero.
- * @author CRANDEYS
- * @created 2026-08-26
+ * @author Cristian Deysdayr Jiménez
  */
 import type {
   SemilleroIntegranteItem,

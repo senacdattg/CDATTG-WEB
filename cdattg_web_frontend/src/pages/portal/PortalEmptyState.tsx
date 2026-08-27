@@ -1,8 +1,7 @@
 /**
  * @module pages/portal/PortalEmptyState
  * @description Estado vacío del listado público de semilleros.
- * @author CRANDEYS
- * @created 2026-08-26
+ * @author Cristian Deysdayr Jiménez
  */
 import { MagnifyingGlassIcon } from '@heroicons/react/24/outline';
 

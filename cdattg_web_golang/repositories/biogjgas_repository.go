@@ -1,7 +1,6 @@
 /**
  * repositories: persistencia de contenidos BIOGIGAS por tipo.
- * @author CRANDEYS
- * @created 2026-08-26
+ * @author Cristian Deysdayr Jiménez
  */
 package repositories
 

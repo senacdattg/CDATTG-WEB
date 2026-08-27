@@ -1,8 +1,7 @@
 /**
  * @module pages/portal/PortalSemilleroFicha
  * @description Bloques de la ficha pública de un semillero.
- * @author CRANDEYS
- * @created 2026-08-27
+ * @author Cristian Deysdayr Jiménez
  */
 import type { SemilleroItem, SemilleroLineaItem } from '../../types/portal';
 import { portalMediaUrl } from '../../services/portalApi';

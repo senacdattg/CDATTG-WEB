@@ -1,7 +1,6 @@
 /**
  * middleware: comprobaciones Casbin reutilizables.
- * @author CRANDEYS
- * @created 2026-08-27
+ * @author Cristian Deysdayr Jiménez
  */
 package middleware
 

@@ -1,7 +1,6 @@
 /**
  * services: mapeo de modelos de portal y semillero a DTO.
- * @author CRANDEYS
- * @created 2026-08-26
+ * @author Cristian Deysdayr Jiménez
  */
 package services
 

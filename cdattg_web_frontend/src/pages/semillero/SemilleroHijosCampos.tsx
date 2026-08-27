@@ -1,8 +1,7 @@
 /**
  * @module pages/semillero/SemilleroHijosCampos
  * @description Líneas, integrantes y proyectos del formulario.
- * @author CRANDEYS
- * @created 2026-08-26
+ * @author Cristian Deysdayr Jiménez
  */
 import type { Dispatch, SetStateAction } from 'react';
 import type { SemilleroItem } from '../../types/portal';

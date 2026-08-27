@@ -1,7 +1,6 @@
 /**
  * dto: payloads de semilleros (admin y público).
- * @author CRANDEYS
- * @created 2026-08-26
+ * @author Cristian Deysdayr Jiménez
  */
 package dto
 

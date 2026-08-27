@@ -1,8 +1,7 @@
 /**
  * @module pages/portal/portalExplora.test
  * @description Rutas públicas del área de investigación.
- * @author CRANDEYS
- * @created 2026-08-26
+ * @author Cristian Deysdayr Jiménez
  */
 import { describe, expect, it } from 'vitest';
 import { EXPLORA_INVESTIGACION } from './portalExplora';

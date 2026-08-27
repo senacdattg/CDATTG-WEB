@@ -1,7 +1,6 @@
 /**
  * repositories: listados y bajas por tipo BIOGIGAS.
- * @author CRANDEYS
- * @created 2026-08-26
+ * @author Cristian Deysdayr Jiménez
  */
 package repositories
 

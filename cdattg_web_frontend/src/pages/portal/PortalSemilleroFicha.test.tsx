@@ -1,8 +1,7 @@
 /**
  * @module pages/portal/PortalSemilleroFicha.test
  * @description Render de la ficha pública de semillero.
- * @author CRANDEYS
- * @created 2026-08-27
+ * @author Cristian Deysdayr Jiménez
  */
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';

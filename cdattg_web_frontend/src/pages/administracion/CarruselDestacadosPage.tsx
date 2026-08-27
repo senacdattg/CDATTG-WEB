@@ -1,8 +1,7 @@
 /**
  * @module pages/administracion/CarruselDestacadosPage
  * @description Módulo admin: Carrusel de destacados SENA Regional Guaviare.
- * @author CRANDEYS
- * @created 2026-08-26
+ * @author Cristian Deysdayr Jiménez
  */
 import { useEffect, useState, type ComponentProps } from 'react';
 import { portalApi } from '../../services/portalApi';

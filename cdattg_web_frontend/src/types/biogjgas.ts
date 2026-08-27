@@ -1,8 +1,7 @@
 /**
  * @module types/biogjgas
  * @description Contenidos editoriales del área de investigación.
- * @author CRANDEYS
- * @created 2026-08-26
+ * @author Cristian Deysdayr Jiménez
  */
 import type { PortalEstado } from './portal';
 

@@ -1,7 +1,6 @@
 /**
  * handlers: utilidades de handlers del portal (userID y errores).
- * @author CRANDEYS
- * @created 2026-08-26
+ * @author Cristian Deysdayr Jiménez
  */
 package handlers
 

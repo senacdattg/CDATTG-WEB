@@ -1,8 +1,7 @@
 /**
  * @module pages/semillero/PortalContenidoPage
  * @description Presentación institucional del portal de investigación.
- * @author CRANDEYS
- * @created 2026-08-26
+ * @author Cristian Deysdayr Jiménez
  */
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';

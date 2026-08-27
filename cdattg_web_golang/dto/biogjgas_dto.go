@@ -1,7 +1,6 @@
 /**
  * dto: contenidos editoriales BIOGIGAS (revista, boletín, podcast, convocatoria, actividad).
- * @author CRANDEYS
- * @created 2026-08-26
+ * @author Cristian Deysdayr Jiménez
  */
 package dto
 

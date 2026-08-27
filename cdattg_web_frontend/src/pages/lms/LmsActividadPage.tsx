@@ -12,6 +12,7 @@ import { useLmsActividad } from './useLmsActividad';
 import { LmsActividadAlumno } from './LmsActividadAlumno';
 import { LmsActividadCabecera } from './LmsActividadCabecera';
 import { LmsActividadInstructor } from './LmsActividadInstructor';
+import { LmsEditarActividadPanel } from './LmsEditarActividadPanel';
 
 /**
  * Página de una publicación del aula.
@@ -47,6 +48,9 @@ export function LmsActividadPage() {
       {d ? (
         <>
           <LmsActividadCabecera fichaId={fid} detalle={d} />
+          {d.puede_publicar ? (
+            <LmsEditarActividadPanel detalle={d} saving={page.saving} onSubmit={page.editar} />
+          ) : null}
           <section>
             <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Instrucciones</h2>
             <p className="mt-2 whitespace-pre-wrap text-sm text-gray-600 dark:text-gray-400">

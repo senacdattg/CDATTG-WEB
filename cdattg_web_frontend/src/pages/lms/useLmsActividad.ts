@@ -1,11 +1,11 @@
 /**
  * @module pages/lms/useLmsActividad
- * @description Carga una actividad y permite entregar, deshacer o calificar.
+ * @description Carga una actividad y permite entregar, calificar o editar.
  * @author CRANDEYS
  * @created 2026-08-26
  */
 import { useCallback, useEffect, useState } from 'react';
-import { calificarLmsEntrega, deshacerLmsEntrega, entregarLmsActividad, fetchLmsActividad } from '../../services/lmsApi';
+import { calificarLmsEntrega, deshacerLmsEntrega, entregarLmsActividad, fetchLmsActividad, updateLmsActividad } from '../../services/lmsApi';
 import { axiosErrorMessage } from '../../utils/httpError';
 import type { LmsActividadDetalle } from '../../types/lms';
 
@@ -89,5 +89,21 @@ export function useLmsActividad(fichaId: number | null, actividadId: number | nu
     [fichaId, actividadId, recargar],
   );
 
-  return { detalle, loading, error, saving, recargar, entregar, deshacer, calificar };
+  const editar = useCallback(
+    async (body: FormData) => {
+      if (!fichaId || !actividadId) return;
+      setSaving(true);
+      try {
+        await updateLmsActividad(fichaId, actividadId, body);
+        await recargar();
+      } catch (cause: unknown) {
+        throw new Error(axiosErrorMessage(cause, 'No se pudo guardar la actividad'));
+      } finally {
+        setSaving(false);
+      }
+    },
+    [fichaId, actividadId, recargar],
+  );
+
+  return { detalle, loading, error, saving, recargar, entregar, deshacer, calificar, editar };
 }

@@ -12,6 +12,7 @@ import { LmsAulaTabs } from './LmsAulaTabs';
 import { LmsAulaTablon } from './LmsAulaTablon';
 import { LmsAulaTrabajos } from './LmsAulaTrabajos';
 import { LmsAulaAprendices } from './LmsAulaAprendices';
+import { LmsPublicarActividadForm } from './LmsPublicarActividadForm';
 import type { LmsAulaDetalle } from '../../types/lms';
 
 type Props = Readonly<{
@@ -20,9 +21,9 @@ type Props = Readonly<{
 }>;
 
 /**
- * Tablón del aula.
+ * Tablón, trabajos, aprendices o publicar.
  */
-export function LmsAulaCuerpo({ aula }: Props) {
+export function LmsAulaCuerpo({ aula, page }: Props) {
   const [tab, setTab] = useState<LmsTab>(LMS_TABS.tablon);
   return (
     <>
@@ -36,6 +37,9 @@ export function LmsAulaCuerpo({ aula }: Props) {
       {tab === LMS_TABS.trabajos ? <LmsAulaTrabajos fichaId={aula.ficha_id} actividades={aula.actividades} /> : null}
       {tab === LMS_TABS.aprendices ? (
         <LmsAulaAprendices fichaId={aula.ficha_id} aprendices={aula.aprendices} />
+      ) : null}
+      {tab === LMS_TABS.publicar && aula.puede_publicar ? (
+        <LmsPublicarActividadForm saving={page.saving} onSubmit={page.publicar} />
       ) : null}
     </>
   );

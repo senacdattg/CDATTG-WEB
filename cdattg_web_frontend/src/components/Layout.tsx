@@ -22,6 +22,11 @@ import {
   BuildingOffice2Icon,
   EyeIcon,
   IdentificationIcon,
+  BeakerIcon,
+  PhotoIcon,
+  NewspaperIcon,
+  MicrophoneIcon,
+  MegaphoneIcon,
 } from '@heroicons/react/24/outline';
 import { AppBreadcrumb } from './navigation/AppBreadcrumb';
 import { useAuth } from '../context/AuthContext';
@@ -80,6 +85,15 @@ const ICONS: Record<string, ReactNode> = {
   'vigilancia/porteria': <EyeIcon className="w-5 h-5" />,
   'vigilancia/reporte': <EyeIcon className="w-5 h-5" />,
   'vigilancia/ambientes': <EyeIcon className="w-5 h-5" />,
+  semilleros: <BeakerIcon className="w-5 h-5" />,
+  'investigacion/presentacion': <DocumentTextIcon className="w-5 h-5" />,
+  'investigacion/banners': <PhotoIcon className="w-5 h-5" />,
+  'investigacion/revista': <NewspaperIcon className="w-5 h-5" />,
+  'investigacion/boletines': <NewspaperIcon className="w-5 h-5" />,
+  'investigacion/podcast': <MicrophoneIcon className="w-5 h-5" />,
+  'investigacion/convocatorias': <MegaphoneIcon className="w-5 h-5" />,
+  'investigacion/actividades': <CalendarDaysIcon className="w-5 h-5" />,
+  'administracion/carrusel': <PhotoIcon className="w-5 h-5" />,
 };
 
 export const Layout = ({ children }: LayoutProps) => {
@@ -126,7 +140,7 @@ export const Layout = ({ children }: LayoutProps) => {
 
   const handleLogout = () => {
     logout();
-    navigate('/login');
+    navigate('/');
   };
 
   const handleSectionToggle = (section: string) => {

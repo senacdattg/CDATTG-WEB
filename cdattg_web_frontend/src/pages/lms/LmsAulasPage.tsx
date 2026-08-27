@@ -13,10 +13,10 @@ import { LmsFichaDetalleModal } from './LmsFichaDetalleModal';
  * Modal de ficha solo si hay un id seleccionado.
  */
 function modalFicha(fichaId: number | null, onClose: () => void) {
-  if (fichaId === null) {
-    return null;
+  if (typeof fichaId === 'number') {
+    return <LmsFichaDetalleModal fichaId={fichaId} onClose={onClose} />;
   }
-  return <LmsFichaDetalleModal fichaId={fichaId} onClose={onClose} />;
+  return null;
 }
 
 /**

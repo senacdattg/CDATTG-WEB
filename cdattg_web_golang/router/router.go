@@ -35,6 +35,9 @@ const (
 	permVerMiAgenda            = "VER MI AGENDA"
 	permRegistrarAccesoSede    = "REGISTRAR ACCESO SEDE"
 	permVerAccesoSede          = "VER ACCESO SEDE"
+	permVerLMS                 = "VER LMS"
+	permEntrarAulaLMS          = "ENTRAR AULA"
+	permPublicarActividadLMS   = "PUBLICAR ACTIVIDAD"
 )
 
 func SetupRouter() *gin.Engine {
@@ -81,6 +84,7 @@ func SetupRouter() *gin.Engine {
 	eleccionHandler := handlers.NewEleccionHandler()
 	vigilanciaAccesoHandler := handlers.NewVigilanciaAccesoHandler()
 	complementariosHandler := handlers.NewComplementariosHandler()
+	lmsHandler := handlers.NewLmsHandler()
 
 	// Rutas públicas
 	api := r.Group("/api")
@@ -298,6 +302,20 @@ func SetupRouter() *gin.Engine {
 				vigilancia.GET("/dentro", middleware.RequirePermission("vigilancia", permVerAccesoSede), vigilanciaAccesoHandler.ListDentro)
 				vigilancia.GET("/historial", middleware.RequirePermission("vigilancia", permVerAccesoSede), vigilanciaAccesoHandler.Historial)
 				vigilancia.GET("/estadisticas", middleware.RequirePermission("vigilancia", permVerAccesoSede), vigilanciaAccesoHandler.Estadisticas)
+			}
+
+			lms := protected.Group("/lms")
+			{
+				lms.GET("/aulas", middleware.RequirePermission("lms", permVerLMS), lmsHandler.ListAulas)
+				lms.GET("/aulas/:fichaId", middleware.RequirePermission("lms", permEntrarAulaLMS), lmsHandler.GetAula)
+				lms.POST("/aulas/:fichaId/actividades", middleware.RequirePermission("lms", permPublicarActividadLMS), lmsHandler.CreateActividad)
+				lms.PUT("/aulas/:fichaId/actividades/:actividadId", middleware.RequirePermission("lms", permPublicarActividadLMS), lmsHandler.UpdateActividad)
+				lms.GET("/aulas/:fichaId/actividades/:actividadId", middleware.RequirePermission("lms", permEntrarAulaLMS), lmsHandler.GetActividad)
+				lms.POST("/aulas/:fichaId/actividades/:actividadId/entregas", middleware.RequirePermission("lms", permEntrarAulaLMS), lmsHandler.Entregar)
+				lms.POST("/aulas/:fichaId/actividades/:actividadId/entregas/deshacer", middleware.RequirePermission("lms", permEntrarAulaLMS), lmsHandler.DeshacerEntrega)
+				lms.PUT("/aulas/:fichaId/actividades/:actividadId/entregas/:entregaId/nota", middleware.RequirePermission("lms", permPublicarActividadLMS), lmsHandler.Calificar)
+				lms.GET("/aulas/:fichaId/actividades/:actividadId/archivos/:archivoId", middleware.RequirePermission("lms", permEntrarAulaLMS), lmsHandler.DescargarArchivo)
+				lms.GET("/aulas/:fichaId/actividades/:actividadId/entregas/:entregaId/archivos/:archivoId", middleware.RequirePermission("lms", permEntrarAulaLMS), lmsHandler.DescargarArchivoEntrega)
 			}
 
 			// Complementarios (FPI): credenciales SofiaPlus por operador + verificación de aspirantes

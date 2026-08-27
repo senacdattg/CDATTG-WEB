@@ -10,6 +10,7 @@ import (
 
 type UserRepository interface {
 	FindByID(id uint) (*models.User, error)
+	FindByIDs(ids []uint) ([]models.User, error)
 	FindByEmail(email string) (*models.User, error)
 	FindByPersonaID(personaID uint) (*models.User, error)
 	FindActiveByEmail(email string) (*models.User, error)
@@ -36,6 +37,15 @@ func (r *userRepository) FindByID(id uint) (*models.User, error) {
 		return nil, err
 	}
 	return &user, nil
+}
+
+func (r *userRepository) FindByIDs(ids []uint) ([]models.User, error) {
+	var list []models.User
+	if len(ids) == 0 {
+		return list, nil
+	}
+	err := r.db.Preload("Persona").Where("id IN ?", ids).Find(&list).Error
+	return list, err
 }
 
 func (r *userRepository) FindByEmail(email string) (*models.User, error) {

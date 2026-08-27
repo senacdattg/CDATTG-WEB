@@ -805,6 +805,7 @@ func (s *fichaService) AsignarAprendices(fichaID uint, personas []uint) error {
 			a.OcultoEnAsistencia = false
 			_ = s.aprendizRepo.Update(a)
 			_ = EnsureAprendizRoleForPersona(personaID)
+			EnsureCarpetaFichaLms(personaID, fichaID)
 			continue
 		}
 		a = &models.Aprendiz{
@@ -817,6 +818,7 @@ func (s *fichaService) AsignarAprendices(fichaID uint, personas []uint) error {
 			return fmt.Errorf("error al asignar aprendiz: %w", err)
 		}
 		_ = EnsureAprendizRoleForPersona(personaID)
+		EnsureCarpetaFichaLms(personaID, fichaID)
 	}
 	return nil
 }

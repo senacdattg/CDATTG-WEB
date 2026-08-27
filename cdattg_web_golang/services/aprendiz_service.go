@@ -81,6 +81,7 @@ func (s *aprendizService) Create(req dto.AprendizRequest) (*dto.AprendizResponse
 		return nil, fmt.Errorf("error al crear aprendiz: %w", err)
 	}
 	_ = EnsureAprendizRoleForPersona(req.PersonaID)
+	EnsureCarpetaFichaLms(req.PersonaID, req.FichaCaracterizacionID)
 	return s.FindByID(a.ID)
 }
 

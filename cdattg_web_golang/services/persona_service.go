@@ -81,6 +81,7 @@ func (s *personaService) Create(req dto.PersonaRequest) (*dto.PersonaResponse, e
 	}
 
 	_ = s.accounts.CreateForPersona(persona)
+	EnsurePersonaLmsCarpetas(persona.ID)
 
 	response := mapPersonaToResponse(persona)
 	return &response, nil
@@ -99,6 +100,7 @@ func (s *personaService) CreateWithoutUser(req dto.PersonaRequest) (*dto.Persona
 	if err := s.personaRepo.Create(&persona); err != nil {
 		return nil, fmt.Errorf("error al crear persona: %w", err)
 	}
+	EnsurePersonaLmsCarpetas(persona.ID)
 
 	response := mapPersonaToResponse(persona)
 	return &response, nil

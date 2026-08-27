@@ -56,6 +56,11 @@ var (
 		ActRegistrarAccesoSede,
 		ActVerAccesoSede,
 	}
+	PermisosLMS = []string{
+		ActVerLMS,
+		ActEntrarAulaLMS,
+		ActPublicarActividadLMS,
+	}
 )
 
 // ObjPersona, ObjPrograma, ... nombres de objeto usados en rutas y Casbin.
@@ -65,6 +70,9 @@ const (
 	ActEditarMiPersona      = "EDITAR MI PERSONA"
 	ActRegistrarAccesoSede  = "REGISTRAR ACCESO SEDE"
 	ActVerAccesoSede        = "VER ACCESO SEDE"
+	ActVerLMS               = "VER LMS"
+	ActEntrarAulaLMS        = "ENTRAR AULA"
+	ActPublicarActividadLMS = "PUBLICAR ACTIVIDAD"
 
 	ObjPersona     = "persona"
 	ObjPrograma    = "programa"
@@ -75,6 +83,7 @@ const (
 	ObjEleccion    = "eleccion"
 	ObjUsuario     = "usuario"
 	ObjVigilancia  = "vigilancia"
+	ObjLMS         = "lms"
 	ObjInventario = "inventario"
 	ObjProducto   = "producto"
 	ObjOrden      = "orden"
@@ -124,6 +133,9 @@ func AllPermissionPairs() []struct{ Obj, Act string } {
 	}
 	for _, act := range PermisosVigilancia {
 		out = append(out, struct{ Obj, Act string }{ObjVigilancia, act})
+	}
+	for _, act := range PermisosLMS {
+		out = append(out, struct{ Obj, Act string }{ObjLMS, act})
 	}
 	// Inventario desactivado: no se añaden permisos de inventario a AllPermissionPairs
 	return out

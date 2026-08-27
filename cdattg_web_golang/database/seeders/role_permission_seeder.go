@@ -45,6 +45,9 @@ func RunRolePermissionSeeder(db *gorm.DB) error {
 	if err := seedVigilanciaPermissions(e); err != nil {
 		return err
 	}
+	if err := seedLMSPermissions(e); err != nil {
+		return err
+	}
 	if err := seedFPIPermissions(e); err != nil {
 		return err
 	}
@@ -85,6 +88,9 @@ func seedAdminOrCoordinatorStack(e *casbin.Enforcer, role string, withUsuario bo
 	if err := addPermissionsForObject(e, role, authz.ObjAsistencia, authz.PermisosAsistencia); err != nil {
 		return err
 	}
+	if err := addPermissionsForObject(e, role, authz.ObjLMS, authz.PermisosLMS); err != nil {
+		return err
+	}
 	if withUsuario {
 		return addPermissionsForObject(e, role, authz.ObjUsuario, authz.PermisosUsuario)
 	}
@@ -97,6 +103,9 @@ func seedInstructorPermissions(e *casbin.Enforcer) error {
 	}
 	instructorAsistencia := []string{"VER ASISTENCIA", "TOMAR ASISTENCIA", "VER MI AGENDA"}
 	if err := addPermissionsForObject(e, "INSTRUCTOR", authz.ObjAsistencia, instructorAsistencia); err != nil {
+		return err
+	}
+	if err := addPermissionsForObject(e, "INSTRUCTOR", authz.ObjLMS, authz.PermisosLMS); err != nil {
 		return err
 	}
 	if _, err := authz.AddPermissionForRole(e, "INSTRUCTOR", authz.ObjPersona, authz.ActVerPersona); err != nil {
@@ -141,7 +150,7 @@ func seedAprendizPermissions(e *casbin.Enforcer) error {
 	if _, err := authz.AddPermissionForRole(e, "APRENDIZ", authz.ObjAsistencia, "VER MIS INASISTENCIAS"); err != nil {
 		return err
 	}
-	return nil
+	return addPermissionsForObject(e, "APRENDIZ", authz.ObjLMS, []string{authz.ActVerLMS, authz.ActEntrarAulaLMS})
 }
 
 func seedEleccionPermissions(e *casbin.Enforcer) error {
@@ -210,6 +219,32 @@ func seedVigilanciaPermissions(e *casbin.Enforcer) error {
 		}
 	}
 	return nil
+}
+
+func seedLMSPermissions(e *casbin.Enforcer) error {
+	if err := addPermissionsForObject(e, "ADMINISTRADOR", authz.ObjLMS, authz.PermisosLMS); err != nil {
+		return err
+	}
+	if err := addPermissionsForObject(e, "COORDINADOR", authz.ObjLMS, authz.PermisosLMS); err != nil {
+		return err
+	}
+	if err := addPermissionsForObject(e, "INSTRUCTOR", authz.ObjLMS, authz.PermisosLMS); err != nil {
+		return err
+	}
+	return addPermissionsForObject(e, "APRENDIZ", authz.ObjLMS, []string{authz.ActVerLMS, authz.ActEntrarAulaLMS})
+}
+
+// SyncLMSPermissionsToRoles idempotente para despliegues existentes.
+func SyncLMSPermissionsToRoles(db *gorm.DB) error {
+	log.Println("Sincronizando permisos LMS...")
+	e, err := authz.GetEnforcer(db)
+	if err != nil {
+		return err
+	}
+	if err := seedLMSPermissions(e); err != nil {
+		return err
+	}
+	return e.SavePolicy()
 }
 
 // seedFPIPermissions: perfil mínimo para el módulo FPI (Sofía/Betowa) + ver/editar mi persona.

@@ -11,6 +11,7 @@ import type { useLmsAula } from './useLmsAula';
 import { LmsAulaTabs } from './LmsAulaTabs';
 import { LmsAulaTablon } from './LmsAulaTablon';
 import { LmsAulaTrabajos } from './LmsAulaTrabajos';
+import { LmsAulaAprendices } from './LmsAulaAprendices';
 import type { LmsAulaDetalle } from '../../types/lms';
 
 type Props = Readonly<{
@@ -33,6 +34,9 @@ export function LmsAulaCuerpo({ aula }: Props) {
       <LmsAulaTabs tab={tab} onTab={setTab} puedePublicar={aula.puede_publicar} />
       {tab === LMS_TABS.tablon ? <LmsAulaTablon fichaId={aula.ficha_id} actividades={aula.actividades} /> : null}
       {tab === LMS_TABS.trabajos ? <LmsAulaTrabajos fichaId={aula.ficha_id} actividades={aula.actividades} /> : null}
+      {tab === LMS_TABS.aprendices ? (
+        <LmsAulaAprendices fichaId={aula.ficha_id} aprendices={aula.aprendices} />
+      ) : null}
     </>
   );
 }

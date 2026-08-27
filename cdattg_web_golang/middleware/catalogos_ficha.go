@@ -1,7 +1,6 @@
 /**
  * middleware: catálogos de ficha (permisos ficha, asistencia o vigilancia).
- * @author CRANDEYS
- * @created 2026-08-26
+ * @author Cristian Deysdayr Jiménez
  */
 package middleware
 

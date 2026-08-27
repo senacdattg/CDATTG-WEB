@@ -1,8 +1,7 @@
 /**
  * @module pages/lms/lmsAulasFiltro.test
  * @description Búsqueda de aulas por ficha, programa y tipo.
- * @author CRANDEYS
- * @created 2026-08-26
+ * @author Cristian Deysdayr Jiménez
  */
 import { describe, expect, it } from 'vitest';
 import { aulaCoincideBusqueda, filtrarAulas } from './lmsAulasFiltro';

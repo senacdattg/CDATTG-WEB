@@ -1,8 +1,7 @@
 /**
  * @module pages/lms/lmsPaths.test
  * @description Rutas del módulo LMS.
- * @author CRANDEYS
- * @created 2026-08-26
+ * @author Cristian Deysdayr Jiménez
  */
 import { describe, expect, it } from 'vitest';
 import { lmsPaths } from '../../routes/paths';

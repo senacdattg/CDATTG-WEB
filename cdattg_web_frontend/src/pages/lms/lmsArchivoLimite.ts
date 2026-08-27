@@ -1,8 +1,7 @@
 /**
  * @module pages/lms/lmsArchivoLimite
  * @description Tope de tamaño de adjuntos LMS (alineado con el backend).
- * @author CRANDEYS
- * @created 2026-08-26
+ * @author Cristian Deysdayr Jiménez
  */
 
 /** 10 MB por archivo, igual que lmsMaxBytesArchivo en Go. */

@@ -1,8 +1,7 @@
 /**
  * @module pages/lms/useLmsAula
  * @description Carga el detalle de un aula y permite publicar actividad.
- * @author CRANDEYS
- * @created 2026-08-26
+ * @author Cristian Deysdayr Jiménez
  */
 import { useCallback, useEffect, useState } from 'react';
 import { createLmsActividad, fetchLmsAula } from '../../services/lmsApi';

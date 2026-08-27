@@ -1,8 +1,7 @@
 /**
  * @module pages/lms/LmsAulaTabs
  * @description Pestañas del aula: tablón, trabajos, aprendices y publicar.
- * @author CRANDEYS
- * @created 2026-08-26
+ * @author Cristian Deysdayr Jiménez
  */
 import { LMS_TABS, type LmsTab } from './lmsConstants';
 

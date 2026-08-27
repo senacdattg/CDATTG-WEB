@@ -1,8 +1,7 @@
 /**
  * @module pages/lms/useLmsAulas
  * @description Carga el catálogo de aulas LMS del usuario.
- * @author CRANDEYS
- * @created 2026-08-26
+ * @author Cristian Deysdayr Jiménez
  */
 import { useCallback, useEffect, useState } from 'react';
 import { fetchLmsAulas } from '../../services/lmsApi';

@@ -1,8 +1,7 @@
 /**
  * @module pages/lms/LmsAulasCards.test
  * @description Acciones Ver más y Entrar al aula.
- * @author CRANDEYS
- * @created 2026-08-26
+ * @author Cristian Deysdayr Jiménez
  */
 import { createElement } from 'react';
 import { MemoryRouter } from 'react-router-dom';

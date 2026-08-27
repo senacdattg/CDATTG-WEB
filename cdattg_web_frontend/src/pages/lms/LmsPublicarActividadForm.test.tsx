@@ -1,8 +1,7 @@
 /**
  * @module pages/lms/LmsPublicarActividadForm.test
  * @description Prefill del formulario al editar una actividad.
- * @author CRANDEYS
- * @created 2026-08-26
+ * @author Cristian Deysdayr Jiménez
  */
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';

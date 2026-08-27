@@ -1,8 +1,7 @@
 /**
  * @module pages/lms/lmsAulaToFicha
  * @description Adapta el ítem de Mis aulas a la tarjeta de ficha de asistencia.
- * @author CRANDEYS
- * @created 2026-08-26
+ * @author Cristian Deysdayr Jiménez
  */
 import type { FichaCaracterizacionResponse } from '../../types';
 import type { LmsAulaListItem } from '../../types/lms';

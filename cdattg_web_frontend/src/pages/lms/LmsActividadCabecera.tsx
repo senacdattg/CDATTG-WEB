@@ -1,8 +1,7 @@
 /**
  * @module pages/lms/LmsActividadCabecera
  * @description Título, plazo, instructor, archivos y puntos de la actividad.
- * @author CRANDEYS
- * @created 2026-08-26
+ * @author Cristian Deysdayr Jiménez
  */
 import { formatFechaHoraVista } from '../../utils/formatFecha';
 import { downloadLmsArchivo } from '../../services/lmsApi';

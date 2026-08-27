@@ -1,8 +1,7 @@
 /**
  * @module pages/lms/LmsAulaTrabajos
  * @description Trabajos de clase: vencidos o con plazo de entrega.
- * @author CRANDEYS
- * @created 2026-08-26
+ * @author Cristian Deysdayr Jiménez
  */
 import { actividadesTrabajoClase } from './lmsActividadEstado';
 import { LmsActividadCard } from './LmsActividadCard';

@@ -1,8 +1,7 @@
 /**
  * @module pages/lms/LmsActividadAlumno
  * @description Mi trabajo: adjuntar, entregar, deshacer y editar.
- * @author CRANDEYS
- * @created 2026-08-26
+ * @author Cristian Deysdayr Jiménez
  */
 import { useState } from 'react';
 import { PaperClipIcon } from '@heroicons/react/24/outline';

@@ -1,8 +1,7 @@
 /**
  * @module pages/lms/LmsEditarActividadPanel.test
  * @description El instructor ve el botón para editar la actividad.
- * @author CRANDEYS
- * @created 2026-08-26
+ * @author Cristian Deysdayr Jiménez
  */
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';

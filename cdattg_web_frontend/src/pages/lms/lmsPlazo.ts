@@ -1,8 +1,7 @@
 /**
  * @module pages/lms/lmsPlazo
  * @description Combina fecha y hora del plazo (calendario + escritura).
- * @author CRANDEYS
- * @created 2026-08-26
+ * @author Cristian Deysdayr Jiménez
  */
 import { toDatetimeLocalColombia } from '../../utils/formatFecha';
 

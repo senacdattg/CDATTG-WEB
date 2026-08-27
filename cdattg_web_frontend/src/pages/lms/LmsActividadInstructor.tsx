@@ -1,8 +1,7 @@
 /**
  * @module pages/lms/LmsActividadInstructor
  * @description Listado de envíos para calificar.
- * @author CRANDEYS
- * @created 2026-08-26
+ * @author Cristian Deysdayr Jiménez
  */
 import { LmsEntregaFila } from './LmsEntregaFila';
 import type { LmsActividadDetalle } from '../../types/lms';

@@ -1,8 +1,7 @@
 /**
  * @module pages/lms/LmsAulasPage
  * @description Listado Mis aulas, análogo a Tomar asistencia.
- * @author CRANDEYS
- * @created 2026-08-26
+ * @author Cristian Deysdayr Jiménez
  */
 import { useState } from 'react';
 import { useLmsAulas } from './useLmsAulas';

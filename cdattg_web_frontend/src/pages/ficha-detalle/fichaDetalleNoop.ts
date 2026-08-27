@@ -1,8 +1,7 @@
 /**
  * @module pages/ficha-detalle/fichaDetalleNoop
  * @description Callbacks vacíos con identidad estable para overlays de solo lectura.
- * @author CRANDEYS
- * @created 2026-08-26
+ * @author Cristian Deysdayr Jiménez
  */
 
 /**

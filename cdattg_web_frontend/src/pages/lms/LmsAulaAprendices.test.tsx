@@ -1,8 +1,7 @@
 /**
  * @module pages/lms/LmsAulaAprendices.test
  * @description El aula reutiliza el listado de aprendices de ficha.
- * @author CRANDEYS
- * @created 2026-08-26
+ * @author Cristian Deysdayr Jiménez
  */
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';

@@ -1,8 +1,7 @@
 /**
  * @module pages/lms/lmsPlazo.test
  * @description Combinación de fecha y hora de entrega.
- * @author CRANDEYS
- * @created 2026-08-26
+ * @author Cristian Deysdayr Jiménez
  */
 import { describe, expect, it } from 'vitest';
 import { combinarPlazo, partirPlazo } from './lmsPlazo';

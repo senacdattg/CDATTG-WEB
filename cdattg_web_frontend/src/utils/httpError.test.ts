@@ -1,8 +1,7 @@
 /**
  * @module utils/httpError.test
  * @description Mensajes Axios, incluido 413 de Nginx.
- * @author CRANDEYS
- * @created 2026-08-26
+ * @author Cristian Deysdayr Jiménez
  */
 import { describe, expect, it } from 'vitest';
 import { axiosErrorMessage } from './httpError';

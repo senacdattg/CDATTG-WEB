@@ -1,8 +1,7 @@
 /**
  * @module pages/lms/lmsAulasFiltro
  * @description Filtro de Mis aulas por tipo, ficha o programa.
- * @author CRANDEYS
- * @created 2026-08-26
+ * @author Cristian Deysdayr Jiménez
  */
 import type { TipoFormacion } from '../../constants/tipoFormacion';
 import type { LmsAulaListItem } from '../../types/lms';

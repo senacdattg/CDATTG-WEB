@@ -1,8 +1,7 @@
 /**
  * @module pages/lms/LmsActividadInstructor.test
  * @description El instructor ve entregas y puede calificar 0-100.
- * @author CRANDEYS
- * @created 2026-08-26
+ * @author Cristian Deysdayr Jiménez
  */
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';

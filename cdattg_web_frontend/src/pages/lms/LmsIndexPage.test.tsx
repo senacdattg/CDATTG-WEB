@@ -1,8 +1,7 @@
 /**
  * @module pages/lms/LmsIndexPage.test
  * @description El índice LMS redirige a Mis aulas.
- * @author CRANDEYS
- * @created 2026-08-26
+ * @author Cristian Deysdayr Jiménez
  */
 import { createElement } from 'react';
 import { MemoryRouter } from 'react-router-dom';

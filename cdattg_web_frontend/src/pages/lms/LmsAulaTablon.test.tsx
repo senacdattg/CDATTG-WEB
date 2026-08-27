@@ -1,8 +1,7 @@
 /**
  * @module pages/lms/LmsAulaTablon.test
  * @description El tablón lista todas las publicaciones del aula.
- * @author CRANDEYS
- * @created 2026-08-26
+ * @author Cristian Deysdayr Jiménez
  */
 import { createElement } from 'react';
 import { MemoryRouter } from 'react-router-dom';

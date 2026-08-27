@@ -1,8 +1,7 @@
 /**
  * @module pages/lms/LmsPublicarCampos.test
  * @description Plazo con calendario y reloj (también se escribe).
- * @author CRANDEYS
- * @created 2026-08-26
+ * @author Cristian Deysdayr Jiménez
  */
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';

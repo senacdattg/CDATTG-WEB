@@ -1,8 +1,7 @@
 /**
  * @module types/lms
  * @description Contratos JSON del módulo LMS (aulas, actividades y entregas).
- * @author CRANDEYS
- * @created 2026-08-26
+ * @author Cristian Deysdayr Jiménez
  */
 
 export type LmsActividadTipo = 'TABLON' | 'GUIA' | 'MATERIAL' | 'TRABAJO';

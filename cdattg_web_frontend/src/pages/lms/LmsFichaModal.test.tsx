@@ -1,8 +1,7 @@
 /**
  * @module pages/lms/LmsFichaModal.test
  * @description Modal de ficha en Mis aulas.
- * @author CRANDEYS
- * @created 2026-08-27
+ * @author Cristian Deysdayr Jiménez
  */
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';

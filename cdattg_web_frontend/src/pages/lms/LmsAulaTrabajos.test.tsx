@@ -1,8 +1,7 @@
 /**
  * @module pages/lms/LmsAulaTrabajos.test
  * @description Trabajos de clase lista actividades con plazo.
- * @author CRANDEYS
- * @created 2026-08-26
+ * @author Cristian Deysdayr Jiménez
  */
 import { createElement } from 'react';
 import { MemoryRouter } from 'react-router-dom';

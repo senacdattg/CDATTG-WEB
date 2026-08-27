@@ -1,8 +1,7 @@
 /**
  * @module pages/lms/lmsActividadEstado
  * @description Plazo de entrega: vencida, por vencer o en plazo.
- * @author CRANDEYS
- * @created 2026-08-26
+ * @author Cristian Deysdayr Jiménez
  */
 import type { LmsActividadItem } from '../../types/lms';
 

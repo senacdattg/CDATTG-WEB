@@ -1,8 +1,7 @@
 /**
  * @module pages/lms/LmsPublicarCampos
  * @description Campos de archivos, puntos y plazo al publicar.
- * @author CRANDEYS
- * @created 2026-08-26
+ * @author Cristian Deysdayr Jiménez
  */
 import { PaperClipIcon } from '@heroicons/react/24/outline';
 

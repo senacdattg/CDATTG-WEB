@@ -1,8 +1,7 @@
 /**
  * @module pages/lms/LmsAulasListView
  * @description Mis aulas con el mismo diseño de Tomar asistencia.
- * @author CRANDEYS
- * @created 2026-08-26
+ * @author Cristian Deysdayr Jiménez
  */
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';

@@ -1,8 +1,7 @@
 /**
  * @module pages/ficha-detalle/FichaDetalleEmbedded
  * @description Detalle de ficha reutilizado (LMS u overlay) sin cambiar de ruta.
- * @author CRANDEYS
- * @created 2026-08-26
+ * @author Cristian Deysdayr Jiménez
  */
 import { useState } from 'react';
 import { XMarkIcon } from '@heroicons/react/24/outline';

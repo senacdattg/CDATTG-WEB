@@ -1,8 +1,7 @@
 /**
  * @module pages/lms/lmsAprendizToResponse
  * @description Adapta el aprendiz del aula al listado de ficha (DRY).
- * @author CRANDEYS
- * @created 2026-08-26
+ * @author Cristian Deysdayr Jiménez
  */
 import type { AprendizResponse } from '../../types';
 import type { LmsAulaAprendiz } from '../../types/lms';

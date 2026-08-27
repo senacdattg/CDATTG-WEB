@@ -1,7 +1,6 @@
 /**
  * middleware: pertenencia a ficha para lectura (LMS overlay sin duplicar APIs).
- * @author CRANDEYS
- * @created 2026-08-26
+ * @author Cristian Deysdayr Jiménez
  */
 package middleware
 

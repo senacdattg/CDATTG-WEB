@@ -1,8 +1,7 @@
 /**
  * @module pages/lms/LmsActividadPage
  * @description Vista de actividad: instrucciones, entrega o revisión.
- * @author CRANDEYS
- * @created 2026-08-26
+ * @author Cristian Deysdayr Jiménez
  */
 import { Link, useParams } from 'react-router-dom';
 import { ArrowLeftIcon, ClockIcon } from '@heroicons/react/24/outline';

@@ -1,8 +1,7 @@
 /**
  * @module pages/lms/lmsArchivoLimite.test
  * @description Validación del tope de 10 MB en entregas LMS.
- * @author CRANDEYS
- * @created 2026-08-26
+ * @author Cristian Deysdayr Jiménez
  */
 import { describe, expect, it } from 'vitest';
 import { LMS_MAX_BYTES_ARCHIVO, mensajeArchivosFueraDeLimite } from './lmsArchivoLimite';

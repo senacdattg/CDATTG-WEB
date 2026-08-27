@@ -1,8 +1,7 @@
 /**
  * @module pages/lms/LmsAulaAprendices
  * @description Aprendices del aula con el listado de ficha (Aprendices asignados).
- * @author CRANDEYS
- * @created 2026-08-26
+ * @author Cristian Deysdayr Jiménez
  */
 import { useMemo, useState } from 'react';
 import { FichaDetalleAprendicesTable } from '../ficha-detalle/components/aprendices/FichaDetalleAprendicesTable';

@@ -1,8 +1,7 @@
 /**
  * @module pages/lms/lmsConstants
  * @description Etiquetas y tipos de publicación del aula LMS.
- * @author CRANDEYS
- * @created 2026-08-26
+ * @author Cristian Deysdayr Jiménez
  */
 import type { LmsActividadTipo } from '../../types/lms';
 

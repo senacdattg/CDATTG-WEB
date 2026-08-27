@@ -1,8 +1,7 @@
 /**
  * @module pages/lms/lmsToast
  * @description Aviso de entrega exitosa (SweetAlert2, misma pauta que asistencia).
- * @author CRANDEYS
- * @created 2026-08-26
+ * @author Cristian Deysdayr Jiménez
  */
 import Swal from 'sweetalert2';
 import 'sweetalert2/dist/sweetalert2.min.css';

@@ -1,8 +1,7 @@
 /**
  * @module pages/lms/LmsFichaDetalleModal
  * @description Overlay para ver la ficha sin salir de Mis aulas.
- * @author CRANDEYS
- * @created 2026-08-26
+ * @author Cristian Deysdayr Jiménez
  */
 import { useEffect, useRef } from 'react';
 import { FichaDetalleEmbedded } from '../ficha-detalle/FichaDetalleEmbedded';

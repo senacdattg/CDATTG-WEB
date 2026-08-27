@@ -1,8 +1,7 @@
 /**
  * @module routes/modules/lms
  * @description Rutas autenticadas del LMS: Mis aulas y aula por ficha.
- * @author CRANDEYS
- * @created 2026-08-26
+ * @author Cristian Deysdayr Jiménez
  */
 import { Outlet } from 'react-router-dom';
 import type { RouteObject } from 'react-router-dom';

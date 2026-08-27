@@ -1,8 +1,7 @@
 /**
  * @module pages/lms/LmsAulaPage
  * @description Aula de una ficha: tablón, trabajos, aprendices y publicar.
- * @author CRANDEYS
- * @created 2026-08-26
+ * @author Cristian Deysdayr Jiménez
  */
 import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';

@@ -1,8 +1,7 @@
 /**
  * @module pages/lms/LmsActividadAlumno.test
  * @description Vista de entrega del aprendiz: adjuntar y deshacer.
- * @author CRANDEYS
- * @created 2026-08-26
+ * @author Cristian Deysdayr Jiménez
  */
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';

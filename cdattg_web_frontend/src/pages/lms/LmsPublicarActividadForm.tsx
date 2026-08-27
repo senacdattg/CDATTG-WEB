@@ -1,8 +1,7 @@
 /**
  * @module pages/lms/LmsPublicarActividadForm
  * @description Publicar o editar: título, descripción, puntos, archivos y plazo.
- * @author CRANDEYS
- * @created 2026-08-26
+ * @author Cristian Deysdayr Jiménez
  */
 import { useState } from 'react';
 import { DocumentPlusIcon } from '@heroicons/react/24/outline';

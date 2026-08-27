@@ -1,8 +1,7 @@
 /**
  * @module pages/lms/LmsActividadCard
  * @description Tarjeta clicable: título, descripción, plazo e instructor.
- * @author CRANDEYS
- * @created 2026-08-26
+ * @author Cristian Deysdayr Jiménez
  */
 import { Link } from 'react-router-dom';
 import { lmsPaths } from '../../routes/paths';

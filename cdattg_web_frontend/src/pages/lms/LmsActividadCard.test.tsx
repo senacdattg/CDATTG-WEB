@@ -1,8 +1,7 @@
 /**
  * @module pages/lms/LmsActividadCard.test
  * @description La tarjeta muestra título, descripción, plazo e instructor.
- * @author CRANDEYS
- * @created 2026-08-26
+ * @author Cristian Deysdayr Jiménez
  */
 import { createElement } from 'react';
 import { MemoryRouter } from 'react-router-dom';

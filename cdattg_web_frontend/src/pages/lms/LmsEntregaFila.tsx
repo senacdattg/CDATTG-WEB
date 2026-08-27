@@ -1,8 +1,7 @@
 /**
  * @module pages/lms/LmsEntregaFila
  * @description Una entrega de aprendiz: archivos, nota 0-100 y comentario.
- * @author CRANDEYS
- * @created 2026-08-26
+ * @author Cristian Deysdayr Jiménez
  */
 import { useState } from 'react';
 import { downloadLmsEntregaArchivo } from '../../services/lmsApi';

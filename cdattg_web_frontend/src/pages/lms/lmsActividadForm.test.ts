@@ -1,8 +1,7 @@
 /**
  * @module pages/lms/lmsActividadForm.test
  * @description Validación de alta y edición de actividad LMS.
- * @author CRANDEYS
- * @created 2026-08-26
+ * @author Cristian Deysdayr Jiménez
  */
 import { describe, expect, it } from 'vitest';
 import { buildActividadFormData, errorActividadForm, etiquetasActividadForm } from './lmsActividadForm';

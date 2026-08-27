@@ -1,8 +1,7 @@
 /**
  * @module pages/lms/LmsAulaCuerpo
  * @description Contenido del aula según la pestaña activa.
- * @author CRANDEYS
- * @created 2026-08-26
+ * @author Cristian Deysdayr Jiménez
  */
 import { useState } from 'react';
 import { labelTipoFormacion } from '../../constants/tipoFormacion';

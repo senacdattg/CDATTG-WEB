@@ -1,8 +1,7 @@
 /**
  * @module pages/lms/LmsAulaTablon
  * @description Tablón: guías y publicaciones que el aprendiz debe ver.
- * @author CRANDEYS
- * @created 2026-08-26
+ * @author Cristian Deysdayr Jiménez
  */
 import { LmsActividadCard } from './LmsActividadCard';
 import type { LmsActividadItem } from '../../types/lms';

@@ -1,8 +1,7 @@
 /**
  * @module pages/lms/lmsAprendizToResponse.test
  * @description Mapeo de aprendiz LMS al listado de ficha.
- * @author CRANDEYS
- * @created 2026-08-26
+ * @author Cristian Deysdayr Jiménez
  */
 import { describe, expect, it } from 'vitest';
 import { lmsAprendizToResponse } from './lmsAprendizToResponse';

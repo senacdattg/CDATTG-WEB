@@ -1,8 +1,7 @@
 /**
  * @module pages/lms/lmsActividadForm
  * @description Validación y FormData compartidos al publicar o editar.
- * @author CRANDEYS
- * @created 2026-08-26
+ * @author Cristian Deysdayr Jiménez
  */
 import { mensajeArchivosFueraDeLimite } from './lmsArchivoLimite';
 import { combinarPlazo } from './lmsPlazo';

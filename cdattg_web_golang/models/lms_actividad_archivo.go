@@ -2,8 +2,7 @@ package models
 
 // LmsActividadArchivo adjunto de una publicación del tablón.
 // Persistido en storage/lms/publicaciones/{ficha}/{actividad}.
-// @author CRANDEYS
-// @created 2026-08-26
+// @author Cristian Deysdayr Jiménez
 type LmsActividadArchivo struct {
 	UserAuditModel
 	ActividadID    uint          `gorm:"column:actividad_id;not null;index" json:"actividad_id"`

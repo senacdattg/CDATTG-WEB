@@ -1,8 +1,7 @@
 /**
  * @module pages/lms/lmsConstants.test
  * @description Etiquetas de tipo de actividad LMS.
- * @author CRANDEYS
- * @created 2026-08-26
+ * @author Cristian Deysdayr Jiménez
  */
 import { describe, expect, it } from 'vitest';
 import { labelTipoActividad } from './lmsConstants';

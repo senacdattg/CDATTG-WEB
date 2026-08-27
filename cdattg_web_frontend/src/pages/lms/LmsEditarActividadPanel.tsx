@@ -1,8 +1,7 @@
 /**
  * @module pages/lms/LmsEditarActividadPanel
  * @description El instructor abre el formulario para modificar la publicación.
- * @author CRANDEYS
- * @created 2026-08-26
+ * @author Cristian Deysdayr Jiménez
  */
 import { useState } from 'react';
 import { PencilSquareIcon } from '@heroicons/react/24/outline';

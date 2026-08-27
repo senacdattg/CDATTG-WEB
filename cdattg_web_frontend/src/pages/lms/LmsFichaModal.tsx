@@ -1,8 +1,7 @@
 /**
  * @module pages/lms/LmsFichaModal
  * @description Abre el detalle de ficha cuando hay un id.
- * @author CRANDEYS
- * @created 2026-08-27
+ * @author Cristian Deysdayr Jiménez
  */
 import { LmsFichaDetalleModal } from './LmsFichaDetalleModal';
 

@@ -1,8 +1,7 @@
 /**
  * @module pages/lms/LmsAulaTabs.test
  * @description Publicar actividad solo si puede publicar.
- * @author CRANDEYS
- * @created 2026-08-26
+ * @author Cristian Deysdayr Jiménez
  */
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';

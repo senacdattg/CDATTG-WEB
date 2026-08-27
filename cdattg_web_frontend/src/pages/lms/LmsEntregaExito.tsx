@@ -1,8 +1,7 @@
 /**
  * @module pages/lms/LmsEntregaExito
  * @description Animación breve al confirmar la entrega.
- * @author CRANDEYS
- * @created 2026-08-26
+ * @author Cristian Deysdayr Jiménez
  */
 import { CheckCircleIcon } from '@heroicons/react/24/solid';
 

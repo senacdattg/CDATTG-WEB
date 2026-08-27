@@ -1,8 +1,7 @@
 /**
  * @module pages/lms/lmsAulaToFicha.test
  * @description Mapeo de aula LMS a tarjeta de ficha.
- * @author CRANDEYS
- * @created 2026-08-26
+ * @author Cristian Deysdayr Jiménez
  */
 import { describe, expect, it } from 'vitest';
 import { aulaToFichaCard } from './lmsAulaToFicha';

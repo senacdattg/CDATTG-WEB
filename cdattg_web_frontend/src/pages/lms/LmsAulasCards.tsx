@@ -1,8 +1,7 @@
 /**
  * @module pages/lms/LmsAulasCards
  * @description Tarjeta de un aula en Mis aulas (Ver más / Entrar).
- * @author CRANDEYS
- * @created 2026-08-26
+ * @author Cristian Deysdayr Jiménez
  */
 import { Link } from 'react-router-dom';
 import { AcademicCapIcon, EyeIcon } from '@heroicons/react/24/outline';

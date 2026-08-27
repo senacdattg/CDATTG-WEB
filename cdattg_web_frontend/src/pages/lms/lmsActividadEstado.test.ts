@@ -1,8 +1,7 @@
 /**
  * @module pages/lms/lmsActividadEstado.test
  * @description Estados de plazo y filtro de trabajos de clase.
- * @author CRANDEYS
- * @created 2026-08-26
+ * @author Cristian Deysdayr Jiménez
  */
 import { describe, expect, it } from 'vitest';
 import { actividadesTrabajoClase, estadoPlazo, etiquetaEntregaAlumno, labelEstadoEntrega, labelEstadoPlazo } from './lmsActividadEstado';

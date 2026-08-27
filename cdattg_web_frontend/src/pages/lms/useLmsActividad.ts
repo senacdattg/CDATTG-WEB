@@ -1,8 +1,7 @@
 /**
  * @module pages/lms/useLmsActividad
  * @description Carga una actividad y permite entregar, calificar o editar.
- * @author CRANDEYS
- * @created 2026-08-26
+ * @author Cristian Deysdayr Jiménez
  */
 import { useCallback, useEffect, useState } from 'react';
 import { calificarLmsEntrega, deshacerLmsEntrega, entregarLmsActividad, fetchLmsActividad, updateLmsActividad } from '../../services/lmsApi';

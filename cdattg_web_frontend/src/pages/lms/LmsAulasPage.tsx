@@ -10,6 +10,16 @@ import { LmsAulasListView } from './LmsAulasListView';
 import { LmsFichaDetalleModal } from './LmsFichaDetalleModal';
 
 /**
+ * Modal de ficha solo si hay un id seleccionado.
+ */
+function modalFicha(fichaId: number | null, onClose: () => void) {
+  if (fichaId === null) {
+    return null;
+  }
+  return <LmsFichaDetalleModal fichaId={fichaId} onClose={onClose} />;
+}
+
+/**
  * Página contenedora de Mis aulas.
  */
 export function LmsAulasPage() {
@@ -18,7 +28,7 @@ export function LmsAulasPage() {
   return (
     <>
       <LmsAulasListView page={page} onVerFicha={setFichaVer} />
-      {fichaVer != null ? <LmsFichaDetalleModal fichaId={fichaVer} onClose={() => setFichaVer(null)} /> : null}
+      {modalFicha(fichaVer, () => setFichaVer(null))}
     </>
   );
 }

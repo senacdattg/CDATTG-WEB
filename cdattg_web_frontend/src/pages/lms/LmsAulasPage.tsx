@@ -10,17 +10,6 @@ import { LmsAulasListView } from './LmsAulasListView';
 import { LmsFichaDetalleModal } from './LmsFichaDetalleModal';
 
 /**
- * @module pages/lms/LmsAulasPage
- * @description Listado Mis aulas, análogo a Tomar asistencia.
- * @author CRANDEYS
- * @created 2026-08-26
- */
-import { useState } from 'react';
-import { useLmsAulas } from './useLmsAulas';
-import { LmsAulasListView } from './LmsAulasListView';
-import { LmsFichaDetalleModal } from './LmsFichaDetalleModal';
-
-/**
  * Página contenedora de Mis aulas.
  */
 export function LmsAulasPage() {
@@ -37,4 +26,3 @@ export function LmsAulasPage() {
     </>
   );
 }
-

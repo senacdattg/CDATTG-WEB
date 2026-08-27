@@ -148,3 +148,12 @@ export const complementariosPaths = {
   consultarRegistro: '/complementarios/consultar-registro',
   inscripciones: '/complementarios/inscripciones',
 } as const;
+
+/** Rutas del módulo LMS. */
+export const lmsPaths = {
+  index: '/lms',
+  aulas: '/lms/aulas',
+  aula: (fichaId: number | string) => `/lms/aulas/${fichaId}`,
+  actividad: (fichaId: number | string, actividadId: number | string) =>
+    `/lms/aulas/${fichaId}/actividades/${actividadId}`,
+} as const;

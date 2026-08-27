@@ -4,6 +4,7 @@ import {
   eleccionAprendizPaths,
   asistenciaPaths,
   bienestarPaths,
+  lmsPaths,
   DASHBOARD_PATH,
   fichasPaths,
   infraestructuraPaths,
@@ -192,6 +193,16 @@ export const SIDEBAR_MANIFEST: SidebarManifestItem[] = [
     permission: null,
     rolesRequired: ['SUPER ADMINISTRADOR', 'ADMINISTRADOR', 'COORDINADOR', 'FPI'],
     iconKey: 'complementarios',
+  },
+
+  // —— LMS ——
+  {
+    section: 'LMS',
+    path: lmsPaths.aulas,
+    label: 'Mis aulas',
+    permission: 'VER LMS',
+    rolesRequired: ['SUPER ADMINISTRADOR', 'ADMINISTRADOR', 'COORDINADOR', 'INSTRUCTOR', 'APRENDIZ'],
+    iconKey: 'lms',
   },
 
   // —— Bienestar ——

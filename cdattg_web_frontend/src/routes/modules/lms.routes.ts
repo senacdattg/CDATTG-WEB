@@ -31,6 +31,14 @@ export const lmsRoutes: RouteObject = {
             return { Component: LmsAulasPage };
           },
         },
+        {
+          path: ':fichaId',
+          handle: { breadcrumb: { label: 'Aula' } },
+          lazy: async () => {
+            const { LmsAulaPage } = await import('../../pages/lms/LmsAulaPage');
+            return { Component: LmsAulaPage };
+          },
+        },
       ],
     },
   ],

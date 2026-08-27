@@ -246,21 +246,12 @@ func RequirePermissionCatalogosFicha() gin.HandlerFunc {
 			return
 		}
 		sub := strconv.FormatUint(uint64(userID), 10)
-		for _, act := range acts {
-			if allowed, errEnf := authz.Enforce(e, sub, authz.ObjFicha, act); errEnf == nil && allowed {
-				c.Next()
-				return
-			}
-		}
-		if allowed, errEnf := authz.Enforce(e, sub, authz.ObjAsistencia, actVerAsistencia); errEnf == nil && allowed {
+		enf := func(s, o, a string) (bool, error) { return authz.Enforce(e, s, o, a) }
+		if anyEnforceOK(enf, sub, authz.ObjFicha, acts) ||
+			enforceOK(enf, sub, authz.ObjAsistencia, actVerAsistencia) ||
+			anyEnforceOK(enf, sub, authz.ObjVigilancia, authz.PermisosVigilancia) {
 			c.Next()
 			return
-		}
-		for _, act := range authz.PermisosVigilancia {
-			if allowed, errEnf := authz.Enforce(e, sub, authz.ObjVigilancia, act); errEnf == nil && allowed {
-				c.Next()
-				return
-			}
 		}
 		c.JSON(http.StatusForbidden, gin.H{"error": "No tiene permiso para acceder a catálogos de fichas"})
 		c.Abort()

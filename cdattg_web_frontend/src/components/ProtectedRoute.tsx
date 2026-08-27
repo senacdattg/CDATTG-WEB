@@ -1,6 +1,6 @@
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { PERFIL_PATH } from '../routes/paths';
+import { PERFIL_PATH, portalPaths } from '../routes/paths';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -8,6 +8,14 @@ interface ProtectedRouteProps {
 
 /** Rutas permitidas aunque el perfil esté incompleto. */
 const PERFIL_INCOMPLETO_ALLOW = new Set([PERFIL_PATH, '/login']);
+
+/**
+ * Entrada del sitio para quien no tiene sesión.
+ * @returns Ruta del portal público.
+ */
+export function rutaPublicaDeEntrada(): string {
+  return portalPaths.index;
+}
 
 export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
   const { isAuthenticated, loading, user } = useAuth();
@@ -22,7 +30,7 @@ export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
   }
 
   if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to={rutaPublicaDeEntrada()} replace />;
   }
 
   const perfilIncompleto = user?.perfil_completo === false;

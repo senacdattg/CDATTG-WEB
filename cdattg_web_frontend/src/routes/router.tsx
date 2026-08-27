@@ -20,6 +20,7 @@ import { aprendizRoutes } from './modules/aprendiz.routes';
 import { complementariosRoutes } from './modules/complementarios.routes';
 import { portalPublicRoutes } from './modules/portal.routes';
 import { semilleroAdminRoutes } from './modules/semillero.routes';
+import { portalPaths } from './paths';
 
 /**
  * Árbol de rutas (React Router v7 data router).
@@ -53,4 +54,5 @@ export const appRouter = createBrowserRouter([
       ...administracionRoutes,
     ],
   },
+  { path: '*', element: createElement(Navigate, { to: portalPaths.index, replace: true }) },
 ]);

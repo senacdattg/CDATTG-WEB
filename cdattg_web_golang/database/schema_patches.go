@@ -269,6 +269,7 @@ func EnsureSchemaPatches() error {
 		patchFichaTipoFormacion,
 		patchFichaNombreYProgramaOpcional,
 		patchAutoMigrateSofiaCredencial,
+		patchAutoMigratePortalModels,
 	}
 	for _, patch := range patches {
 		if err := patch(); err != nil {

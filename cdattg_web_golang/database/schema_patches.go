@@ -242,6 +242,21 @@ func patchFichaNombreYProgramaOpcional() error {
 	)
 }
 
+func patchAutoMigrateLmsModels() error {
+	if err := DB.AutoMigrate(
+		&models.LmsCarpetaPersona{},
+		&models.LmsCarpetaFicha{},
+		&models.LmsActividad{},
+		&models.LmsActividadArchivo{},
+		&models.LmsEntrega{},
+		&models.LmsEntregaArchivo{},
+	); err != nil {
+		return err
+	}
+	log.Println("Esquema: tablas LMS verificadas")
+	return nil
+}
+
 func patchAutoMigrateSofiaCredencial() error {
 	if err := DB.AutoMigrate(&models.SofiaCredencial{}); err != nil {
 		return err
@@ -269,6 +284,7 @@ func EnsureSchemaPatches() error {
 		patchFichaTipoFormacion,
 		patchFichaNombreYProgramaOpcional,
 		patchAutoMigrateSofiaCredencial,
+		patchAutoMigrateLmsModels,
 	}
 	for _, patch := range patches {
 		if err := patch(); err != nil {

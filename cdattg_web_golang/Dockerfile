@@ -31,7 +31,7 @@ RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-w -s" -o /app/seed ./cmd/seed
 FROM alpine:3.21
 
 RUN apk add --no-cache ca-certificates tzdata && \
-    mkdir -p /app/storage/asistencia_pdfs && \
+    mkdir -p /app/storage/asistencia_pdfs /app/storage/lms && \
     chown -R nobody:nogroup /app/storage && \
     chmod 750 /app/storage
 

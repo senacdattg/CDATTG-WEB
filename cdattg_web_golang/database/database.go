@@ -157,6 +157,12 @@ func Migrate() error {
 		&models.EleccionVoto{},
 		&models.EleccionResultado{},
 		&models.RepresentanteAprendiz{},
+		&models.LmsCarpetaPersona{},
+		&models.LmsCarpetaFicha{},
+		&models.LmsActividad{},
+		&models.LmsActividadArchivo{},
+		&models.LmsEntrega{},
+		&models.LmsEntregaArchivo{},
 	)
 	
 	if err != nil {

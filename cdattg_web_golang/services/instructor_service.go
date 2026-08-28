@@ -3,10 +3,7 @@ package services
 import (
 	"errors"
 	"fmt"
-	"strconv"
 
-	"github.com/sena/cdattg-web-golang/authz"
-	"github.com/sena/cdattg-web-golang/database"
 	"github.com/sena/cdattg-web-golang/dto"
 	"github.com/sena/cdattg-web-golang/models"
 	"github.com/sena/cdattg-web-golang/repositories"
@@ -71,14 +68,7 @@ func (s *instructorService) CreateFromPersona(req dto.CreateInstructorRequest) (
 		return nil, fmt.Errorf("error al crear instructor: %w", err)
 	}
 	user, _ := s.userRepo.FindByPersonaID(req.PersonaID)
-	if user != nil {
-		db := database.GetDB()
-		e, err := authz.GetEnforcer(db)
-		if err == nil {
-			_, _ = authz.AddRoleForUser(e, strconv.FormatUint(uint64(user.ID), 10), "INSTRUCTOR")
-			_ = e.SavePolicy()
-		}
-	}
+	sincronizarRolInstructorCasbin(user, true)
 	return &dto.InstructorItem{ID: inst.ID, Nombre: nombre}, nil
 }
 
@@ -104,15 +94,25 @@ func (s *instructorService) Update(id uint, req dto.UpdateInstructorRequest) (*d
 	if err := s.repo.Update(inst); err != nil {
 		return nil, fmt.Errorf("error al actualizar instructor: %w", err)
 	}
+	if req.Estado != nil {
+		user, _ := s.userRepo.FindByPersonaID(inst.PersonaID)
+		sincronizarRolInstructorCasbin(user, *req.Estado)
+	}
 	updated, _ := s.repo.FindByID(id)
 	return instructorToDTO(updated), nil
 }
 
 func (s *instructorService) Delete(id uint) error {
-	if _, err := s.repo.FindByID(id); err != nil {
+	inst, err := s.repo.FindByID(id)
+	if err != nil {
 		return errors.New(errMsgInstructorNoEncontrado)
 	}
-	return s.repo.Delete(id)
+	user, _ := s.userRepo.FindByPersonaID(inst.PersonaID)
+	if err := s.repo.Delete(id); err != nil {
+		return err
+	}
+	sincronizarRolInstructorCasbin(user, false)
+	return nil
 }
 
 // instructorToDTO: documento y nombre desde Persona (instructor solo tiene persona_id)

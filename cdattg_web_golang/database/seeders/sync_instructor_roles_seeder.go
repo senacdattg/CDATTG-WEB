@@ -9,28 +9,30 @@ import (
 	"gorm.io/gorm"
 )
 
-// RunSyncInstructorRolesSeeder asigna el rol INSTRUCTOR en Casbin a todos los usuarios cuya persona_id está en instructors.
+// RunSyncInstructorRolesSeeder alinea Casbin con instructors.status (activo = rol INSTRUCTOR).
 func RunSyncInstructorRolesSeeder(db *gorm.DB) error {
 	log.Println("Ejecutando SyncInstructorRolesSeeder...")
-
-	var personaIDs []uint
-	if err := db.Model(&models.Instructor{}).Where("deleted_at IS NULL").Distinct("persona_id").Pluck("persona_id", &personaIDs).Error; err != nil {
+	var list []models.Instructor
+	if err := db.Where("deleted_at IS NULL").Find(&list).Error; err != nil {
 		return err
 	}
-	if len(personaIDs) == 0 {
+	if len(list) == 0 {
 		return nil
 	}
-
 	e, err := authz.GetEnforcer(db)
 	if err != nil {
 		return err
 	}
-
+	porPersona := make(map[uint]bool, len(list))
+	ids := make([]uint, 0, len(list))
+	for i := range list {
+		porPersona[list[i].PersonaID] = list[i].Status
+		ids = append(ids, list[i].PersonaID)
+	}
 	var users []models.User
-	if err := db.Where("persona_id IN ?", personaIDs).Find(&users).Error; err != nil {
+	if err := db.Where("persona_id IN ?", ids).Find(&users).Error; err != nil {
 		return err
 	}
-
 	for _, user := range users {
 		if user.PersonaID == nil {
 			continue
@@ -39,7 +41,11 @@ func RunSyncInstructorRolesSeeder(db *gorm.DB) error {
 		if skipExclusiveModuleUser(e, sub) {
 			continue
 		}
-		_, _ = authz.AddRoleForUser(e, sub, "INSTRUCTOR")
+		if porPersona[*user.PersonaID] {
+			_, _ = authz.AddRoleForUser(e, sub, "INSTRUCTOR")
+			continue
+		}
+		_, _ = e.DeleteRoleForUser(sub, "INSTRUCTOR")
 	}
 	_ = e.SavePolicy()
 	log.Println("SyncInstructorRolesSeeder completado.")

@@ -140,7 +140,8 @@ func (s *permisosService) QuitarPermisoDirecto(userID uint, obj, act string) err
 }
 
 func (s *permisosService) SetRoles(userID uint, roles []string) error {
-	if _, err := s.userRepo.FindByID(userID); err != nil {
+	user, err := s.userRepo.FindByID(userID)
+	if err != nil {
 		return errors.New(errUsuarioNoEncontrado)
 	}
 	db := database.GetDB()
@@ -150,14 +151,20 @@ func (s *permisosService) SetRoles(userID uint, roles []string) error {
 	}
 	sub := strconv.FormatUint(uint64(userID), 10)
 	_, _ = authz.DeleteRolesForUser(e, sub)
+	normed := make([]string, 0, len(roles))
 	for _, r := range roles {
 		r = normRoleName(r)
 		if r == "" {
 			continue
 		}
 		_, _ = authz.AddRoleForUser(e, sub, r)
+		normed = append(normed, r)
 	}
-	return e.SavePolicy()
+	if err := e.SavePolicy(); err != nil {
+		return err
+	}
+	sincronizarEstadoInstructorConRol(user.PersonaID, listaTieneRolInstructor(normed))
+	return nil
 }
 
 func normRoleName(s string) string {

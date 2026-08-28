@@ -4,10 +4,12 @@
  * @author Cristian Deysdayr Jiménez
  */
 import { useState, type ReactNode } from 'react';
+import { LmsEntregaExito, type LmsAvisoEntrega } from './LmsEntregaExito';
 import { LmsMisActividadBorrar } from './LmsMisActividadBorrar';
 import { LmsMisActividadEditar } from './LmsMisActividadEditar';
 import { LmsMisActividadFila } from './LmsMisActividadFila';
 import { LmsMisActividadVer } from './LmsMisActividadVer';
+import { encenderAvisoEntrega } from './lmsToast';
 import { lmsActividadDePanel, type LmsMisPanel } from './lmsMisPanel';
 import type { LmsActividadItem } from '../../types/lms';
 
@@ -17,18 +19,32 @@ type Props = Readonly<{
   saving: boolean;
   onEditar: (actividadId: number, body: FormData) => Promise<void>;
   onEliminar: (actividadId: number) => Promise<void>;
+  panelInicial?: LmsMisPanel | null;
+  onCerrarPanel?: () => void;
 }>;
 
+/**
+ * Ver y Editar llenan el espacio. Eliminar pide una segunda confirmación.
+ */
 export function LmsAulaMisActividades({
-  fichaId, actividades, saving, onEditar, onEliminar,
+  fichaId,
+  actividades,
+  saving,
+  onEditar,
+  onEliminar,
+  panelInicial = null,
+  onCerrarPanel,
 }: Props) {
-  const [panel, setPanel] = useState<LmsMisPanel | null>(null);
+  const [panel, setPanel] = useState<LmsMisPanel | null>(panelInicial);
   const [error, setError] = useState('');
+  const [aviso, setAviso] = useState<LmsAvisoEntrega | null>(null);
   const actual = lmsActividadDePanel(actividades, panel);
   const cerrar = () => {
     setPanel(null);
     setError('');
+    onCerrarPanel?.();
   };
+
   let vista: ReactNode;
   if (panel && actual && panel.modo === 'ver') {
     vista = <LmsMisActividadVer fichaId={fichaId} actividad={actual} onCerrar={cerrar} />;
@@ -42,6 +58,7 @@ export function LmsAulaMisActividades({
         onGuardar={async (body) => {
           await onEditar(actual.id, body);
           cerrar();
+          encenderAvisoEntrega('actualizada', setAviso);
         }}
       />
     );
@@ -58,6 +75,7 @@ export function LmsAulaMisActividades({
             try {
               await onEliminar(actual.id);
               cerrar();
+              encenderAvisoEntrega('eliminada', setAviso);
             } catch (cause: unknown) {
               setError(cause instanceof Error ? cause.message : 'No se pudo eliminar');
             }
@@ -87,5 +105,11 @@ export function LmsAulaMisActividades({
       </ul>
     );
   }
-  return vista;
+
+  return (
+    <>
+      <LmsEntregaExito visible={Boolean(aviso)} variante={aviso ?? 'exito'} />
+      {vista}
+    </>
+  );
 }

@@ -6,7 +6,6 @@
 import { useState } from 'react';
 import { DocumentPlusIcon } from '@heroicons/react/24/outline';
 import { LmsPublicarArchivos, LmsPublicarPlazo, LmsPublicarPuntos } from './LmsPublicarCampos';
-import { LmsPublicarVistaPrevia } from './LmsPublicarVistaPrevia';
 import {
   buildActividadFormData,
   errorActividadForm,
@@ -103,7 +102,6 @@ export function LmsPublicarActividadForm({ saving, onSubmit, initial }: Props) {
           <p className="text-xs text-gray-500">Los archivos actuales se conservan; aquí puede adjuntar más.</p>
         ) : null}
         <LmsPublicarArchivos files={files} onChange={setFiles} />
-        <LmsPublicarVistaPrevia files={files} />
         <LmsPublicarPlazo
           conPlazo={conPlazo}
           fecha={fecha}

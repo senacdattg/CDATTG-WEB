@@ -49,33 +49,36 @@ func newLmsAcceso() *lmsAcceso {
 }
 
 func (a *lmsAcceso) puedePublicar(user *models.User, fichaID uint, roles []string) bool {
-	if lmsEsStaff(roles) {
-		return true
-	}
-	return a.esInstructorDeFicha(user, fichaID)
+	ap, inst, asignado := a.contextoFicha(user, fichaID)
+	return lmsPuedePublicar(lmsEsStaff(roles), listaTieneRolInstructor(roles), inst, asignado, ap)
 }
 
 func (a *lmsAcceso) puedeEntrar(user *models.User, fichaID uint, roles []string) bool {
-	if a.puedePublicar(user, fichaID, roles) {
+	if lmsEsStaff(roles) {
 		return true
 	}
 	if user.PersonaID == nil {
 		return false
 	}
 	_, err := a.aprendizRepo.FindByPersonaIDAndFichaID(*user.PersonaID, fichaID)
-	return err == nil
+	if err == nil {
+		return true
+	}
+	_, _, asignado := a.contextoFicha(user, fichaID)
+	return asignado
 }
 
-func (a *lmsAcceso) esInstructorDeFicha(user *models.User, fichaID uint) bool {
+func (a *lmsAcceso) contextoFicha(user *models.User, fichaID uint) (*models.Aprendiz, *models.Instructor, bool) {
 	if user.PersonaID == nil {
-		return false
+		return nil, nil, false
 	}
+	ap, _ := a.aprendizRepo.FindByPersonaIDAndFichaID(*user.PersonaID, fichaID)
 	inst, err := a.instRepo.FindByPersonaID(*user.PersonaID)
 	if err != nil {
-		return false
+		return ap, nil, false
 	}
 	_, err = a.instFichaRepo.FindByFichaIDAndInstructorID(fichaID, inst.ID)
-	return err == nil
+	return ap, inst, err == nil
 }
 
 func (a *lmsAcceso) instructorID(user *models.User) *uint {

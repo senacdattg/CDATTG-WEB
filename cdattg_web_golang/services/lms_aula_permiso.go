@@ -1,11 +1,25 @@
-// Este archivo guarda el nombre del rol de instructor para el LMS.
-// Lo hice para no repetir el literal INSTRUCTOR en alta, baja y permisos.
-// Lo usan instructor_rol_sync y permisos_service.
+// Este archivo decide si el LMS deja publicar o solo ver el aula.
+// Lo hice porque el admin publicaba en cualquier ficha por el rol.
+// Ahora solo publica si está asignado como instructor de esa ficha.
+// Lo usa lmsAcceso.
 //
 // @author Cristian Deysdayr Jiménez
 package services
 
+import "github.com/sena/cdattg-web-golang/models"
+
 const rolInstructorCasbin = "INSTRUCTOR"
+
+// lmsPuedePublicar exige instructor activo asignado a esa ficha.
+// Admin o coordinador no publican por el rol: tienen que estar en la ficha.
+func lmsPuedePublicar(staff, rolInstructor bool, inst *models.Instructor, asignado bool, ap *models.Aprendiz) bool {
+	// Sin credencial de staff o de instructor no publica, aunque tenga ficha.
+	if !(staff || rolInstructor) {
+		return false
+	}
+	// La ficha manda: tiene que estar asignado como instructor activo de esa ficha.
+	return inst != nil && inst.Status && asignado && !aprendizActivoDeFicha(ap)
+}
 
 // listaTieneRolInstructor mira si INSTRUCTOR está en la lista de roles ya normalizada.
 func listaTieneRolInstructor(roles []string) bool {

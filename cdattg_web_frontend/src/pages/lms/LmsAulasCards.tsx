@@ -10,12 +10,17 @@ import { lmsPaths } from '../../routes/paths';
 import { aulaToFichaCard } from './lmsAulaToFicha';
 import type { LmsAulaListItem } from '../../types/lms';
 
-type Props = Readonly<{ aula: LmsAulaListItem; onVerFicha: (id: number) => void }>;
+type Props = Readonly<{
+  aula: LmsAulaListItem;
+  onVerFicha: (id: number) => void;
+  entrarTo?: string;
+  entrarLabel?: string;
+}>;
 
 /**
- * Card de ficha con acciones del aula LMS.
+ * Card de ficha con Ver más y el botón de entrar (aula o auditar).
  */
-export function LmsAulaCard({ aula, onVerFicha }: Props) {
+export function LmsAulaCard({ aula, onVerFicha, entrarTo, entrarLabel }: Props) {
   return (
     <FichaCaracterizacionCard
       ficha={aulaToFichaCard(aula)}
@@ -30,11 +35,11 @@ export function LmsAulaCard({ aula, onVerFicha }: Props) {
             Ver más
           </button>
           <Link
-            to={lmsPaths.aula(aula.ficha_id)}
+            to={entrarTo ?? lmsPaths.aula(aula.ficha_id)}
             className="inline-flex items-center gap-2 rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700"
           >
             <AcademicCapIcon className="h-4 w-4" aria-hidden />
-            Entrar al aula
+            {entrarLabel ?? 'Entrar al aula'}
           </Link>
         </nav>
       }

@@ -309,6 +309,7 @@ func SetupRouter() *gin.Engine {
 			{
 				lms.GET("/aulas", middleware.RequirePermission("lms", permVerLMS), lmsHandler.ListAulas)
 				lms.GET("/auditoria/personas", middleware.RequirePermission("lms", permVerLMS), lmsAuditoriaHandler.Buscar)
+				lms.GET("/auditoria/fichas/:fichaId/personas", middleware.RequirePermission("lms", permVerLMS), lmsAuditoriaHandler.ListarFicha)
 				lms.GET("/auditoria/personas/:personaId", middleware.RequirePermission("lms", permVerLMS), lmsAuditoriaHandler.Persona)
 				lms.GET("/auditoria/personas/:personaId/tipos/:tipo", middleware.RequirePermission("lms", permVerLMS), lmsAuditoriaHandler.Tipo)
 				lms.GET("/aulas/:fichaId", middleware.RequirePermission("lms", permEntrarAulaLMS), lmsHandler.GetAula)

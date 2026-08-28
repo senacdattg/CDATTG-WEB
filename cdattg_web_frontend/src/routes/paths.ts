@@ -157,6 +157,7 @@ export const lmsPaths = {
   actividad: (fichaId: number | string, actividadId: number | string) =>
     `/lms/aulas/${fichaId}/actividades/${actividadId}`,
   auditoria: '/lms/auditoria',
+  auditoriaFicha: (fichaId: number | string) => `/lms/auditoria/ficha/${fichaId}`,
   auditoriaPersona: (personaId: number | string) => `/lms/auditoria/${personaId}`,
   auditoriaTipo: (personaId: number | string, tipo: string) =>
     `/lms/auditoria/${personaId}/${encodeURIComponent(tipo)}`,

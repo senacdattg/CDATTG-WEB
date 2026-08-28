@@ -65,6 +65,14 @@ export const lmsRoutes: RouteObject = {
           },
         },
         {
+          path: 'ficha/:fichaId',
+          handle: { breadcrumb: { label: 'Ficha' } },
+          lazy: async () => {
+            const { LmsAuditoriaFichaPage } = await import('../../pages/lms/LmsAuditoriaFichaPage');
+            return { Component: LmsAuditoriaFichaPage };
+          },
+        },
+        {
           path: ':personaId',
           handle: { breadcrumb: { label: 'Carpeta' } },
           children: [

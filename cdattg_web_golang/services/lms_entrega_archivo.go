@@ -46,17 +46,18 @@ func guardarUnArchivoEntrega(
 	if header.Size > lmsMaxBytesArchivo {
 		return fmt.Errorf("el archivo %s supera 10 MB", header.Filename)
 	}
-	if !LmsExtensionPermitida(header.Filename) {
-		return fmt.Errorf("tipo de archivo no permitido: %s", header.Filename)
-	}
 	src, err := header.Open()
 	if err != nil {
 		return err
 	}
 	defer src.Close()
+	lector, errPdf := LectorPdfEntregaLMS(header.Filename, src)
+	if errPdf != nil {
+		return errPdf
+	}
 	nombre := fmt.Sprintf("%d_%d_%s", time.Now().UnixNano(), indice, SanitizarNombreCarpeta(header.Filename))
 	ruta := path.Join(dir, nombre)
-	if err := escribirArchivoLMS(ruta, src); err != nil {
+	if err := escribirArchivoLMS(ruta, lector); err != nil {
 		return err
 	}
 	uid := userID
@@ -64,7 +65,7 @@ func guardarUnArchivoEntrega(
 		EntregaID:      entregaID,
 		NombreOriginal: header.Filename,
 		RutaRelativa:   ruta,
-		Mime:           header.Header.Get("Content-Type"),
+		Mime:           "application/pdf",
 		Tamano:         header.Size,
 	}
 	row.UserCreateID = &uid

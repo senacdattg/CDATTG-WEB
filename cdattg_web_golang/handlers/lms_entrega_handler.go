@@ -100,7 +100,7 @@ func (h *LmsHandler) DescargarArchivoEntrega(c *gin.Context) {
 		c.JSON(lmsStatusFromErr(err), gin.H{"error": err.Error()})
 		return
 	}
-	c.FileAttachment(row.RutaRelativa, row.NombreOriginal)
+	servirArchivoLMS(c, row.RutaRelativa, row.NombreOriginal)
 }
 
 func parseFichaYActividad(c *gin.Context) (uint, uint, bool) {

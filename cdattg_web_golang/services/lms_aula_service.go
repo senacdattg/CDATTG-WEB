@@ -77,15 +77,20 @@ func (s *lmsAulaService) GetAula(userID, fichaID uint) (*dto.LmsAulaDetalle, err
 	if err != nil {
 		return nil, errors.New("ficha no encontrada")
 	}
+	puede := s.acceso.puedePublicar(user, fichaID, roles)
 	aps, _ := s.aprendices.FindByFichaID(fichaID)
+	if !puede {
+		aps = aprendicesActivosAula(aps)
+	}
 	acts, _ := s.actividades.FindByFichaID(fichaID)
-	item := mapFichaAAulaItem(*ficha, len(aps), s.acceso.puedePublicar(user, fichaID, roles))
+	item := mapFichaAAulaItem(*ficha, len(aps), puede)
 	det := &dto.LmsAulaDetalle{
 		FichaID:        item.FichaID,
 		NumeroFicha:    item.NumeroFicha,
 		NombrePrograma: item.NombrePrograma,
 		TipoFormacion:  item.TipoFormacion,
 		PuedePublicar:  item.PuedePublicar,
+		PuedeEntregar:  lmsAprendizPuedeEntregar(s.aprendizDeUsuario(user, fichaID)),
 		Aprendices:     mapAprendicesAula(aps),
 		Actividades:    mapActividadesAula(acts, s.nombresCreadores(acts)),
 	}
@@ -98,16 +103,4 @@ func (s *lmsAulaService) usuarioYRoles(userID uint) (*models.User, []string, err
 		return nil, nil, errors.New("usuario no encontrado")
 	}
 	return user, lmsUserRoles(userID), nil
-}
-
-func (s *lmsAulaService) fichasDeUsuario(user *models.User, roles []string) ([]models.FichaCaracterizacion, error) {
-	if lmsEsStaff(roles) {
-		list, _, err := s.fichas.FindAll(1, 200, nil, nil, "", "")
-		return list, err
-	}
-	if instID := s.acceso.instructorID(user); instID != nil {
-		list, _, err := s.fichas.FindAll(1, 200, nil, instID, "", "")
-		return list, err
-	}
-	return s.acceso.fichasDeAprendiz(user)
 }

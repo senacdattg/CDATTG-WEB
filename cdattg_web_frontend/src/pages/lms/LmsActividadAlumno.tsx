@@ -1,15 +1,17 @@
 /**
  * @module pages/lms/LmsActividadAlumno
- * @description Mi trabajo: adjuntar, entregar, deshacer y editar.
+ * @description Mi trabajo: adjuntar PDF, entregar, deshacer y vista previa.
  * @author Cristian Deysdayr Jiménez
  */
 import { useState } from 'react';
-import { PaperClipIcon } from '@heroicons/react/24/outline';
-import { downloadLmsEntregaArchivo } from '../../services/lmsApi';
 import { etiquetaEntregaAlumno } from './lmsActividadEstado';
 import { mensajeArchivosFueraDeLimite } from './lmsArchivoLimite';
-import { LmsEntregaExito } from './LmsEntregaExito';
-import { mostrarToastEntregaExitosa } from './lmsToast';
+import { mensajeArchivosNoPdf } from './lmsArchivoPdf';
+import { LmsArchivosEntrega } from './LmsArchivosEntrega';
+import { LmsActividadAlumnoAcciones } from './LmsActividadAlumnoAcciones';
+import { LmsEntregaExito, type LmsAvisoEntrega } from './LmsEntregaExito';
+import { LmsPdfLocal } from './LmsPdfLocal';
+import { encenderAvisoEntrega } from './lmsToast';
 import type { LmsActividadDetalle } from '../../types/lms';
 
 type Props = Readonly<{
@@ -21,47 +23,76 @@ type Props = Readonly<{
 }>;
 
 /**
- * Zona de entrega del aprendiz. Acciones apiladas en móvil.
+ * Zona de entrega del aprendiz. Solo PDF, con vista previa antes de enviar.
  */
 export function LmsActividadAlumno({ fichaId, detalle, saving, onEntregar, onDeshacer }: Props) {
   const [files, setFiles] = useState<File[]>([]);
   const [error, setError] = useState('');
-  const [exito, setExito] = useState(false);
+  const [aviso, setAviso] = useState<LmsAvisoEntrega | null>(null);
   const mia = detalle.mi_entrega;
   const entregada = Boolean(mia?.entregado_en);
   const puntos = detalle.calificacion_max ?? 100;
   const etiqueta = etiquetaEntregaAlumno(detalle.plazo_entrega);
+  const puedeEntregar = detalle.puede_entregar !== false;
+
+  function elegir(list: File[]) {
+    const msg = mensajeArchivosNoPdf(list) ?? mensajeArchivosFueraDeLimite(list);
+    if (msg) {
+      setError(msg);
+      setFiles([]);
+      return;
+    }
+    setError('');
+    setFiles(list);
+  }
 
   async function enviar() {
     setError('');
-    const limite = mensajeArchivosFueraDeLimite(files);
-    if (limite) {
-      setError(limite);
+    const msg = mensajeArchivosNoPdf(files) ?? mensajeArchivosFueraDeLimite(files);
+    if (msg) {
+      setError(msg);
       return;
     }
     const tieneAdjunto = files.length > 0 || Boolean(mia?.archivos?.length);
-    if (tieneAdjunto) {
-      try {
-        await onEntregar(files);
-        setFiles([]);
-        setExito(true);
-        mostrarToastEntregaExitosa();
-        globalThis.setTimeout(() => setExito(false), 1800);
-      } catch (cause: unknown) {
-        setError(cause instanceof Error ? cause.message : 'No se pudo entregar');
-      }
+    if (!tieneAdjunto) {
+      setError('Adjunte al menos un PDF');
       return;
     }
-    setError('Adjunte al menos un archivo');
+    try {
+      await onEntregar(files);
+      setFiles([]);
+      encenderAvisoEntrega('exito', setAviso);
+    } catch (cause: unknown) {
+      setError(cause instanceof Error ? cause.message : 'No se pudo entregar');
+    }
+  }
+
+  async function deshacer() {
+    setError('');
+    try {
+      await onDeshacer();
+      encenderAvisoEntrega('deshacer', setAviso);
+    } catch (cause: unknown) {
+      setError(cause instanceof Error ? cause.message : 'No se pudo deshacer la entrega');
+    }
   }
 
   return (
     <section className="space-y-4">
-      <LmsEntregaExito visible={exito} />
+      <LmsEntregaExito visible={aviso !== null} variante={aviso ?? 'exito'} />
       <header>
         <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Mi trabajo</h2>
       </header>
-      <LmsArchivosEntrega fichaId={fichaId} actividadId={detalle.id} mia={mia} />
+      <LmsArchivosEntrega
+        fichaId={fichaId}
+        actividadId={detalle.id}
+        entregaId={mia?.id ?? 0}
+        archivos={mia?.archivos}
+        vacio="Aún no ha adjuntado archivos."
+      />
+      {files.map((f) => (
+        <LmsPdfLocal key={`${f.name}-${f.size}-${f.lastModified}`} file={f} />
+      ))}
       {typeof mia?.calificacion === 'number' ? (
         <p className="text-sm font-medium text-gray-800 dark:text-gray-200">
           Nota: {mia.calificacion} / {puntos}
@@ -71,50 +102,16 @@ export function LmsActividadAlumno({ fichaId, detalle, saving, onEntregar, onDes
         <p className="text-sm text-gray-600 dark:text-gray-400">Comentario del instructor: {mia.comentario_instructor}</p>
       ) : null}
       {error ? <p className="text-sm text-red-600">{error}</p> : null}
-      {entregada ? (
-        <footer>
-          <button type="button" className="btn-secondary w-full sm:w-auto" disabled={saving} onClick={() => void onDeshacer()}>
-            Deshacer entrega
-          </button>
-        </footer>
-      ) : (
-        <footer className="flex flex-col gap-3 sm:flex-row sm:items-center">
-          <label className="btn-secondary inline-flex w-full cursor-pointer items-center justify-center gap-2 sm:w-auto">
-            <PaperClipIcon className="h-4 w-4" aria-hidden />
-            {mia?.archivos?.length ? 'Reemplazar o agregar archivo' : 'Adjuntar'}
-            <input type="file" multiple className="sr-only" onChange={(e) => setFiles(Array.from(e.target.files ?? []))} />
-          </label>
-          <button type="button" className="btn-primary w-full sm:w-auto" disabled={saving} onClick={() => void enviar()}>
-            {etiqueta}
-          </button>
-        </footer>
-      )}
-      {files.length > 0 ? <p className="text-xs text-gray-500">{files.map((f) => f.name).join(', ')}</p> : null}
+      <LmsActividadAlumnoAcciones
+        puedeEntregar={puedeEntregar}
+        entregada={entregada}
+        saving={saving}
+        etiqueta={etiqueta}
+        tieneArchivos={Boolean(mia?.archivos?.length)}
+        onElegir={elegir}
+        onEnviar={() => void enviar()}
+        onDeshacer={() => void deshacer()}
+      />
     </section>
   );
-}
-
-function LmsArchivosEntrega({
-  fichaId,
-  actividadId,
-  mia,
-}: Readonly<{ fichaId: number; actividadId: number; mia: LmsActividadDetalle['mi_entrega'] }>) {
-  if (mia?.archivos?.length) {
-    return (
-      <ul className="space-y-1 text-sm">
-        {mia.archivos.map((a) => (
-          <li key={a.id}>
-            <button
-              type="button"
-              className="text-primary-700 hover:underline dark:text-primary-300"
-              onClick={() => void downloadLmsEntregaArchivo(fichaId, actividadId, mia.id, a.id, a.nombre)}
-            >
-              {a.nombre}
-            </button>
-          </li>
-        ))}
-      </ul>
-    );
-  }
-  return <p className="text-sm italic text-gray-500">Aún no ha adjuntado archivos.</p>;
 }

@@ -317,12 +317,12 @@ func SetupRouter() *gin.Engine {
 				lms.POST("/aulas/:fichaId/actividades", middleware.RequirePermission("lms", permPublicarActividadLMS), lmsHandler.CreateActividad)
 				lms.PUT(routeLmsActividad, middleware.RequirePermission("lms", permPublicarActividadLMS), lmsHandler.UpdateActividad)
 				lms.DELETE(routeLmsActividad, middleware.RequirePermission("lms", permPublicarActividadLMS), lmsHandler.DeleteActividad)
-				lms.GET("/aulas/:fichaId/actividades/:actividadId", middleware.RequirePermission("lms", permEntrarAulaLMS), lmsHandler.GetActividad)
-				lms.POST("/aulas/:fichaId/actividades/:actividadId/entregas", middleware.RequirePermission("lms", permEntrarAulaLMS), lmsHandler.Entregar)
-				lms.POST("/aulas/:fichaId/actividades/:actividadId/entregas/deshacer", middleware.RequirePermission("lms", permEntrarAulaLMS), lmsHandler.DeshacerEntrega)
-				lms.PUT("/aulas/:fichaId/actividades/:actividadId/entregas/:entregaId/nota", middleware.RequirePermission("lms", permPublicarActividadLMS), lmsHandler.Calificar)
-				lms.GET("/aulas/:fichaId/actividades/:actividadId/archivos/:archivoId", middleware.RequirePermission("lms", permEntrarAulaLMS), lmsHandler.DescargarArchivo)
-				lms.GET("/aulas/:fichaId/actividades/:actividadId/entregas/:entregaId/archivos/:archivoId", middleware.RequirePermission("lms", permEntrarAulaLMS), lmsHandler.DescargarArchivoEntrega)
+				lms.GET(routeLmsActividad, middleware.RequirePermission("lms", permEntrarAulaLMS), lmsHandler.GetActividad)
+				lms.POST(routeLmsActividad+"/entregas", middleware.RequirePermission("lms", permEntrarAulaLMS), lmsHandler.Entregar)
+				lms.POST(routeLmsActividad+"/entregas/deshacer", middleware.RequirePermission("lms", permEntrarAulaLMS), lmsHandler.DeshacerEntrega)
+				lms.PUT(routeLmsActividad+"/entregas/:entregaId/nota", middleware.RequirePermission("lms", permPublicarActividadLMS), lmsHandler.Calificar)
+				lms.GET(routeLmsActividad+"/archivos/:archivoId", middleware.RequirePermission("lms", permEntrarAulaLMS), lmsHandler.DescargarArchivo)
+				lms.GET(routeLmsActividad+"/entregas/:entregaId/archivos/:archivoId", middleware.RequirePermission("lms", permEntrarAulaLMS), lmsHandler.DescargarArchivoEntrega)
 			}
 
 			// Complementarios (FPI): credenciales SofiaPlus por operador + verificación de aspirantes

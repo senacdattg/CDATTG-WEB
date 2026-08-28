@@ -4,7 +4,7 @@
  * @author Cristian Deysdayr Jiménez
  */
 import { useState } from 'react';
-import { downloadLmsEntregaArchivo } from '../../services/lmsApi';
+import { LmsArchivosEntrega } from './LmsArchivosEntrega';
 import { labelEstadoEntrega } from './lmsActividadEstado';
 import type { LmsEntregaItem } from '../../types/lms';
 
@@ -50,23 +50,13 @@ export function LmsEntregaFila({ fichaId, actividadId, puntos, entrega, saving, 
         <p className="text-xs text-gray-500">{entrega.documento || '—'}</p>
         <p className="text-sm text-gray-600 dark:text-gray-400">{labelEstadoEntrega(entrega.entregado_en, entrega.tardia)}</p>
       </header>
-      {entrega.archivos?.length ? (
-        <ul className="space-y-1">
-          {entrega.archivos.map((a) => (
-            <li key={a.id}>
-              <button
-                type="button"
-                className="text-sm text-primary-700 hover:underline dark:text-primary-300"
-                onClick={() => void downloadLmsEntregaArchivo(fichaId, actividadId, entrega.id, a.id, a.nombre)}
-              >
-                {a.nombre}
-              </button>
-            </li>
-          ))}
-        </ul>
-      ) : (
-        <p className="text-sm italic text-gray-500">Sin archivos.</p>
-      )}
+      <LmsArchivosEntrega
+        fichaId={fichaId}
+        actividadId={actividadId}
+        entregaId={entrega.id}
+        archivos={entrega.archivos}
+        vacio="Sin archivos."
+      />
       {entrego ? (
         <form
           className="grid gap-3 sm:grid-cols-2"

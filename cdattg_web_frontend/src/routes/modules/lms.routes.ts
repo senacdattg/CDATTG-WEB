@@ -64,6 +64,14 @@ export const lmsRoutes: RouteObject = {
             return { Component: LmsAuditoriaPage };
           },
         },
+        {
+          path: ':personaId',
+          handle: { breadcrumb: { label: 'Carpeta' } },
+          lazy: async () => {
+            const { LmsAuditoriaPersonaPage } = await import('../../pages/lms/LmsAuditoriaPersonaPage');
+            return { Component: LmsAuditoriaPersonaPage };
+          },
+        },
       ],
     },
   ],

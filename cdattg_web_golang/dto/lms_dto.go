@@ -16,13 +16,14 @@ type LmsAulaListItem struct {
 	Status                   bool   `json:"status"`
 }
 
-// LmsAulaDetalle aula de una ficha (tablón, trabajos, aprendices).
+// LmsAulaDetalle aula de una ficha (pendientes, trabajos, aprendices).
 type LmsAulaDetalle struct {
 	FichaID        uint               `json:"ficha_id"`
 	NumeroFicha    string             `json:"numero_ficha"`
 	NombrePrograma string             `json:"nombre_programa"`
 	TipoFormacion  string             `json:"tipo_formacion"`
 	PuedePublicar  bool               `json:"puede_publicar"`
+	PuedeEntregar  bool               `json:"puede_entregar"`
 	Aprendices     []LmsAulaAprendiz  `json:"aprendices"`
 	Actividades    []LmsActividadItem `json:"actividades"`
 }

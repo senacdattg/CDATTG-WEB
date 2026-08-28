@@ -36,6 +36,7 @@ type LmsActividadRequest struct {
 type LmsActividadDetalle struct {
 	LmsActividadItem
 	PuedePublicar bool             `json:"puede_publicar"`
+	PuedeEntregar bool             `json:"puede_entregar"`
 	MiEntrega     *LmsEntregaItem  `json:"mi_entrega"`
 	Entregas      []LmsEntregaItem `json:"entregas"`
 }

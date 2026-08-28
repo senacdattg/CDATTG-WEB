@@ -63,6 +63,7 @@ export interface LmsEntregaItem {
 
 export interface LmsActividadDetalle extends LmsActividadItem {
   puede_publicar: boolean;
+  puede_entregar?: boolean;
   mi_entrega: LmsEntregaItem | null;
   entregas: LmsEntregaItem[];
 }
@@ -73,6 +74,7 @@ export interface LmsAulaDetalle {
   nombre_programa: string;
   tipo_formacion: string;
   puede_publicar: boolean;
+  puede_entregar?: boolean;
   aprendices: LmsAulaAprendiz[];
   actividades: LmsActividadItem[];
 }

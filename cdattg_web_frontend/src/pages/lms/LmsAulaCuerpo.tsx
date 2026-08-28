@@ -12,6 +12,7 @@ import { LmsAulaTablon } from './LmsAulaTablon';
 import { LmsAulaTrabajos } from './LmsAulaTrabajos';
 import { LmsAulaAprendices } from './LmsAulaAprendices';
 import { LmsPublicarActividadForm } from './LmsPublicarActividadForm';
+import { LmsSoloConsultaAviso } from './LmsSoloConsultaAviso';
 import type { LmsAulaDetalle } from '../../types/lms';
 
 type Props = Readonly<{
@@ -31,11 +32,16 @@ export function LmsAulaCuerpo({ aula, page }: Props) {
         <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Ficha {aula.numero_ficha}</h1>
         <p className="mt-1 text-gray-600 dark:text-gray-400">{aula.nombre_programa || '—'}</p>
       </header>
+      {!aula.puede_publicar && aula.puede_entregar === false ? (
+        <LmsSoloConsultaAviso>
+          Solo consulta: puede ver el aula y lo que ya entregó. No puede subir archivos.
+        </LmsSoloConsultaAviso>
+      ) : null}
       <LmsAulaTabs tab={tab} onTab={setTab} puedePublicar={aula.puede_publicar} />
       {tab === LMS_TABS.tablon ? <LmsAulaTablon fichaId={aula.ficha_id} actividades={aula.actividades} /> : null}
       {tab === LMS_TABS.trabajos ? <LmsAulaTrabajos fichaId={aula.ficha_id} actividades={aula.actividades} /> : null}
       {tab === LMS_TABS.aprendices ? (
-        <LmsAulaAprendices fichaId={aula.ficha_id} aprendices={aula.aprendices} />
+        <LmsAulaAprendices fichaId={aula.ficha_id} aprendices={aula.aprendices} soloActivos={!aula.puede_publicar} />
       ) : null}
       {tab === LMS_TABS.publicar && aula.puede_publicar ? (
         <LmsPublicarActividadForm saving={page.saving} onSubmit={page.publicar} />

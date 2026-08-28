@@ -4,6 +4,7 @@
  * @author Cristian Deysdayr Jiménez
  */
 import { LmsArchivosEntrega } from './LmsArchivosEntrega';
+import { LmsAuditoriaNota } from './LmsAuditoriaNota';
 import type { LmsAuditoriaFichaItem } from '../../types/lmsAuditoria';
 
 type Props = Readonly<{ ficha: LmsAuditoriaFichaItem }>;
@@ -22,6 +23,7 @@ export function LmsAuditoriaFichaBloque({ ficha }: Props) {
           {ficha.actividades.map((a) => (
             <li key={a.entrega_id}>
               <h3 className="text-sm font-medium text-gray-800 dark:text-gray-100">{a.titulo}</h3>
+              <LmsAuditoriaNota calificacion={a.calificacion} comentario={a.comentario_instructor} />
               <LmsArchivosEntrega
                 fichaId={a.ficha_id}
                 actividadId={a.actividad_id}

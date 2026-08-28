@@ -53,5 +53,19 @@ export const lmsRoutes: RouteObject = {
         },
       ],
     },
+    {
+      path: 'auditoria',
+      handle: { breadcrumb: { label: 'Auditoría', to: lmsPaths.auditoria } },
+      children: [
+        {
+          index: true,
+          lazy: async () => {
+            const { LmsAuditoriaPage } = await import('../../pages/lms/LmsAuditoriaPage');
+            return { Component: LmsAuditoriaPage };
+          },
+        },
+      ],
+    },
   ],
 };
+

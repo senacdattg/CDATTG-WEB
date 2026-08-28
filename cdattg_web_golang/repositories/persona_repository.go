@@ -81,7 +81,8 @@ func (r *personaRepository) FindAll(page, pageSize int, search string) ([]models
 	if err := base.Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
-	q := applyPersonaSearch(r.db, search)
+	q := applyPersonaSearch(r.db.Model(&models.Persona{}), search).
+		Order("primer_apellido ASC, primer_nombre ASC, id ASC")
 	if err := q.Offset(offset).Limit(pageSize).Find(&personas).Error; err != nil {
 		return nil, 0, err
 	}

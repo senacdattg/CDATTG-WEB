@@ -204,6 +204,14 @@ export const SIDEBAR_MANIFEST: SidebarManifestItem[] = [
     rolesRequired: ['SUPER ADMINISTRADOR', 'ADMINISTRADOR', 'COORDINADOR', 'INSTRUCTOR', 'APRENDIZ'],
     iconKey: 'lms',
   },
+  {
+    section: 'LMS',
+    path: lmsPaths.auditoria,
+    label: 'Auditoría',
+    permission: 'VER LMS',
+    rolesRequired: ['SUPER ADMINISTRADOR', 'ADMINISTRADOR', 'COORDINADOR', 'INSTRUCTOR'],
+    iconKey: 'lms',
+  },
 
   // —— Bienestar ——
   {

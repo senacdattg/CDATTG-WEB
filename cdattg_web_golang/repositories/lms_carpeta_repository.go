@@ -12,6 +12,8 @@ type LmsCarpetaRepository interface {
 	CreatePersona(row *models.LmsCarpetaPersona) error
 	FindFicha(personaID, fichaID uint) (*models.LmsCarpetaFicha, error)
 	CreateFicha(row *models.LmsCarpetaFicha) error
+	SearchPersonas(q string, limite int, soloFichaIDs []uint) ([]models.LmsCarpetaPersona, error)
+	ListFichasByPersona(personaID uint) ([]models.LmsCarpetaFicha, error)
 }
 
 type lmsCarpetaRepository struct {
@@ -25,7 +27,7 @@ func NewLmsCarpetaRepository() LmsCarpetaRepository {
 
 func (r *lmsCarpetaRepository) FindPersonaByPersonaID(personaID uint) (*models.LmsCarpetaPersona, error) {
 	var row models.LmsCarpetaPersona
-	if err := r.db.Where("persona_id = ?", personaID).First(&row).Error; err != nil {
+	if err := r.db.Preload("Persona").Where("persona_id = ?", personaID).First(&row).Error; err != nil {
 		return nil, err
 	}
 	return &row, nil

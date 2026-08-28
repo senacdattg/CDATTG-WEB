@@ -85,6 +85,7 @@ func SetupRouter() *gin.Engine {
 	vigilanciaAccesoHandler := handlers.NewVigilanciaAccesoHandler()
 	complementariosHandler := handlers.NewComplementariosHandler()
 	lmsHandler := handlers.NewLmsHandler()
+	lmsAuditoriaHandler := handlers.NewLmsAuditoriaHandler()
 
 	// Rutas públicas
 	api := r.Group("/api")
@@ -307,6 +308,7 @@ func SetupRouter() *gin.Engine {
 			lms := protected.Group("/lms")
 			{
 				lms.GET("/aulas", middleware.RequirePermission("lms", permVerLMS), lmsHandler.ListAulas)
+				lms.GET("/auditoria/personas", middleware.RequirePermission("lms", permVerLMS), lmsAuditoriaHandler.Buscar)
 				lms.GET("/aulas/:fichaId", middleware.RequirePermission("lms", permEntrarAulaLMS), lmsHandler.GetAula)
 				lms.POST("/aulas/:fichaId/actividades", middleware.RequirePermission("lms", permPublicarActividadLMS), lmsHandler.CreateActividad)
 				lms.PUT("/aulas/:fichaId/actividades/:actividadId", middleware.RequirePermission("lms", permPublicarActividadLMS), lmsHandler.UpdateActividad)

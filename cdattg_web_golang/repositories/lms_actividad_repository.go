@@ -14,6 +14,7 @@ type LmsActividadRepository interface {
 	Update(row *models.LmsActividad) error
 	CreateArchivo(row *models.LmsActividadArchivo) error
 	FindArchivo(fichaID, actividadID, archivoID uint) (*models.LmsActividadArchivo, error)
+	DeleteConRelaciones(actividadID uint) error
 }
 
 type lmsActividadRepository struct {

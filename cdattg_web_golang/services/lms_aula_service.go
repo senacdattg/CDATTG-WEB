@@ -15,6 +15,7 @@ type LmsAulaService interface {
 	GetAula(userID, fichaID uint) (*dto.LmsAulaDetalle, error)
 	CreateActividad(userID, fichaID uint, req dto.LmsActividadRequest, files []*multipart.FileHeader) (*dto.LmsActividadItem, error)
 	UpdateActividad(userID, fichaID, actividadID uint, req dto.LmsActividadRequest, files []*multipart.FileHeader) (*dto.LmsActividadItem, error)
+	DeleteActividad(userID, fichaID, actividadID uint) error
 	DescargarArchivo(userID, fichaID, actividadID, archivoID uint) (*models.LmsActividadArchivo, error)
 	GetActividad(userID, fichaID, actividadID uint) (*dto.LmsActividadDetalle, error)
 	Entregar(userID, fichaID, actividadID uint, files []*multipart.FileHeader) (*dto.LmsEntregaItem, error)

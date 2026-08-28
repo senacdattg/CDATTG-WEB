@@ -38,6 +38,7 @@ const (
 	permVerLMS                 = "VER LMS"
 	permEntrarAulaLMS          = "ENTRAR AULA"
 	permPublicarActividadLMS   = "PUBLICAR ACTIVIDAD"
+	routeLmsActividad          = "/aulas/:fichaId/actividades/:actividadId"
 )
 
 func SetupRouter() *gin.Engine {
@@ -314,7 +315,8 @@ func SetupRouter() *gin.Engine {
 				lms.GET("/auditoria/personas/:personaId/tipos/:tipo", middleware.RequirePermission("lms", permVerLMS), lmsAuditoriaHandler.Tipo)
 				lms.GET("/aulas/:fichaId", middleware.RequirePermission("lms", permEntrarAulaLMS), lmsHandler.GetAula)
 				lms.POST("/aulas/:fichaId/actividades", middleware.RequirePermission("lms", permPublicarActividadLMS), lmsHandler.CreateActividad)
-				lms.PUT("/aulas/:fichaId/actividades/:actividadId", middleware.RequirePermission("lms", permPublicarActividadLMS), lmsHandler.UpdateActividad)
+				lms.PUT(routeLmsActividad, middleware.RequirePermission("lms", permPublicarActividadLMS), lmsHandler.UpdateActividad)
+				lms.DELETE(routeLmsActividad, middleware.RequirePermission("lms", permPublicarActividadLMS), lmsHandler.DeleteActividad)
 				lms.GET("/aulas/:fichaId/actividades/:actividadId", middleware.RequirePermission("lms", permEntrarAulaLMS), lmsHandler.GetActividad)
 				lms.POST("/aulas/:fichaId/actividades/:actividadId/entregas", middleware.RequirePermission("lms", permEntrarAulaLMS), lmsHandler.Entregar)
 				lms.POST("/aulas/:fichaId/actividades/:actividadId/entregas/deshacer", middleware.RequirePermission("lms", permEntrarAulaLMS), lmsHandler.DeshacerEntrega)

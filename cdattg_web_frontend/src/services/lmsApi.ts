@@ -53,6 +53,11 @@ export async function updateLmsActividad(
   return res.data;
 }
 
+/** Borra una publicación propia y sus entregas. */
+export async function deleteLmsActividad(fichaId: number, actividadId: number): Promise<void> {
+  await http.delete(`/lms/aulas/${fichaId}/actividades/${actividadId}`);
+}
+
 /** Detalle de actividad (alumno o instructor). */
 export async function fetchLmsActividad(fichaId: number, actividadId: number): Promise<LmsActividadDetalle> {
   const res = await http.get<LmsActividadDetalle>(`/lms/aulas/${fichaId}/actividades/${actividadId}`);

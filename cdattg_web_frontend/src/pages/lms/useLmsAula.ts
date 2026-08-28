@@ -1,10 +1,10 @@
 /**
  * @module pages/lms/useLmsAula
- * @description Carga el detalle de un aula y permite publicar actividad.
+ * @description Carga el aula y permite publicar, editar o eliminar actividad.
  * @author Cristian Deysdayr Jiménez
  */
 import { useCallback, useEffect, useState } from 'react';
-import { createLmsActividad, fetchLmsAula } from '../../services/lmsApi';
+import { createLmsActividad, deleteLmsActividad, fetchLmsAula, updateLmsActividad } from '../../services/lmsApi';
 import { axiosErrorMessage } from '../../utils/httpError';
 import type { LmsAulaDetalle } from '../../types/lms';
 
@@ -56,5 +56,37 @@ export function useLmsAula(fichaId: number | null) {
     [fichaId, recargar],
   );
 
-  return { aula, loading, error, saving, recargar, publicar };
+  const editar = useCallback(
+    async (actividadId: number, body: FormData) => {
+      if (!fichaId) return;
+      setSaving(true);
+      try {
+        await updateLmsActividad(fichaId, actividadId, body);
+        await recargar();
+      } catch (cause: unknown) {
+        throw new Error(axiosErrorMessage(cause, 'No se pudo guardar'));
+      } finally {
+        setSaving(false);
+      }
+    },
+    [fichaId, recargar],
+  );
+
+  const eliminar = useCallback(
+    async (actividadId: number) => {
+      if (!fichaId) return;
+      setSaving(true);
+      try {
+        await deleteLmsActividad(fichaId, actividadId);
+        await recargar();
+      } catch (cause: unknown) {
+        throw new Error(axiosErrorMessage(cause, 'No se pudo eliminar'));
+      } finally {
+        setSaving(false);
+      }
+    },
+    [fichaId, recargar],
+  );
+
+  return { aula, loading, error, saving, recargar, publicar, editar, eliminar };
 }

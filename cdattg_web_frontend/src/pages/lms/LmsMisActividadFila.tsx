@@ -21,7 +21,7 @@ export function LmsMisActividadFila({ actividad, onVer, onEditar, onEliminar }: 
     <article className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-600 dark:bg-gray-800 sm:p-5">
       <h3 className="break-words text-lg font-semibold text-gray-900 dark:text-white">{actividad.titulo}</h3>
       <p className="mt-1 text-sm text-gray-500">
-        {actividad.plazo_entrega ? `Plazo: ${formatFechaHoraVista(actividad.plazo_entrega)}` : ''}
+        {actividad.plazo_entrega ? `Plazo: ${formatFechaHoraVista(actividad.plazo_entrega)}` : 'Sin fecha de vencimiento'}
       </p>
       <p className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-3">
         <button type="button" className="btn-secondary w-full" onClick={onVer}>

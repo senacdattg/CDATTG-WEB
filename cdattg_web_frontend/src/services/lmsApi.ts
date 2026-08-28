@@ -85,9 +85,36 @@ export async function calificarLmsEntrega(
   return res.data;
 }
 
+/** Trae un archivo autenticado como PDF para verlo en el navegador. */
+async function blobPdfDeUrl(url: string): Promise<Blob> {
+  const res = await http.get<Blob>(url, { responseType: 'blob' });
+  return new Blob([res.data], { type: 'application/pdf' });
+}
+
 /** Descarga adjunto de la publicación. */
 export async function downloadLmsArchivo(fichaId: number, actividadId: number, archivoId: number, nombre: string) {
   return downloadBlob(`/lms/aulas/${fichaId}/actividades/${actividadId}/archivos/${archivoId}`, nombre);
+}
+
+/** PDF de una entrega para vista previa (no fuerza descarga). */
+export async function blobLmsEntregaArchivo(
+  fichaId: number,
+  actividadId: number,
+  entregaId: number,
+  archivoId: number,
+): Promise<Blob> {
+  return blobPdfDeUrl(
+    `/lms/aulas/${fichaId}/actividades/${actividadId}/entregas/${entregaId}/archivos/${archivoId}`,
+  );
+}
+
+/** PDF de un adjunto de la publicación (crear/editar/ver). */
+export async function blobLmsActividadArchivo(
+  fichaId: number,
+  actividadId: number,
+  archivoId: number,
+): Promise<Blob> {
+  return blobPdfDeUrl(`/lms/aulas/${fichaId}/actividades/${actividadId}/archivos/${archivoId}`);
 }
 
 /** Descarga adjunto de una entrega. */

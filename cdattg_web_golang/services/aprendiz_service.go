@@ -64,6 +64,9 @@ func (s *aprendizService) Create(req dto.AprendizRequest) (*dto.AprendizResponse
 	if _, err := s.fichaRepo.FindByID(req.FichaCaracterizacionID); err != nil {
 		return nil, errors.New("ficha no encontrada")
 	}
+	if err := exigirPersonaNoInstructorDeFicha(req.PersonaID, req.FichaCaracterizacionID, repositories.NewInstructorRepository(), repositories.NewInstructorFichaRepository()); err != nil {
+		return nil, err
+	}
 	exist, _ := s.repo.FindByPersonaIDAndFichaID(req.PersonaID, req.FichaCaracterizacionID)
 	if exist != nil {
 		return nil, errors.New("esta persona ya está asignada como aprendiz en esta ficha")
@@ -95,6 +98,11 @@ func (s *aprendizService) Update(id uint, req dto.AprendizRequest) (*dto.Aprendi
 	}
 	if req.FichaCaracterizacionID > 0 {
 		a.FichaCaracterizacionID = req.FichaCaracterizacionID
+	}
+	if a.Estado {
+		if err := exigirPersonaNoInstructorDeFicha(a.PersonaID, a.FichaCaracterizacionID, repositories.NewInstructorRepository(), repositories.NewInstructorFichaRepository()); err != nil {
+			return nil, err
+		}
 	}
 	if err := s.repo.Update(a); err != nil {
 		return nil, fmt.Errorf("error al actualizar aprendiz: %w", err)

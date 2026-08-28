@@ -17,6 +17,7 @@ import (
 const (
 	msgFichaNoEncontrada           = "ficha no encontrada"
 	errFmtSyncInstructorLider      = "error al sincronizar instructor líder: %w"
+	errFmtInstructor               = "instructor %d: %w"
 	msgInstructorLiderObligatorio  = "debe asignar un instructor líder a la ficha"
 	ambientePorDefinir             = "POR DEFINIR"
 )
@@ -307,6 +308,10 @@ func (s *fichaService) finalizeFichaCreate(f *models.FichaCaracterizacion, req d
 		_ = s.fichaRepo.Delete(f.ID)
 		return err
 	}
+	if err := exigirInstructorIDNoAprendizDeFicha(*f.InstructorID, f.ID, instRepo, s.aprendizRepo); err != nil {
+		_ = s.fichaRepo.Delete(f.ID)
+		return err
+	}
 	if err := SincronizarInstructorLiderEnPivote(f, s.instFichaRepo); err != nil {
 		return fmt.Errorf(errFmtSyncInstructorLider, err)
 	}
@@ -366,6 +371,11 @@ func (s *fichaService) Update(id uint, req dto.FichaCaracterizacionRequest) (*dt
 	f.TotalHoras = req.TotalHoras
 	if req.Status != nil {
 		f.Status = *req.Status
+	}
+	if f.InstructorID != nil && *f.InstructorID > 0 {
+		if err := exigirInstructorIDNoAprendizDeFicha(*f.InstructorID, f.ID, repositories.NewInstructorRepository(), s.aprendizRepo); err != nil {
+			return nil, err
+		}
 	}
 	if err := s.fichaRepo.Update(f); err != nil {
 		return nil, fmt.Errorf("error al actualizar ficha: %w", err)
@@ -429,7 +439,10 @@ func (s *fichaService) AsignarInstructores(fichaID uint, req dto.AsignarInstruct
 	for _, it := range req.Instructores {
 		esInstructorLider := it.InstructorID == req.InstructorLiderID
 		if err := ValidarAsignacionInstructor(it.InstructorID, fichaID, esInstructorLider, instRepo, s.fichaRepo, s.instFichaRepo); err != nil {
-			return fmt.Errorf("instructor %d: %w", it.InstructorID, err)
+			return fmt.Errorf(errFmtInstructor, it.InstructorID, err)
+		}
+		if err := exigirInstructorIDNoAprendizDeFicha(it.InstructorID, fichaID, instRepo, s.aprendizRepo); err != nil {
+			return fmt.Errorf(errFmtInstructor, it.InstructorID, err)
 		}
 	}
 	// Actualizar instructor líder de la ficha
@@ -464,7 +477,7 @@ func (s *fichaService) persistirAsignacionInstructor(
 	// Sin días: permitido mientras coordinación no cargue programación (requerimiento dirección).
 	if len(diasIDs) > 0 {
 		if err := s.horarioSvc.ValidarDiasSubsetFicha(fichaID, diasIDs); err != nil {
-			return fmt.Errorf("instructor %d: %w", it.InstructorID, err)
+			return fmt.Errorf(errFmtInstructor, it.InstructorID, err)
 		}
 		if err := s.horarioSvc.ValidarColisionAlAsignar(it.InstructorID, fichaID, diasIDs, fechaInicio, fechaFin, true); err != nil {
 			return err
@@ -799,6 +812,9 @@ func (s *fichaService) AsignarAprendices(fichaID uint, personas []uint) error {
 		return errors.New(msgFichaNoEncontrada)
 	}
 	for _, personaID := range personas {
+		if err := exigirPersonaNoInstructorDeFicha(personaID, fichaID, repositories.NewInstructorRepository(), s.instFichaRepo); err != nil {
+			return err
+		}
 		a, err := s.aprendizRepo.FindByPersonaIDAndFichaID(personaID, fichaID)
 		if err == nil {
 			a.Estado = true

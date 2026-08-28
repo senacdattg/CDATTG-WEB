@@ -57,15 +57,8 @@ func (a *lmsAcceso) puedeEntrar(user *models.User, fichaID uint, roles []string)
 	if lmsEsStaff(roles) {
 		return true
 	}
-	if user.PersonaID == nil {
-		return false
-	}
-	_, err := a.aprendizRepo.FindByPersonaIDAndFichaID(*user.PersonaID, fichaID)
-	if err == nil {
-		return true
-	}
-	_, _, asignado := a.contextoFicha(user, fichaID)
-	return asignado
+	ap, _, asignado := a.contextoFicha(user, fichaID)
+	return lmsPuedeEntrar(false, asignado, ap != nil)
 }
 
 func (a *lmsAcceso) contextoFicha(user *models.User, fichaID uint) (*models.Aprendiz, *models.Instructor, bool) {

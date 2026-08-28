@@ -52,6 +52,15 @@ func TestLmsPuedePublicarAprendizMismaFicha(t *testing.T) {
 	}
 }
 
+func TestLmsPuedeEntrarConsulta(t *testing.T) {
+	if !lmsPuedeEntrar(false, true, false) {
+		t.Fatal("asignado inactivo entra a ver")
+	}
+	if lmsPuedeEntrar(false, false, false) {
+		t.Fatal("sin vínculo no entra")
+	}
+}
+
 func TestListaTieneRolInstructor(t *testing.T) {
 	if listaTieneRolInstructor([]string{"APRENDIZ"}) {
 		t.Fatal("no tiene INSTRUCTOR")

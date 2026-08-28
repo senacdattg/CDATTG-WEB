@@ -21,6 +21,11 @@ func lmsPuedePublicar(staff, rolInstructor bool, inst *models.Instructor, asigna
 	return inst != nil && inst.Status && asignado && !aprendizActivoDeFicha(ap)
 }
 
+// lmsPuedeEntrar staff, asignación a la ficha (aunque esté inactivo) o matrícula de aprendiz.
+func lmsPuedeEntrar(staff, asignadoAFicha, esAprendizFicha bool) bool {
+	return staff || asignadoAFicha || esAprendizFicha
+}
+
 // listaTieneRolInstructor mira si INSTRUCTOR está en la lista de roles ya normalizada.
 func listaTieneRolInstructor(roles []string) bool {
 	return lmsTieneRol(roles, rolInstructorCasbin)

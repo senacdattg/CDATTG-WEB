@@ -222,7 +222,7 @@ func RequirePermission(obj, act string) gin.HandlerFunc {
 			c.Next()
 			return
 		}
-		if tryFallbackAsistenciaInstructor(c, obj, act) {
+		if tryFallbackLmsConsulta(c, obj, act) {
 			c.Next()
 			return
 		}

@@ -3,8 +3,6 @@
  * @description Plazo de entrega: vencida, por vencer o en plazo.
  * @author Cristian Deysdayr Jiménez
  */
-import type { LmsActividadItem } from '../../types/lms';
-
 export const HORAS_POR_VENCER = 72;
 
 export type LmsEstadoPlazo = 'sin_plazo' | 'vencida' | 'por_vencer' | 'en_plazo';
@@ -26,24 +24,15 @@ export function estadoPlazo(plazo: string | null | undefined, now = new Date()):
 }
 
 /**
- * Trabajos de clase: actividades con plazo (vencidas o por vencer primero).
- * @param {LmsActividadItem[]} actividades Publicaciones del aula.
- */
-export function actividadesTrabajoClase(actividades: LmsActividadItem[], now = new Date()): LmsActividadItem[] {
-  const conPlazo = actividades.filter((a) => estadoPlazo(a.plazo_entrega, now) !== 'sin_plazo');
-  const peso: Record<LmsEstadoPlazo, number> = { vencida: 0, por_vencer: 1, en_plazo: 2, sin_plazo: 3 };
-  return [...conPlazo].sort((a, b) => peso[estadoPlazo(a.plazo_entrega, now)] - peso[estadoPlazo(b.plazo_entrega, now)]);
-}
-
-/**
  * Etiqueta corta del estado de plazo.
  * @param {LmsEstadoPlazo} estado Clasificación.
+ * @returns {string} Etiqueta visible.
  */
 export function labelEstadoPlazo(estado: LmsEstadoPlazo): string {
   if (estado === 'vencida') return 'Vencida';
   if (estado === 'por_vencer') return 'Por vencer';
   if (estado === 'en_plazo') return 'En plazo';
-  return '';
+  return 'Sin fecha de vencimiento';
 }
 
 /**

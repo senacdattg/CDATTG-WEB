@@ -1,27 +1,12 @@
 /**
  * @module pages/lms/lmsActividadEstado.test
- * @description Estados de plazo y filtro de trabajos de clase.
+ * @description Estados de plazo y textos de entrega.
  * @author Cristian Deysdayr Jiménez
  */
 import { describe, expect, it } from 'vitest';
-import { actividadesTrabajoClase, estadoPlazo, etiquetaEntregaAlumno, labelEstadoEntrega, labelEstadoPlazo } from './lmsActividadEstado';
-import type { LmsActividadItem } from '../../types/lms';
+import { estadoPlazo, etiquetaEntregaAlumno, labelEstadoEntrega, labelEstadoPlazo } from './lmsActividadEstado';
 
 const now = new Date('2026-08-26T12:00:00');
-
-function item(id: number, plazo: string | null): LmsActividadItem {
-  return {
-    id,
-    tipo: 'TABLON',
-    titulo: `A${id}`,
-    cuerpo: '',
-    habilita_carga: Boolean(plazo),
-    calificacion_max: null,
-    plazo_entrega: plazo,
-    creado_en: '',
-    archivos: [],
-  };
-}
 
 describe('estadoPlazo', () => {
   it('marca vencida, por vencer y sin plazo', () => {
@@ -33,7 +18,8 @@ describe('estadoPlazo', () => {
 
   it('etiqueta estados visibles', () => {
     expect(labelEstadoPlazo('vencida')).toBe('Vencida');
-    expect(labelEstadoPlazo('sin_plazo')).toBe('');
+    expect(labelEstadoPlazo('sin_plazo')).toBe('Sin fecha de vencimiento');
+    expect(labelEstadoPlazo('por_vencer')).toBe('Por vencer');
   });
 });
 
@@ -49,15 +35,5 @@ describe('labelEstadoEntrega', () => {
     expect(labelEstadoEntrega(null, false)).toBe('No entregada');
     expect(labelEstadoEntrega('2026-08-21T10:00:00', false)).toBe('Entregada');
     expect(labelEstadoEntrega('2026-08-21T10:00:00', true)).toBe('Entregada con retraso');
-  });
-});
-
-describe('actividadesTrabajoClase', () => {
-  it('omite sin plazo y ordena vencidas primero', () => {
-    const list = actividadesTrabajoClase(
-      [item(1, '2026-09-10T10:00:00'), item(2, null), item(3, '2026-08-20T10:00:00')],
-      now,
-    );
-    expect(list.map((a) => a.id)).toEqual([3, 1]);
   });
 });

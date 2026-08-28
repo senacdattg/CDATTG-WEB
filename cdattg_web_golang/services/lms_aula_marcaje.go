@@ -52,11 +52,3 @@ func (s *lmsAulaService) idsEntregadasDeAprendiz(
 	}
 	return out
 }
-
-func idsDeActividades(acts []models.LmsActividad) []uint {
-	ids := make([]uint, len(acts))
-	for i := range acts {
-		ids[i] = acts[i].ID
-	}
-	return ids
-}

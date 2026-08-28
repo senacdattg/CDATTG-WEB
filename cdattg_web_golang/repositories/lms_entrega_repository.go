@@ -1,6 +1,8 @@
 package repositories
 
 import (
+	"time"
+
 	"github.com/sena/cdattg-web-golang/database"
 	"github.com/sena/cdattg-web-golang/models"
 	"gorm.io/gorm"
@@ -10,6 +12,8 @@ import (
 type LmsEntregaRepository interface {
 	FindByActividadID(actividadID uint) ([]models.LmsEntrega, error)
 	FindByActividadYAprendiz(actividadID, aprendizID uint) (*models.LmsEntrega, error)
+	FindByAprendizYActividades(aprendizID uint, actividadIDs []uint) ([]models.LmsEntrega, error)
+	CountEntregadasByActividadIDs(actividadIDs []uint) (map[uint]int, error)
 	Create(row *models.LmsEntrega) error
 	Save(row *models.LmsEntrega) error
 	CreateArchivo(row *models.LmsEntregaArchivo) error
@@ -39,6 +43,41 @@ func (r *lmsEntregaRepository) FindByActividadYAprendiz(actividadID, aprendizID 
 		return nil, err
 	}
 	return &row, nil
+}
+
+// FindByAprendizYActividades envíos de un aprendiz en varias actividades del aula.
+func (r *lmsEntregaRepository) FindByAprendizYActividades(aprendizID uint, actividadIDs []uint) ([]models.LmsEntrega, error) {
+	var list []models.LmsEntrega
+	if aprendizID == 0 || len(actividadIDs) == 0 {
+		return list, nil
+	}
+	err := r.db.Preload("Archivos").Where("aprendiz_id = ? AND actividad_id IN ?", aprendizID, actividadIDs).Find(&list).Error
+	return list, err
+}
+
+// CountEntregadasByActividadIDs cuenta envíos reales (con fecha) por actividad.
+func (r *lmsEntregaRepository) CountEntregadasByActividadIDs(actividadIDs []uint) (map[uint]int, error) {
+	out := make(map[uint]int)
+	if len(actividadIDs) == 0 {
+		return out, nil
+	}
+	type fila struct {
+		ActividadID uint
+		N           int
+	}
+	var filas []fila
+	err := r.db.Model(&models.LmsEntrega{}).
+		Select("actividad_id, count(*) as n").
+		Where("actividad_id IN ? AND entregado_en > ?", actividadIDs, time.Time{}).
+		Group("actividad_id").
+		Scan(&filas).Error
+	if err != nil {
+		return nil, err
+	}
+	for i := range filas {
+		out[filas[i].ActividadID] = filas[i].N
+	}
+	return out, nil
 }
 
 func (r *lmsEntregaRepository) Create(row *models.LmsEntrega) error {

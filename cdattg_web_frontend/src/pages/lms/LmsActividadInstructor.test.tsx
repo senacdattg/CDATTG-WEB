@@ -1,9 +1,10 @@
 /**
  * @module pages/lms/LmsActividadInstructor.test
- * @description El instructor ve entregas y puede calificar 0-100.
+ * @description El instructor ve aprendices y Ver actividad.
  * @author Cristian Deysdayr Jiménez
  */
 import { createElement } from 'react';
+import { MemoryRouter } from 'react-router-dom';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import { LmsActividadInstructor } from './LmsActividadInstructor';
@@ -38,19 +39,12 @@ const detalle: LmsActividadDetalle = {
 };
 
 describe('LmsActividadInstructor', () => {
-  it('lista envíos con nota y comentario', () => {
+  it('lista aprendices con Ver actividad', () => {
     const html = renderToStaticMarkup(
-      createElement(LmsActividadInstructor, {
-        fichaId: 1,
-        detalle,
-        saving: false,
-        onCalificar: async () => undefined,
-      }),
+      createElement(MemoryRouter, null, createElement(LmsActividadInstructor, { fichaId: 1, detalle })),
     );
-    expect(html).toContain('Entregas de aprendices');
     expect(html).toContain('CARLOS CAICEDO');
-    expect(html).toContain('Nota (0-100)');
-    expect(html).toContain('Comentario');
-    expect(html).toContain('guia.pdf');
+    expect(html).toContain('Ver actividad');
+    expect(html).toContain('/lms/aulas/1/actividades/4/aprendices/2');
   });
 });

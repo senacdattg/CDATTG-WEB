@@ -1,6 +1,6 @@
 /**
  * @module routes/modules/lms
- * @description Rutas autenticadas del LMS: Mis aulas y aula por ficha.
+ * @description Rutas autenticadas del LMS: aulas y auditoría.
  * @author Cristian Deysdayr Jiménez
  */
 import { Outlet } from 'react-router-dom';
@@ -10,7 +10,7 @@ import { lmsPaths } from '../paths';
 export const lmsRoutes: RouteObject = {
   path: lmsPaths.index,
   Component: Outlet,
-  handle: { breadcrumb: { label: 'LMS', to: lmsPaths.aulas } },
+  handle: { breadcrumb: { label: 'LMS', to: lmsPaths.index } },
   children: [
     {
       index: true,
@@ -60,6 +60,14 @@ export const lmsRoutes: RouteObject = {
                       '../../pages/lms/LmsActividadAprendicesPage'
                     );
                     return { Component: LmsActividadAprendicesPage };
+                  },
+                },
+                {
+                  path: 'aprendices/:aprendizId',
+                  handle: { breadcrumb: { label: 'Entrega' } },
+                  lazy: async () => {
+                    const { LmsActividadEntregaPage } = await import('../../pages/lms/LmsActividadEntregaPage');
+                    return { Component: LmsActividadEntregaPage };
                   },
                 },
               ],
@@ -112,4 +120,3 @@ export const lmsRoutes: RouteObject = {
     },
   ],
 };
-

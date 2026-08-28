@@ -12,6 +12,7 @@ describe('lmsPaths', () => {
     expect(lmsPaths.aulas).toBe('/lms/aulas');
     expect(lmsPaths.aula(12)).toBe('/lms/aulas/12');
     expect(lmsPaths.actividad(12, 4)).toBe('/lms/aulas/12/actividades/4');
+    expect(lmsPaths.actividadAprendices(12, 4)).toBe('/lms/aulas/12/actividades/4/aprendices');
     expect(lmsPaths.auditoria).toBe('/lms/auditoria');
     expect(lmsPaths.auditoriaFicha(21)).toBe('/lms/auditoria/ficha/21');
   });

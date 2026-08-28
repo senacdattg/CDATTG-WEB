@@ -16,7 +16,7 @@ export function LmsActividadCabecera({ fichaId, detalle }: Props) {
   const vencida = detalle.plazo_entrega ? new Date(detalle.plazo_entrega).getTime() < Date.now() : false;
   const plazo = detalle.plazo_entrega
     ? `Vence el ${formatFechaHoraVista(detalle.plazo_entrega)}`
-    : 'Sin plazo de entrega';
+    : 'Sin fecha de vencimiento';
   return (
     <header className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
       <div>

@@ -33,6 +33,7 @@ func (s *lmsAulaService) GetActividad(userID, fichaID, actividadID uint) (*dto.L
 		return det, nil
 	}
 	if ap := s.aprendizDeUsuario(user, fichaID); ap != nil {
+		det.PuedeEntregar = lmsAprendizPuedeEntregar(ap)
 		if row, e := s.entregas.FindByActividadYAprendiz(actividadID, ap.ID); e == nil {
 			item := mapEntregaItem(*row, ap, act.PlazoEntrega)
 			det.MiEntrega = &item
@@ -52,6 +53,9 @@ func (s *lmsAulaService) Entregar(userID, fichaID, actividadID uint, files []*mu
 	ap := s.aprendizDeUsuario(user, fichaID)
 	if ap == nil {
 		return nil, errors.New("solo el aprendiz puede entregar")
+	}
+	if err := exigirEntregaAprendiz(ap); err != nil {
+		return nil, err
 	}
 	act, err := s.actividadDeFicha(fichaID, actividadID)
 	if err != nil {

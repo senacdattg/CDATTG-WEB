@@ -20,6 +20,9 @@ func (s *lmsAulaService) DeshacerEntrega(userID, fichaID, actividadID uint) (*dt
 	if ap == nil {
 		return nil, errors.New("solo el aprendiz puede deshacer la entrega")
 	}
+	if err := exigirEntregaAprendiz(ap); err != nil {
+		return nil, err
+	}
 	act, err := s.actividadDeFicha(fichaID, actividadID)
 	if err != nil {
 		return nil, err

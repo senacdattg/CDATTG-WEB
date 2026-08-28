@@ -11,6 +11,7 @@ import { LmsAulaTabs } from './LmsAulaTabs';
 import { LmsAulaTablon } from './LmsAulaTablon';
 import { LmsAulaTrabajos } from './LmsAulaTrabajos';
 import { LmsAulaAprendices } from './LmsAulaAprendices';
+import { LmsAulaMisActividades } from './LmsAulaMisActividades';
 import { LmsPublicarActividadForm } from './LmsPublicarActividadForm';
 import { LmsSoloConsultaAviso } from './LmsSoloConsultaAviso';
 import type { LmsAulaDetalle } from '../../types/lms';
@@ -42,6 +43,9 @@ export function LmsAulaCuerpo({ aula, page }: Props) {
       {tab === LMS_TABS.trabajos ? <LmsAulaTrabajos fichaId={aula.ficha_id} actividades={aula.actividades} /> : null}
       {tab === LMS_TABS.aprendices ? (
         <LmsAulaAprendices fichaId={aula.ficha_id} aprendices={aula.aprendices} soloActivos={!aula.puede_publicar} />
+      ) : null}
+      {tab === LMS_TABS.mis && aula.puede_publicar ? (
+        <LmsAulaMisActividades actividades={aula.actividades} />
       ) : null}
       {tab === LMS_TABS.publicar && aula.puede_publicar ? (
         <LmsPublicarActividadForm saving={page.saving} onSubmit={page.publicar} />

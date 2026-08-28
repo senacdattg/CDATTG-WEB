@@ -21,6 +21,7 @@ export function LmsAulaTabs({ tab, onTab, puedePublicar }: Props) {
     { id: LMS_TABS.aprendices, label: 'Aprendices' },
   ];
   if (puedePublicar) {
+    items.push({ id: LMS_TABS.mis, label: 'Mis actividades' });
     items.push({ id: LMS_TABS.publicar, label: 'Publicar actividad' });
   }
   return (

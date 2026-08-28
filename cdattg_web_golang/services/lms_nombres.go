@@ -85,3 +85,8 @@ func RutaPublicacionLMS(fichaID, actividadID uint) string {
 func RutaEntregaLMS(fichaID, actividadID, aprendizID uint) string {
 	return path.Join(lmsStorageRoot, "entregas", fmt.Sprint(fichaID), fmt.Sprint(actividadID), fmt.Sprint(aprendizID))
 }
+
+// RutaEntregasActividadLMS carpeta de todos los envíos de una actividad.
+func RutaEntregasActividadLMS(fichaID, actividadID uint) string {
+	return path.Join(lmsStorageRoot, "entregas", fmt.Sprint(fichaID), fmt.Sprint(actividadID))
+}

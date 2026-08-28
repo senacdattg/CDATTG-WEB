@@ -18,14 +18,15 @@ func (s *lmsAulaService) GetActividad(userID, fichaID, actividadID uint) (*dto.L
 	if err := s.acceso.exigirEntrar(user, fichaID, roles); err != nil {
 		return nil, err
 	}
-	act, err := s.actividadDeFicha(fichaID, actividadID)
+	act, err := s.actividadVisibleEnFicha(user, fichaID, actividadID, roles)
 	if err != nil {
 		return nil, err
 	}
+	puede := s.acceso.puedePublicar(user, fichaID, roles)
 	nombres := s.nombresCreadores([]models.LmsActividad{*act})
 	det := &dto.LmsActividadDetalle{
 		LmsActividadItem: mapActividadAula(*act, nombres),
-		PuedePublicar:    s.acceso.puedePublicar(user, fichaID, roles),
+		PuedePublicar:    puede,
 		Entregas:         []dto.LmsEntregaItem{},
 	}
 	if det.PuedePublicar {

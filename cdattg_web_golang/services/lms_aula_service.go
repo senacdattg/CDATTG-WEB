@@ -83,6 +83,8 @@ func (s *lmsAulaService) GetAula(userID, fichaID uint) (*dto.LmsAulaDetalle, err
 		aps = aprendicesActivosAula(aps)
 	}
 	acts, _ := s.actividades.FindByFichaID(fichaID)
+	acts = filtrarActividadesDelInstructor(acts, user.ID, puede)
+	items := mapActividadesAula(acts, s.nombresCreadores(acts))
 	item := mapFichaAAulaItem(*ficha, len(aps), puede)
 	det := &dto.LmsAulaDetalle{
 		FichaID:        item.FichaID,
@@ -92,7 +94,7 @@ func (s *lmsAulaService) GetAula(userID, fichaID uint) (*dto.LmsAulaDetalle, err
 		PuedePublicar:  item.PuedePublicar,
 		PuedeEntregar:  lmsAprendizPuedeEntregar(s.aprendizDeUsuario(user, fichaID)),
 		Aprendices:     mapAprendicesAula(aps),
-		Actividades:    mapActividadesAula(acts, s.nombresCreadores(acts)),
+		Actividades:    items,
 	}
 	return det, nil
 }

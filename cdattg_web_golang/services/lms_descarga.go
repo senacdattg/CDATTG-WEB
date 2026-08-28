@@ -17,6 +17,9 @@ func (s *lmsAulaService) DescargarArchivo(
 	if err := s.acceso.exigirEntrar(user, fichaID, roles); err != nil {
 		return nil, err
 	}
+	if _, err := s.actividadVisibleEnFicha(user, fichaID, actividadID, roles); err != nil {
+		return nil, err
+	}
 	row, err := s.actividades.FindArchivo(fichaID, actividadID, archivoID)
 	if err != nil {
 		return nil, errors.New("archivo no encontrado")

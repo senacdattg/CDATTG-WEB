@@ -45,6 +45,9 @@ func TestRutaEntregaLMS(t *testing.T) {
 	if got != want {
 		t.Fatalf("got %q want %q", got, want)
 	}
+	if RutaEntregasActividadLMS(12, 4) != "storage/lms/entregas/12/4" {
+		t.Fatal("carpeta de la actividad mal armada")
+	}
 }
 
 func TestRutaCarpetaFichaSegunTipo(t *testing.T) {

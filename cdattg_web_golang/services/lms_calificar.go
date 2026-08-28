@@ -27,6 +27,9 @@ func (s *lmsAulaService) Calificar(
 	if err != nil {
 		return nil, err
 	}
+	if err := exigirInstructorSoloSuActividad(true, act, user.ID); err != nil {
+		return nil, err
+	}
 	list, err := s.entregas.FindByActividadID(actividadID)
 	if err != nil {
 		return nil, err
@@ -60,6 +63,9 @@ func (s *lmsAulaService) DescargarArchivoEntrega(
 		return nil, err
 	}
 	if err := s.acceso.exigirEntrar(user, fichaID, roles); err != nil {
+		return nil, err
+	}
+	if _, err := s.actividadVisibleEnFicha(user, fichaID, actividadID, roles); err != nil {
 		return nil, err
 	}
 	row, err := s.entregas.FindArchivo(fichaID, actividadID, entregaID, archivoID)

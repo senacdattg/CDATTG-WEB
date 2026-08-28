@@ -25,6 +25,9 @@ func (s *lmsAulaService) UpdateActividad(
 	if err != nil {
 		return nil, err
 	}
+	if err := exigirInstructorSoloSuActividad(true, row, user.ID); err != nil {
+		return nil, err
+	}
 	if err := aplicarEdicionActividad(row, req, userID); err != nil {
 		return nil, err
 	}

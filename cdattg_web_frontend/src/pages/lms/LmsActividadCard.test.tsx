@@ -1,6 +1,6 @@
 /**
  * @module pages/lms/LmsActividadCard.test
- * @description La tarjeta muestra título, descripción, plazo e instructor.
+ * @description La tarjeta muestra título y Ver más si el instructor lo pide.
  * @author Cristian Deysdayr Jiménez
  */
 import { createElement } from 'react';
@@ -32,5 +32,38 @@ describe('LmsActividadCard', () => {
     expect(html).toContain('Elaborar el derecho de petición');
     expect(html).toContain('Instructor: VICTOR MANUEL TELLEZ');
     expect(html).toContain('/lms/aulas/12/actividades/4');
+  });
+
+  it('muestra Ver más cuando hay destino de aprendices', () => {
+    const html = renderToStaticMarkup(
+      createElement(
+        MemoryRouter,
+        null,
+        createElement(LmsActividadCard, {
+          fichaId: 12,
+          actividad,
+          verMasTo: '/lms/aulas/12/actividades/4/aprendices',
+        }),
+      ),
+    );
+    expect(html).toContain('Ver más');
+    expect(html).toContain('/lms/aulas/12/actividades/4/aprendices');
+  });
+
+  it('el instructor abre la vista sin ir a la actividad', () => {
+    const html = renderToStaticMarkup(
+      createElement(
+        MemoryRouter,
+        null,
+        createElement(LmsActividadCard, {
+          fichaId: 12,
+          actividad: { ...actividad, plazo_entrega: null },
+          onVer: () => undefined,
+        }),
+      ),
+    );
+    expect(html).toContain('Sin fecha de vencimiento');
+    expect(html).toContain('<button');
+    expect(html).not.toContain('/lms/aulas/12/actividades/4');
   });
 });

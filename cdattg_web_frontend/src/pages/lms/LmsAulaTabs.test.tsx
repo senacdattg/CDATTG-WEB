@@ -14,8 +14,9 @@ describe('LmsAulaTabs', () => {
     const html = renderToStaticMarkup(
       createElement(LmsAulaTabs, { tab: LMS_TABS.tablon, onTab: vi.fn(), puedePublicar: false }),
     );
-    expect(html).toContain('Tablón');
+    expect(html).toContain('Actividades pendientes');
     expect(html).not.toContain('Publicar actividad');
+    expect(html).not.toContain('Mis actividades');
   });
 
   it('muestra Publicar actividad al instructor', () => {
@@ -23,5 +24,6 @@ describe('LmsAulaTabs', () => {
       createElement(LmsAulaTabs, { tab: LMS_TABS.tablon, onTab: vi.fn(), puedePublicar: true }),
     );
     expect(html).toContain('Publicar actividad');
+    expect(html).toContain('Mis actividades');
   });
 });

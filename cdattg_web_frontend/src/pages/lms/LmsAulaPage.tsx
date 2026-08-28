@@ -1,25 +1,29 @@
 /**
  * @module pages/lms/LmsAulaPage
- * @description Aula de una ficha: tablón, trabajos, aprendices y publicar.
+ * @description Aula de una ficha: pendientes, trabajos, aprendices y publicar.
  * @author Cristian Deysdayr Jiménez
  */
 import { useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useLocation, useParams } from 'react-router-dom';
 import { ArrowLeftIcon, EyeIcon } from '@heroicons/react/24/outline';
 import { lmsPaths } from '../../routes/paths';
 import { useLmsAula } from './useLmsAula';
 import { LmsAulaCuerpo } from './LmsAulaCuerpo';
 import { LmsFichaDetalleModal } from './LmsFichaDetalleModal';
+import { lmsMisPanelDesdeState, lmsVerIdDesdeState } from './lmsMisPanel';
 
 /**
  * Página del aula. El aprendiz no ve Publicar actividad.
  */
 export function LmsAulaPage() {
   const { fichaId } = useParams();
+  const location = useLocation();
   const id = Number(fichaId);
   const page = useLmsAula(Number.isFinite(id) ? id : null);
   const aula = page.aula;
   const [verFicha, setVerFicha] = useState(false);
+  const panelInicial = lmsMisPanelDesdeState(location.state);
+  const verInicial = lmsVerIdDesdeState(location.state);
 
   return (
     <main className="space-y-6">
@@ -41,7 +45,7 @@ export function LmsAulaPage() {
           {page.error}
         </p>
       ) : null}
-      {aula ? <LmsAulaCuerpo aula={aula} page={page} /> : null}
+      {aula ? <LmsAulaCuerpo aula={aula} page={page} panelInicial={panelInicial} verInicial={verInicial} /> : null}
       {verFicha && aula ? <LmsFichaDetalleModal fichaId={aula.ficha_id} onClose={() => setVerFicha(false)} /> : null}
     </main>
   );

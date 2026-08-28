@@ -1,21 +1,42 @@
 /**
  * @module pages/lms/LmsAulaMisActividades
- * @description Lista o pantalla de ver una actividad mía.
+ * @description Lista, ver o editar una actividad mía.
  * @author Cristian Deysdayr Jiménez
  */
 import { useState } from 'react';
+import { LmsMisActividadEditar } from './LmsMisActividadEditar';
 import { LmsMisActividadFila } from './LmsMisActividadFila';
 import { LmsMisActividadVer } from './LmsMisActividadVer';
 import { lmsActividadDePanel, type LmsMisPanel } from './lmsMisPanel';
 import type { LmsActividadItem } from '../../types/lms';
 
-type Props = Readonly<{ fichaId: number; actividades: LmsActividadItem[] }>;
+type Props = Readonly<{
+  fichaId: number;
+  actividades: LmsActividadItem[];
+  saving: boolean;
+  onEditar: (actividadId: number, body: FormData) => Promise<void>;
+}>;
 
-export function LmsAulaMisActividades({ fichaId, actividades }: Props) {
+export function LmsAulaMisActividades({ fichaId, actividades, saving, onEditar }: Props) {
   const [panel, setPanel] = useState<LmsMisPanel | null>(null);
   const actual = lmsActividadDePanel(actividades, panel);
+  const cerrar = () => setPanel(null);
   if (panel && actual && panel.modo === 'ver') {
-    return <LmsMisActividadVer fichaId={fichaId} actividad={actual} onCerrar={() => setPanel(null)} />;
+    return <LmsMisActividadVer fichaId={fichaId} actividad={actual} onCerrar={cerrar} />;
+  }
+  if (panel && actual && panel.modo === 'editar') {
+    return (
+      <LmsMisActividadEditar
+        fichaId={fichaId}
+        actividad={actual}
+        saving={saving}
+        onCerrar={cerrar}
+        onGuardar={async (body) => {
+          await onEditar(actual.id, body);
+          cerrar();
+        }}
+      />
+    );
   }
   if (actividades.length === 0) {
     return (
@@ -28,7 +49,12 @@ export function LmsAulaMisActividades({ fichaId, actividades }: Props) {
     <ul className="space-y-3">
       {actividades.map((a) => (
         <li key={a.id}>
-          <LmsMisActividadFila actividad={a} onVer={() => setPanel({ modo: 'ver', id: a.id })} />
+          <LmsMisActividadFila
+            actividad={a}
+            onVer={() => setPanel({ modo: 'ver', id: a.id })}
+            onEditar={() => setPanel({ modo: 'editar', id: a.id })}
+            onEliminar={() => undefined}
+          />
         </li>
       ))}
     </ul>

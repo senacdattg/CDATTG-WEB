@@ -14,18 +14,28 @@ import { LmsAulaAprendices } from './LmsAulaAprendices';
 import { LmsAulaMisActividades } from './LmsAulaMisActividades';
 import { LmsPublicarActividadForm } from './LmsPublicarActividadForm';
 import { LmsSoloConsultaAviso } from './LmsSoloConsultaAviso';
+import { lmsPanelEditar, type LmsMisPanel } from './lmsMisPanel';
 import type { LmsAulaDetalle } from '../../types/lms';
 
 type Props = Readonly<{
   aula: LmsAulaDetalle;
   page: ReturnType<typeof useLmsAula>;
+  panelInicial?: LmsMisPanel | null;
+  verInicial?: number | null;
 }>;
 
 /**
- * Tablón, trabajos, aprendices o publicar.
+ * Pendientes, trabajos, aprendices, mis actividades o publicar.
  */
-export function LmsAulaCuerpo({ aula, page }: Props) {
-  const [tab, setTab] = useState<LmsTab>(LMS_TABS.tablon);
+export function LmsAulaCuerpo({ aula, page, panelInicial = null, verInicial = null }: Props) {
+  const [tab, setTab] = useState<LmsTab>(panelInicial ? LMS_TABS.mis : LMS_TABS.tablon);
+  const [editarId, setEditarId] = useState<number | null>(panelInicial?.id ?? null);
+
+  function abrirEditar(id: number) {
+    setEditarId(id);
+    setTab(LMS_TABS.mis);
+  }
+
   return (
     <>
       <header>
@@ -39,13 +49,31 @@ export function LmsAulaCuerpo({ aula, page }: Props) {
         </LmsSoloConsultaAviso>
       ) : null}
       <LmsAulaTabs tab={tab} onTab={setTab} puedePublicar={aula.puede_publicar} />
-      {tab === LMS_TABS.tablon ? <LmsAulaTablon fichaId={aula.ficha_id} actividades={aula.actividades} /> : null}
-      {tab === LMS_TABS.trabajos ? <LmsAulaTrabajos fichaId={aula.ficha_id} actividades={aula.actividades} /> : null}
+      {tab === LMS_TABS.tablon ? (
+        <LmsAulaTablon
+          fichaId={aula.ficha_id}
+          actividades={aula.actividades}
+          puedePublicar={aula.puede_publicar}
+          onAbrirEditar={aula.puede_publicar ? abrirEditar : undefined}
+          verInicial={verInicial}
+        />
+      ) : null}
+      {tab === LMS_TABS.trabajos ? (
+        <LmsAulaTrabajos fichaId={aula.ficha_id} actividades={aula.actividades} puedePublicar={aula.puede_publicar} />
+      ) : null}
       {tab === LMS_TABS.aprendices ? (
         <LmsAulaAprendices fichaId={aula.ficha_id} aprendices={aula.aprendices} soloActivos={!aula.puede_publicar} />
       ) : null}
       {tab === LMS_TABS.mis && aula.puede_publicar ? (
-        <LmsAulaMisActividades fichaId={aula.ficha_id} actividades={aula.actividades} />
+        <LmsAulaMisActividades
+          fichaId={aula.ficha_id}
+          actividades={aula.actividades}
+          saving={page.saving}
+          onEditar={page.editar}
+          onEliminar={page.eliminar}
+          panelInicial={editarId == null ? null : lmsPanelEditar(editarId)}
+          onCerrarPanel={() => setEditarId(null)}
+        />
       ) : null}
       {tab === LMS_TABS.publicar && aula.puede_publicar ? (
         <LmsPublicarActividadForm saving={page.saving} onSubmit={page.publicar} />

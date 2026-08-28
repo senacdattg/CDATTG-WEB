@@ -158,4 +158,6 @@ export const lmsPaths = {
     `/lms/aulas/${fichaId}/actividades/${actividadId}`,
   auditoria: '/lms/auditoria',
   auditoriaPersona: (personaId: number | string) => `/lms/auditoria/${personaId}`,
+  auditoriaTipo: (personaId: number | string, tipo: string) =>
+    `/lms/auditoria/${personaId}/${encodeURIComponent(tipo)}`,
 } as const;

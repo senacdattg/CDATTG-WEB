@@ -21,6 +21,8 @@ type LmsActividadItem struct {
 	CreadoEn         string           `json:"creado_en"`
 	InstructorNombre string           `json:"instructor_nombre"`
 	Archivos         []LmsArchivoItem `json:"archivos"`
+	Entregada        bool             `json:"entregada"`
+	CantidadEntregas int              `json:"cantidad_entregas"`
 }
 
 // LmsActividadRequest alta o edición de publicación (título, descripción y plazo opcional).

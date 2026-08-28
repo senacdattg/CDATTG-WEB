@@ -47,6 +47,8 @@ export interface LmsActividadItem {
   creado_en: string;
   instructor_nombre?: string;
   archivos: LmsArchivoItem[];
+  entregada?: boolean;
+  cantidad_entregas?: number;
 }
 
 export interface LmsEntregaItem {

@@ -6,17 +6,26 @@
 import { useMemo, useState } from 'react';
 import { FichaDetalleAprendicesTable } from '../ficha-detalle/components/aprendices/FichaDetalleAprendicesTable';
 import { FichaDetalleAprendicesToolbar } from '../ficha-detalle/components/aprendices/FichaDetalleAprendicesToolbar';
+import { aprendizVisibleEnTomaAsistencia } from '../../utils/aprendizFichaPermissions';
 import { lmsAprendizToResponse } from './lmsAprendizToResponse';
 import type { LmsAulaAprendiz } from '../../types/lms';
 
-type Props = Readonly<{ fichaId: number; aprendices: LmsAulaAprendiz[] }>;
+type Props = Readonly<{ fichaId: number; aprendices: LmsAulaAprendiz[]; soloActivos?: boolean }>;
 
 /**
- * Listado read-only: título, conteo, búsqueda y columnas Aprendiz / Documento / Estado.
+ * Listado: el aprendiz solo ve compañeros activos; el instructor ve también ocultos.
  */
-export function LmsAulaAprendices({ fichaId, aprendices }: Props) {
+export function LmsAulaAprendices({ fichaId, aprendices, soloActivos = false }: Props) {
   const [q, setQ] = useState('');
-  const mapped = useMemo(() => aprendices.map((a) => lmsAprendizToResponse(a, fichaId)), [aprendices, fichaId]);
+  // El aprendiz no debe ver ocultos en inasistencia ni inactivos.
+  const fuente = useMemo(() => {
+    if (!soloActivos) return aprendices;
+    return aprendices.filter((a) =>
+      aprendizVisibleEnTomaAsistencia({ estado: a.estado ?? true, oculto_en_asistencia: a.oculto_en_asistencia }),
+    );
+  }, [aprendices, soloActivos]);
+  const mapped = useMemo(() => fuente.map((a) => lmsAprendizToResponse(a, fichaId)), [fuente, fichaId]);
+  // Busco por nombre o documento, igual que en la ficha.
   const filtrados = useMemo(() => {
     const t = q.trim().toLowerCase();
     if (!t) return mapped;
@@ -26,7 +35,7 @@ export function LmsAulaAprendices({ fichaId, aprendices }: Props) {
         (a.persona_documento || '').toLowerCase().includes(t),
     );
   }, [mapped, q]);
-  const ocultos = mapped.filter((a) => a.oculto_en_asistencia).length;
+  const ocultos = soloActivos ? 0 : mapped.filter((a) => a.oculto_en_asistencia).length;
   const activos = mapped.length - ocultos;
 
   return (

@@ -53,6 +53,9 @@ func aplicarEdicionActividad(row *models.LmsActividad, req dto.LmsActividadReque
 	if errPuntos != nil {
 		return errPuntos
 	}
+	if err := exigirPlazoLMS(req.PlazoEntrega); err != nil {
+		return err
+	}
 	uid := userID
 	row.Titulo = titulo
 	row.Cuerpo = strings.TrimSpace(req.Cuerpo)

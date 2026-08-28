@@ -9,12 +9,14 @@ import { describe, expect, it } from 'vitest';
 import { LmsPublicarActividadForm } from './LmsPublicarActividadForm';
 
 describe('LmsPublicarActividadForm', () => {
-  it('en alta pide publicar en el tablón', () => {
+  it('en alta pide publicar actividad', () => {
     const html = renderToStaticMarkup(
       createElement(LmsPublicarActividadForm, { saving: false, onSubmit: async () => undefined }),
     );
     expect(html).toContain('Publicar actividad');
-    expect(html).toContain('Publicar en el tablón');
+    expect(html).toContain('type="date"');
+    expect(html).toContain('type="time"');
+    expect(html).not.toContain('lms-con-plazo');
   });
 
   it('en edición rellena título, puntos y guardar', () => {
@@ -35,5 +37,16 @@ describe('LmsPublicarActividadForm', () => {
     expect(html).toContain('80');
     expect(html).toContain('Guardar cambios');
     expect(html).toContain('2026-08-30');
+  });
+
+  it('muestra Cancelar si hay onCancel', () => {
+    const html = renderToStaticMarkup(
+      createElement(LmsPublicarActividadForm, {
+        saving: false,
+        onSubmit: async () => undefined,
+        onCancel: () => undefined,
+      }),
+    );
+    expect(html).toContain('Cancelar');
   });
 });

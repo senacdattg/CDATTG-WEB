@@ -6,6 +6,9 @@
 import { useState } from 'react';
 import { DocumentPlusIcon } from '@heroicons/react/24/outline';
 import { LmsPublicarArchivos, LmsPublicarPlazo, LmsPublicarPuntos } from './LmsPublicarCampos';
+import { LmsPublicarVistaPrevia } from './LmsPublicarVistaPrevia';
+import { LmsEntregaExito, type LmsAvisoEntrega } from './LmsEntregaExito';
+import { encenderAvisoEntrega } from './lmsToast';
 import {
   buildActividadFormData,
   errorActividadForm,
@@ -18,28 +21,28 @@ type Props = Readonly<{
   saving: boolean;
   onSubmit: (body: FormData) => Promise<void>;
   initial?: LmsActividadFormInitial;
+  onCancel?: () => void;
 }>;
 
 /**
  * Formulario de alta o edición. `initial` activa el modo editar.
  */
-export function LmsPublicarActividadForm({ saving, onSubmit, initial }: Props) {
+export function LmsPublicarActividadForm({ saving, onSubmit, initial, onCancel }: Props) {
   const plazoIni = partirPlazo(initial?.plazo_entrega);
   const [titulo, setTitulo] = useState(initial?.titulo ?? '');
   const [cuerpo, setCuerpo] = useState(initial?.cuerpo ?? '');
   const [puntos, setPuntos] = useState(String(initial?.calificacion_max ?? 100));
-  const [conPlazo, setConPlazo] = useState(plazoIni.conPlazo);
   const [fecha, setFecha] = useState(plazoIni.fecha);
   const [hora, setHora] = useState(plazoIni.hora);
   const [files, setFiles] = useState<File[]>([]);
   const [error, setError] = useState('');
+  const [aviso, setAviso] = useState<LmsAvisoEntrega | null>(null);
   const editar = initial != null;
   const textos = etiquetasActividadForm(editar, saving);
 
-  /** Valida y envía el multipart; en alta limpia el formulario. */
   async function handleSubmit() {
     setError('');
-    const vals = { titulo, cuerpo, puntos, conPlazo, fecha, hora, files };
+    const vals = { titulo, cuerpo, puntos, fecha, hora, files };
     const msg = errorActividadForm(vals);
     if (msg) {
       setError(msg);
@@ -51,10 +54,10 @@ export function LmsPublicarActividadForm({ saving, onSubmit, initial }: Props) {
         setTitulo('');
         setCuerpo('');
         setPuntos('100');
-        setConPlazo(false);
         setFecha('');
         setHora('23:00');
         setFiles([]);
+        encenderAvisoEntrega('publicada', setAviso);
       }
     } catch (cause: unknown) {
       setError(cause instanceof Error ? cause.message : 'No se pudo guardar');
@@ -69,14 +72,15 @@ export function LmsPublicarActividadForm({ saving, onSubmit, initial }: Props) {
       }}
       className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-600 dark:bg-gray-800"
     >
-      <header className="flex items-start gap-3 border-b border-gray-100 px-5 py-4 dark:border-gray-700">
-        <DocumentPlusIcon className="mt-0.5 h-6 w-6 text-primary-600" aria-hidden />
-        <div>
+      <LmsEntregaExito visible={aviso === 'publicada'} variante="publicada" />
+      <header className="flex items-start gap-3 border-b border-gray-100 px-4 py-4 dark:border-gray-700 sm:px-5">
+        <DocumentPlusIcon className="mt-0.5 h-6 w-6 shrink-0 text-primary-600" aria-hidden />
+        <div className="min-w-0">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white">{textos.titulo}</h2>
           <p className="text-sm text-gray-500">{textos.pista}</p>
         </div>
       </header>
-      <div className="space-y-4 px-5 py-5">
+      <div className="space-y-4 px-4 py-5 sm:px-5">
         {error ? <p className="text-sm text-red-600">{error}</p> : null}
         <p>
           <label htmlFor="lms-titulo" className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-200">
@@ -102,17 +106,18 @@ export function LmsPublicarActividadForm({ saving, onSubmit, initial }: Props) {
           <p className="text-xs text-gray-500">Los archivos actuales se conservan; aquí puede adjuntar más.</p>
         ) : null}
         <LmsPublicarArchivos files={files} onChange={setFiles} />
-        <LmsPublicarPlazo
-          conPlazo={conPlazo}
-          fecha={fecha}
-          hora={hora}
-          onToggle={setConPlazo}
-          onFecha={setFecha}
-          onHora={setHora}
-        />
-        <button type="submit" disabled={saving} className="btn-primary">
-          {textos.boton}
-        </button>
+        <LmsPublicarVistaPrevia files={files} />
+        <LmsPublicarPlazo fecha={fecha} hora={hora} onFecha={setFecha} onHora={setHora} />
+        <p className="flex flex-col gap-2 sm:flex-row">
+          <button type="submit" disabled={saving} className="btn-primary w-full sm:w-auto">
+            {textos.boton}
+          </button>
+          {onCancel ? (
+            <button type="button" className="btn-secondary w-full sm:w-auto" onClick={onCancel}>
+              Cancelar
+            </button>
+          ) : null}
+        </p>
       </div>
     </form>
   );

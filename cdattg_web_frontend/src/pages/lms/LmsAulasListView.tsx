@@ -36,7 +36,7 @@ export function LmsAulasListView({ page, onVerFicha }: Props) {
         <div>
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Mis aulas</h1>
           <p className="mt-2 text-gray-600 dark:text-gray-400">
-            Entre al aula de cada ficha para el tablón, los trabajos de clase y los aprendices.
+            Entre al aula de cada ficha para las actividades pendientes, los trabajos de clase y los aprendices.
           </p>
         </div>
         {volverTo === lmsPaths.aulas ? null : (

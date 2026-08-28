@@ -16,7 +16,6 @@ export type LmsActividadFormVals = Readonly<{
   titulo: string;
   cuerpo: string;
   puntos: string;
-  conPlazo: boolean;
   fecha: string;
   hora: string;
   files: File[];
@@ -24,34 +23,37 @@ export type LmsActividadFormVals = Readonly<{
 
 /**
  * Primer error de validación, o cadena vacía si el formulario es válido.
- * @param v Valores del formulario de actividad.
+ * @param {LmsActividadFormVals} v Valores del formulario de actividad.
+ * @returns {string} Mensaje de error o vacío.
  */
 export function errorActividadForm(v: LmsActividadFormVals): string {
   if (v.titulo.trim() === '') return 'El título es obligatorio';
   const n = Number(v.puntos);
   if (Number.isNaN(n) || n < 0 || n > 100) return 'Los puntos deben estar entre 0 y 100';
-  if (v.conPlazo && combinarPlazo(v.fecha, v.hora) === '') return 'Indique la fecha de entrega';
+  if (combinarPlazo(v.fecha, v.hora) === '') return 'El plazo de entrega es obligatorio';
   return mensajeArchivosFueraDeLimite(v.files) ?? '';
 }
 
 /**
  * Arma el multipart de alta o edición.
- * @param v Valores ya validados.
+ * @param {LmsActividadFormVals} v Valores ya validados.
+ * @returns {FormData} Cuerpo para el API.
  */
 export function buildActividadFormData(v: LmsActividadFormVals): FormData {
   const body = new FormData();
   body.append('titulo', v.titulo.trim());
   body.append('cuerpo', v.cuerpo.trim());
   body.append('calificacion_max', String(Number(v.puntos)));
-  if (v.conPlazo) body.append('plazo_entrega', combinarPlazo(v.fecha, v.hora));
+  body.append('plazo_entrega', combinarPlazo(v.fecha, v.hora));
   v.files.forEach((f) => body.append('archivos', f));
   return body;
 }
 
 /**
  * Textos del encabezado y del botón según alta o edición.
- * @param editar True si el instructor está modificando.
- * @param saving True mientras se envía.
+ * @param {boolean} editar True si el instructor está modificando.
+ * @param {boolean} saving True mientras se envía.
+ * @returns {{titulo: string, pista: string, boton: string}} Copys de la cabecera y del botón.
  */
 export function etiquetasActividadForm(editar: boolean, saving: boolean): { titulo: string; pista: string; boton: string } {
   if (editar) {
@@ -63,7 +65,7 @@ export function etiquetasActividadForm(editar: boolean, saving: boolean): { titu
   }
   return {
     titulo: 'Publicar actividad',
-    pista: 'Título, puntos 0-100, descripción y, si aplica, documentos y plazo.',
-    boton: saving ? 'Publicando…' : 'Publicar en el tablón',
+    pista: 'Título, puntos 0-100, descripción y plazo de entrega. Los archivos son opcionales.',
+    boton: saving ? 'Publicando…' : 'Publicar actividad',
   };
 }

@@ -11,6 +11,7 @@ import (
 )
 
 var errTituloObligatorio = errors.New("el título es obligatorio")
+var errPlazoObligatorio = errors.New("el plazo de entrega es obligatorio")
 var errPlazoInvalido = errors.New("plazo de entrega inválido")
 
 // CreateActividad publica en el tablón (título, descripción, plazo y archivos).
@@ -33,6 +34,9 @@ func (s *lmsAulaService) CreateActividad(
 	puntos, errPuntos := PuntosActividadLMS(req.CalificacionMax)
 	if errPuntos != nil {
 		return nil, errPuntos
+	}
+	if err := exigirPlazoLMS(req.PlazoEntrega); err != nil {
+		return nil, err
 	}
 	uid := userID
 	row := &models.LmsActividad{
@@ -70,11 +74,19 @@ func (s *lmsAulaService) itemDeActividad(fichaID uint, row models.LmsActividad) 
 	return &item
 }
 
-// ParsePlazoEntregaLMS interpreta datetime-local o RFC3339. Vacío = sin plazo.
+// exigirPlazoLMS rechaza publicaciones sin fecha y hora de entrega.
+func exigirPlazoLMS(plazo *time.Time) error {
+	if plazo == nil {
+		return errPlazoObligatorio
+	}
+	return nil
+}
+
+// ParsePlazoEntregaLMS interpreta datetime-local o RFC3339. Vacío no es válido.
 func ParsePlazoEntregaLMS(raw string) (*time.Time, error) {
 	s := strings.TrimSpace(raw)
 	if s == "" {
-		return nil, nil
+		return nil, errPlazoObligatorio
 	}
 	layouts := []string{time.RFC3339, "2006-01-02T15:04", "2006-01-02T15:04:05"}
 	for _, layout := range layouts {

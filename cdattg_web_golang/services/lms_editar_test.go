@@ -34,13 +34,10 @@ func TestAplicarEdicionActividadTituloVacio(t *testing.T) {
 	}
 }
 
-func TestAplicarEdicionActividadQuitaPlazo(t *testing.T) {
+func TestAplicarEdicionActividadSinPlazo(t *testing.T) {
 	antes := time.Date(2026, 8, 30, 18, 0, 0, 0, time.UTC)
 	row := models.LmsActividad{Titulo: "A", PlazoEntrega: &antes}
-	if err := aplicarEdicionActividad(&row, dto.LmsActividadRequest{Titulo: "A"}, 2); err != nil {
-		t.Fatal(err)
-	}
-	if row.PlazoEntrega != nil {
-		t.Fatal("sin plazo en el request debe quedar nil")
+	if err := aplicarEdicionActividad(&row, dto.LmsActividadRequest{Titulo: "A"}, 2); err == nil {
+		t.Fatal("sin plazo debe fallar")
 	}
 }

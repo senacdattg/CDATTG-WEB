@@ -1,6 +1,6 @@
 /**
  * @module pages/lms/LmsPublicarCampos.test
- * @description Plazo con calendario y reloj (también se escribe).
+ * @description Plazo con calendario y reloj, siempre visibles.
  * @author Cristian Deysdayr Jiménez
  */
 import { createElement } from 'react';
@@ -9,21 +9,21 @@ import { describe, expect, it } from 'vitest';
 import { LmsPublicarPlazo, LmsPublicarPuntos } from './LmsPublicarCampos';
 
 describe('LmsPublicarPlazo', () => {
-  it('expone input date y time cuando hay plazo', () => {
+  it('expone fecha y hora obligatorias', () => {
     const html = renderToStaticMarkup(
       createElement(LmsPublicarPlazo, {
-        conPlazo: true,
         fecha: '2026-08-30',
         hora: '18:00',
-        onToggle: () => undefined,
         onFecha: () => undefined,
         onHora: () => undefined,
       }),
     );
     expect(html).toContain('type="date"');
     expect(html).toContain('type="time"');
+    expect(html).toContain('required');
     expect(html).toContain('2026-08-30');
     expect(html).toContain('18:00');
+    expect(html).not.toContain('lms-con-plazo');
   });
 });
 

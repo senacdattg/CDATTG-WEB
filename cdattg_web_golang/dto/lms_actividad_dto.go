@@ -25,7 +25,7 @@ type LmsActividadItem struct {
 	CantidadEntregas int              `json:"cantidad_entregas"`
 }
 
-// LmsActividadRequest alta o edición de publicación (título, descripción y plazo opcional).
+// LmsActividadRequest alta o edición de publicación (título, descripción y plazo obligatorio).
 type LmsActividadRequest struct {
 	Titulo          string     `json:"titulo" binding:"required"`
 	Cuerpo          string     `json:"cuerpo"`

@@ -1,11 +1,23 @@
 package services
 
-import "testing"
+import (
+	"testing"
+	"time"
+)
 
 func TestParsePlazoEntregaLMSVacio(t *testing.T) {
-	got, err := ParsePlazoEntregaLMS("  ")
-	if err != nil || got != nil {
-		t.Fatal("vacío debe ser sin plazo")
+	if _, err := ParsePlazoEntregaLMS("  "); err == nil {
+		t.Fatal("vacío debe exigir plazo")
+	}
+}
+
+func TestExigirPlazoLMS(t *testing.T) {
+	if err := exigirPlazoLMS(nil); err == nil {
+		t.Fatal("nil debe exigir plazo")
+	}
+	ahora := time.Now()
+	if err := exigirPlazoLMS(&ahora); err != nil {
+		t.Fatal(err)
 	}
 }
 

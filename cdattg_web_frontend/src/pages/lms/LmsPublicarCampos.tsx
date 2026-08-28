@@ -71,63 +71,50 @@ export function LmsPublicarPuntos({ puntos, onPuntos }: PuntosProps) {
 }
 
 type PlazoProps = Readonly<{
-  conPlazo: boolean;
   fecha: string;
   hora: string;
-  onToggle: (v: boolean) => void;
   onFecha: (v: string) => void;
   onHora: (v: string) => void;
 }>;
 
 /**
- * Plazo de entrega: calendario y reloj, también se puede escribir.
+ * Muestro fecha y hora porque el plazo es obligatorio al publicar o editar.
+ * @param {PlazoProps} props Día, hora y cambios del instructor.
+ * @returns {JSX.Element} Campos de calendario y reloj.
  */
-export function LmsPublicarPlazo({ conPlazo, fecha, hora, onToggle, onFecha, onHora }: PlazoProps) {
+export function LmsPublicarPlazo({ fecha, hora, onFecha, onHora }: PlazoProps) {
   return (
     <fieldset className="space-y-2">
-      <legend className="sr-only">Plazo de entrega</legend>
-      <p className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-200">
-        <input
-          id="lms-con-plazo"
-          type="checkbox"
-          className="h-4 w-4 rounded border-gray-300 text-primary-600"
-          checked={conPlazo}
-          onChange={(e) => onToggle(e.target.checked)}
-        />
-        <label htmlFor="lms-con-plazo">Definir plazo de entrega</label>
-      </p>
-      {conPlazo ? (
-        <div className="grid gap-3 sm:grid-cols-2">
-          <p>
-            <label htmlFor="lms-fecha" className="mb-1 block text-sm text-gray-600 dark:text-gray-300">
-              Fecha
-            </label>
-            <input
-              id="lms-fecha"
-              type="date"
-              className="input-field"
-              value={fecha}
-              onChange={(e) => onFecha(e.target.value)}
-              required
-            />
-          </p>
-          <p>
-            <label htmlFor="lms-hora" className="mb-1 block text-sm text-gray-600 dark:text-gray-300">
-              Hora
-            </label>
-            <input
-              id="lms-hora"
-              type="time"
-              step={60}
-              className="input-field"
-              value={hora}
-              onChange={(e) => onHora(e.target.value)}
-            />
-          </p>
-        </div>
-      ) : (
-        <p className="text-xs text-gray-500">Si no marca plazo, queda como publicación en el tablón sin vencimiento.</p>
-      )}
+      <legend className="text-sm font-medium text-gray-700 dark:text-gray-200">Plazo de entrega</legend>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <p>
+          <label htmlFor="lms-fecha" className="mb-1 block text-sm text-gray-600 dark:text-gray-300">
+            Fecha
+          </label>
+          <input
+            id="lms-fecha"
+            type="date"
+            className="input-field"
+            value={fecha}
+            onChange={(e) => onFecha(e.target.value)}
+            required
+          />
+        </p>
+        <p>
+          <label htmlFor="lms-hora" className="mb-1 block text-sm text-gray-600 dark:text-gray-300">
+            Hora
+          </label>
+          <input
+            id="lms-hora"
+            type="time"
+            step={60}
+            className="input-field"
+            value={hora}
+            onChange={(e) => onHora(e.target.value)}
+            required
+          />
+        </p>
+      </div>
     </fieldset>
   );
 }

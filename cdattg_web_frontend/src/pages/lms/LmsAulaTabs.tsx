@@ -9,12 +9,13 @@ type Props = Readonly<{
   tab: LmsTab;
   onTab: (t: LmsTab) => void;
   puedePublicar: boolean;
+  puedeVerHistorial?: boolean;
 }>;
 
 /**
  * Barra de pestañas del aula.
  */
-export function LmsAulaTabs({ tab, onTab, puedePublicar }: Props) {
+export function LmsAulaTabs({ tab, onTab, puedePublicar, puedeVerHistorial = false }: Props) {
   const base: Array<{ id: LmsTab; label: string }> = [
     { id: LMS_TABS.tablon, label: 'Actividades pendientes' },
     { id: LMS_TABS.trabajos, label: 'Trabajos de clase' },
@@ -24,10 +25,10 @@ export function LmsAulaTabs({ tab, onTab, puedePublicar }: Props) {
     ? [
         { id: LMS_TABS.mis, label: 'Mis actividades' },
         { id: LMS_TABS.publicar, label: 'Publicar actividad' },
-        { id: LMS_TABS.historial, label: LMS_LABEL_HISTORIAL },
       ]
     : [];
-  const items = [...base, ...extra];
+  const hist = puedeVerHistorial ? [{ id: LMS_TABS.historial, label: LMS_LABEL_HISTORIAL }] : [];
+  const items = [...base, ...extra, ...hist];
   return (
     <nav className="flex flex-wrap gap-2 border-b border-gray-200 pb-2 dark:border-gray-700" aria-label="Secciones del aula">
       {items.map((item) => (

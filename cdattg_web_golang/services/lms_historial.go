@@ -24,7 +24,9 @@ func (s *lmsAulaService) HistorialCalificaciones(userID, fichaID uint) ([]dto.Lm
 	if errB != nil {
 		return nil, errB
 	}
-	acts = filtrarActividadesDelInstructor(acts, user.ID, s.acceso.puedePublicar(user, fichaID, roles))
+	puedePublicar := s.acceso.puedePublicar(user, fichaID, roles)
+	soloPropias := puedePublicar && !lmsEsSuperAdmin(roles)
+	acts = filtrarActividadesDelInstructor(acts, user.ID, soloPropias)
 	ents, errC := s.entregas.FindByActividadIDs(idsDeActividades(acts))
 	if errC != nil {
 		return nil, errC

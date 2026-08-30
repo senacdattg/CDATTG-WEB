@@ -9,6 +9,17 @@ package services
 import "github.com/sena/cdattg-web-golang/models"
 
 const rolInstructorCasbin = "INSTRUCTOR"
+const rolSuperAdminLMS = "SUPER ADMINISTRADOR"
+
+// lmsEsSuperAdmin solo el rol SUPER ADMINISTRADOR, no admin ni coordinador.
+func lmsEsSuperAdmin(roles []string) bool {
+	return lmsTieneRol(roles, rolSuperAdminLMS)
+}
+
+// lmsPuedeVerHistorial el instructor de la ficha o el superadministrador.
+func lmsPuedeVerHistorial(puedePublicar, esSuperAdmin bool) bool {
+	return puedePublicar || esSuperAdmin
+}
 
 // lmsPuedePublicar exige instructor activo asignado a esa ficha.
 // Admin o coordinador no publican por el rol: tienen que estar en la ficha.

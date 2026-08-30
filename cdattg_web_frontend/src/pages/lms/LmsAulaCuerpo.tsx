@@ -15,6 +15,7 @@ import { LmsAulaHistorial } from './LmsAulaHistorial';
 import { LmsAulaMisActividades } from './LmsAulaMisActividades';
 import { LmsPublicarActividadForm } from './LmsPublicarActividadForm';
 import { LmsSoloConsultaAviso } from './LmsSoloConsultaAviso';
+import { lmsVeNotas } from './lmsActividadVista';
 import { lmsTabInicialAula } from './lmsHistorialTab';
 import { lmsPanelEditar, type LmsMisPanel } from './lmsMisPanel';
 import type { LmsAulaDetalle } from '../../types/lms';
@@ -30,8 +31,9 @@ type Props = Readonly<{
  * Pendientes, trabajos, aprendices, historial, mis actividades o publicar.
  */
 export function LmsAulaCuerpo({ aula, page, panelInicial = null, verInicial = null, tabHistorial = false }: Props) {
+  const veNotas = lmsVeNotas(aula);
   const [tab, setTab] = useState<LmsTab>(() =>
-    lmsTabInicialAula(panelInicial, tabHistorial, aula.puede_publicar),
+    lmsTabInicialAula(panelInicial, tabHistorial, veNotas),
   );
   const [editarId, setEditarId] = useState<number | null>(panelInicial?.id ?? null);
 
@@ -52,7 +54,7 @@ export function LmsAulaCuerpo({ aula, page, panelInicial = null, verInicial = nu
           Solo consulta: puede ver el aula y lo que ya entregó. No puede subir archivos.
         </LmsSoloConsultaAviso>
       ) : null}
-      <LmsAulaTabs tab={tab} onTab={setTab} puedePublicar={aula.puede_publicar} />
+      <LmsAulaTabs tab={tab} onTab={setTab} puedePublicar={aula.puede_publicar} puedeVerHistorial={veNotas} />
       {tab === LMS_TABS.tablon ? (
         <LmsAulaTablon
           fichaId={aula.ficha_id}
@@ -68,7 +70,7 @@ export function LmsAulaCuerpo({ aula, page, panelInicial = null, verInicial = nu
       {tab === LMS_TABS.aprendices ? (
         <LmsAulaAprendices fichaId={aula.ficha_id} aprendices={aula.aprendices} soloActivos={!aula.puede_publicar} />
       ) : null}
-      {tab === LMS_TABS.historial && aula.puede_publicar ? (
+      {tab === LMS_TABS.historial && veNotas ? (
         <LmsAulaHistorial fichaId={aula.ficha_id} />
       ) : null}
       {tab === LMS_TABS.mis && aula.puede_publicar ? (

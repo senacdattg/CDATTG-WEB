@@ -61,6 +61,28 @@ func TestLmsPuedeEntrarConsulta(t *testing.T) {
 	}
 }
 
+
+func TestLmsPuedeVerHistorial(t *testing.T) {
+	if !lmsPuedeVerHistorial(true, false) {
+		t.Fatal("instructor ve historial")
+	}
+	if !lmsPuedeVerHistorial(false, true) {
+		t.Fatal("superadmin ve historial")
+	}
+	if lmsPuedeVerHistorial(false, false) {
+		t.Fatal("aprendiz no ve historial")
+	}
+}
+
+func TestLmsEsSuperAdmin(t *testing.T) {
+	if !lmsEsSuperAdmin([]string{"SUPER ADMINISTRADOR"}) {
+		t.Fatal("sí es superadmin")
+	}
+	if lmsEsSuperAdmin([]string{"ADMINISTRADOR", "COORDINADOR"}) {
+		t.Fatal("admin no es superadmin")
+	}
+}
+
 func TestListaTieneRolInstructor(t *testing.T) {
 	if listaTieneRolInstructor([]string{"APRENDIZ"}) {
 		t.Fatal("no tiene INSTRUCTOR")

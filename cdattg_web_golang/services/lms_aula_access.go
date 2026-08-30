@@ -90,7 +90,7 @@ var ErrLmsSinPublicar = errors.New("no puede publicar en este aula")
 var ErrLmsSinHistorial = errors.New("no puede ver el historial de este aula")
 
 func (a *lmsAcceso) puedeVerHistorial(user *models.User, fichaID uint, roles []string) bool {
-	return a.puedePublicar(user, fichaID, roles)
+	return lmsPuedeVerHistorial(a.puedePublicar(user, fichaID, roles), lmsEsSuperAdmin(roles))
 }
 
 func (a *lmsAcceso) exigirEntrar(user *models.User, fichaID uint, roles []string) error {

@@ -24,3 +24,12 @@ export function lmsMuestraEntregaAlumno(puedePublicar: boolean, puedeEntregar?: 
 export function lmsEntregaDeAprendiz(entregas: LmsEntregaItem[], aprendizId: number): LmsEntregaItem | undefined {
   return entregas.find((e) => e.aprendiz_id === aprendizId);
 }
+
+/**
+ * Instructor o superadministrador: ven notas; solo el primero califica.
+ * @param {{ puede_publicar?: boolean; puede_ver_historial?: boolean }} flags Permisos del aula.
+ * @returns {boolean} Si muestro historial y entregas.
+ */
+export function lmsVeNotas(flags: { puede_publicar?: boolean; puede_ver_historial?: boolean }): boolean {
+  return Boolean(flags.puede_publicar || flags.puede_ver_historial);
+}

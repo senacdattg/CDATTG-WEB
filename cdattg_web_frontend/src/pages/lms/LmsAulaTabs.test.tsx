@@ -1,6 +1,6 @@
 /**
  * @module pages/lms/LmsAulaTabs.test
- * @description Publicar actividad solo si puede publicar.
+ * @description Publicar e historial según el rol.
  * @author Cristian Deysdayr Jiménez
  */
 import { createElement } from 'react';
@@ -22,10 +22,29 @@ describe('LmsAulaTabs', () => {
 
   it('muestra Publicar actividad al instructor', () => {
     const html = renderToStaticMarkup(
-      createElement(LmsAulaTabs, { tab: LMS_TABS.tablon, onTab: vi.fn(), puedePublicar: true }),
+      createElement(LmsAulaTabs, {
+        tab: LMS_TABS.tablon,
+        onTab: vi.fn(),
+        puedePublicar: true,
+        puedeVerHistorial: true,
+      }),
     );
     expect(html).toContain('Publicar actividad');
     expect(html).toContain('Mis actividades');
     expect(html).toContain('Historial de actividades');
+  });
+
+  it('el superadmin ve historial sin publicar', () => {
+    const html = renderToStaticMarkup(
+      createElement(LmsAulaTabs, {
+        tab: LMS_TABS.tablon,
+        onTab: vi.fn(),
+        puedePublicar: false,
+        puedeVerHistorial: true,
+      }),
+    );
+    expect(html).toContain('Historial de actividades');
+    expect(html).not.toContain('Publicar actividad');
+    expect(html).not.toContain('Mis actividades');
   });
 });

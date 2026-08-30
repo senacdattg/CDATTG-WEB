@@ -4,7 +4,7 @@
  * @author Cristian Deysdayr Jiménez
  */
 import { describe, expect, it } from 'vitest';
-import { lmsEntregaDeAprendiz, lmsMuestraEntregaAlumno } from './lmsActividadVista';
+import { lmsEntregaDeAprendiz, lmsMuestraEntregaAlumno, lmsVeNotas } from './lmsActividadVista';
 
 describe('lmsMuestraEntregaAlumno', () => {
   it('el aprendiz ve Mi trabajo', () => {
@@ -17,6 +17,16 @@ describe('lmsMuestraEntregaAlumno', () => {
 
   it('consulta solo mira, no entrega', () => {
     expect(lmsMuestraEntregaAlumno(false, false)).toBe(false);
+  });
+});
+
+describe('lmsVeNotas', () => {
+  it('el superadmin ve sin poder publicar', () => {
+    expect(lmsVeNotas({ puede_ver_historial: true, puede_publicar: false })).toBe(true);
+  });
+
+  it('el aprendiz no ve historial', () => {
+    expect(lmsVeNotas({ puede_publicar: false })).toBe(false);
   });
 });
 

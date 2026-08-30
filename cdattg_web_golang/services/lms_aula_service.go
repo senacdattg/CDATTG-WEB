@@ -80,8 +80,9 @@ func (s *lmsAulaService) GetAula(userID, fichaID uint) (*dto.LmsAulaDetalle, err
 		return nil, errors.New("ficha no encontrada")
 	}
 	puede := s.acceso.puedePublicar(user, fichaID, roles)
+	verHist := s.acceso.puedeVerHistorial(user, fichaID, roles)
 	aps, _ := s.aprendices.FindByFichaID(fichaID)
-	if !puede {
+	if !verHist {
 		aps = aprendicesActivosAula(aps)
 	}
 	acts, _ := s.actividades.FindByFichaID(fichaID)
@@ -96,7 +97,7 @@ func (s *lmsAulaService) GetAula(userID, fichaID uint) (*dto.LmsAulaDetalle, err
 		NombrePrograma: item.NombrePrograma,
 		TipoFormacion:  item.TipoFormacion,
 		PuedePublicar:     item.PuedePublicar,
-		PuedeVerHistorial: puede,
+		PuedeVerHistorial: verHist,
 		PuedeEntregar:     lmsAprendizPuedeEntregar(s.aprendizDeUsuario(user, fichaID)),
 		Aprendices:     mapAprendicesAula(aps),
 		Actividades:    items,

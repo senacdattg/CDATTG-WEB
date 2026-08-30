@@ -8,7 +8,7 @@ import { ArrowLeftIcon } from '@heroicons/react/24/outline';
 import { lmsPaths } from '../../routes/paths';
 import { useLmsActividad } from './useLmsActividad';
 import { LmsEntregaFila } from './LmsEntregaFila';
-import { lmsEntregaDeAprendiz } from './lmsActividadVista';
+import { lmsEntregaDeAprendiz, lmsVeNotas } from './lmsActividadVista';
 import { lmsVolverDesdeEntrega } from './lmsHistorialTab';
 
 /**
@@ -23,7 +23,7 @@ export function LmsActividadEntregaPage() {
   const volver = lmsVolverDesdeEntrega(fid, aid, location.state);
   const page = useLmsActividad(Number.isFinite(fid) ? fid : null, Number.isFinite(aid) ? aid : null);
   const d = page.detalle;
-  if (d && !d.puede_publicar) {
+  if (d && !lmsVeNotas(d)) {
     return <Navigate to={lmsPaths.actividad(fid, aid)} replace />;
   }
   const entrega = d ? lmsEntregaDeAprendiz(d.entregas, apid) : undefined;

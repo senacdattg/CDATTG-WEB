@@ -31,6 +31,7 @@ describe('LmsAulaHistorial', () => {
     estado.loading = false;
     estado.error = '';
     const html = renderToStaticMarkup(createElement(MemoryRouter, null, createElement(LmsAulaHistorial, { fichaId: 1 })));
+    expect(html).toContain('Filtrar por aprendiz');
     expect(html).toContain('ANA LOPEZ');
     expect(html).toContain('Guía 1');
     expect(html).toContain('85 / 100');

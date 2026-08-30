@@ -55,6 +55,7 @@ type VigilanciaAccesoService interface {
 	ListDentro(sedeID *uint) ([]dto.AccesoDentroItem, error)
 	Historial(f dto.AccesoHistorialFiltros) (*dto.AccesoHistorialResponse, error)
 	Estadisticas(f dto.AccesoHistorialFiltros) (*dto.AccesoEstadisticasResponse, error)
+	LeerFotoAcceso(documento string) (*PersonaFotoArchivo, error)
 }
 
 type vigilanciaAccesoService struct {
@@ -67,6 +68,7 @@ type vigilanciaAccesoService struct {
 	fichaRepo                repositories.FichaRepository
 	personalOperativoApoyoRepo repositories.PersonalOperativoApoyoRepository
 	contratistaRepo          repositories.ContratistaRepository
+	solicitudRepo            repositories.CarnetSolicitudRepository
 }
 
 // NewVigilanciaAccesoService construye el servicio de portería.
@@ -82,6 +84,7 @@ func NewVigilanciaAccesoService() VigilanciaAccesoService {
 		fichaRepo:      repositories.NewFichaRepository(),
 		personalOperativoApoyoRepo: repositories.NewPersonalOperativoApoyoRepository(),
 		contratistaRepo: repositories.NewContratistaRepository(),
+		solicitudRepo:   repositories.NewCarnetSolicitudRepository(),
 	}
 }
 
@@ -482,7 +485,7 @@ func (s *vigilanciaAccesoService) Lookup(req dto.AccesoLookupRequest) (*dto.Acce
 	}
 
 	return &dto.AccesoLookupResponse{
-		Persona:                 toFicha(persona, esNueva, tipos),
+		Persona:                 s.fichaAcceso(persona, esNueva, tipos),
 		Dentro:                  dentro,
 		AccionSugerida:          accion,
 		VisitaAbierta:           visita,
@@ -555,7 +558,7 @@ func (s *vigilanciaAccesoService) Ingreso(req dto.AccesoIngresoRequest, registra
 	}
 
 	return &dto.AccesoRegistroResponse{
-		Persona:       toFicha(persona, esNueva, tipos),
+		Persona:       s.fichaAcceso(persona, esNueva, tipos),
 		Accion:        accionIngreso,
 		VisitaID:      row.ID,
 		Dentro:        true,
@@ -615,7 +618,7 @@ func (s *vigilanciaAccesoService) crearSalidaSinIngreso(
 		return nil, err
 	}
 	return &dto.AccesoRegistroResponse{
-		Persona:          toFicha(persona, false, tipos),
+		Persona:          s.fichaAcceso(persona, false, tipos),
 		Accion:           accionSalida,
 		VisitaID:         row.ID,
 		Dentro:           false,
@@ -695,7 +698,7 @@ func (s *vigilanciaAccesoService) cerrarVisita(
 
 	tipos, fichas := s.resolverVistaAcceso(persona.ID)
 	return &dto.AccesoRegistroResponse{
-		Persona:  toFicha(persona, false, tipos),
+		Persona:  s.fichaAcceso(persona, false, tipos),
 		Accion:   accionSalida,
 		VisitaID: abierta.ID,
 		Dentro:   false,
@@ -721,11 +724,11 @@ func (s *vigilanciaAccesoService) ListDentro(sedeID *uint) ([]dto.AccesoDentroIt
 		row := rows[i]
 		var ficha dto.AccesoPersonaFicha
 		if row.Persona != nil {
-			ficha = toFicha(row.Persona, false, s.resolverTiposPersona(row.Persona.ID))
+			ficha = s.fichaAcceso(row.Persona, false, s.resolverTiposPersona(row.Persona.ID))
 		} else {
 			p, errP := s.personaRepo.FindByID(row.PersonaID)
 			if errP == nil && p != nil {
-				ficha = toFicha(p, false, s.resolverTiposPersona(p.ID))
+				ficha = s.fichaAcceso(p, false, s.resolverTiposPersona(p.ID))
 			}
 		}
 		out = append(out, dto.AccesoDentroItem{
@@ -826,7 +829,7 @@ func (s *vigilanciaAccesoService) historialItemFromRow(row *models.PersonaIngres
 		Estado:            estado,
 	}
 	if row.Persona != nil {
-		item.Persona = toFicha(row.Persona, false, s.resolverTiposPersona(row.Persona.ID))
+		item.Persona = s.fichaAcceso(row.Persona, false, s.resolverTiposPersona(row.Persona.ID))
 	}
 	if row.Sede != nil {
 		item.SedeNombre = row.Sede.Nombre

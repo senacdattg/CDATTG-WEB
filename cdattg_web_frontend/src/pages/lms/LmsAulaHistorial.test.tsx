@@ -35,6 +35,7 @@ describe('LmsAulaHistorial', () => {
     expect(html).toContain('Filtrar por actividad');
     expect(html).toContain('Todas las actividades');
     expect(html).toContain('<select');
+    expect(html).toContain('Ocultos en asistencia');
     expect(html).toContain('ANA LOPEZ');
     expect(html).toContain('Guía 1');
     expect(html).toContain('85 / 100');

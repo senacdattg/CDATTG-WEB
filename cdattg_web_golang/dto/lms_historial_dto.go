@@ -11,6 +11,8 @@ type LmsHistorialFila struct {
 	AprendizNombre  string   `json:"aprendiz_nombre"`
 	ActividadID     uint     `json:"actividad_id"`
 	Titulo          string   `json:"titulo"`
-	Calificacion    *float64 `json:"calificacion"`
-	CalificacionMax float64  `json:"calificacion_max"`
+	Calificacion        *float64 `json:"calificacion"`
+	CalificacionMax     float64  `json:"calificacion_max"`
+	Estado              bool     `json:"estado"`
+	OcultoEnAsistencia  bool     `json:"oculto_en_asistencia"`
 }

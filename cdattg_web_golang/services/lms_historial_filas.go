@@ -38,12 +38,14 @@ func armarFilasHistorial(
 				nota = porAct[acts[j].ID]
 			}
 			out = append(out, dto.LmsHistorialFila{
-				AprendizID:      aps[i].ID,
-				AprendizNombre:  nombre,
-				ActividadID:     acts[j].ID,
-				Titulo:          acts[j].Titulo,
-				Calificacion:    nota,
-				CalificacionMax: max,
+				AprendizID:         aps[i].ID,
+				AprendizNombre:     nombre,
+				ActividadID:        acts[j].ID,
+				Titulo:             acts[j].Titulo,
+				Calificacion:       nota,
+				CalificacionMax:    max,
+				Estado:             aps[i].Estado,
+				OcultoEnAsistencia: aps[i].OcultoEnAsistencia,
 			})
 		}
 	}

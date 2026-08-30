@@ -1,14 +1,18 @@
 /**
  * @module pages/lms/lmsHistorialFiltro
- * @description Recorto el historial por nombre y actividad de la lista.
+ * @description Recorto el historial por nombre, actividad de la lista y estado.
+ * Lo hice para buscar como en asistencia: activo u oculto.
  * Lo usa LmsAulaHistorial.
  * @author Cristian Deysdayr Jiménez
  */
 import type { LmsHistorialFila } from '../../types/lms';
 
+export type LmsHistorialEstadoFiltro = 'todos' | 'activos' | 'ocultos';
+
 export type LmsHistorialFiltroQ = Readonly<{
   aprendiz: string;
   actividadId: number | null;
+  estado: LmsHistorialEstadoFiltro;
 }>;
 
 /**
@@ -48,13 +52,37 @@ export function leerActividadId(raw: string): number | null {
 }
 
 /**
- * Deja las filas que pasan aprendiz y actividad.
+ * Activo = sigue en la ficha y no está oculto en asistencia.
+ * @param {LmsHistorialFila} fila Nota de la tabla.
+ * @returns {boolean} Si está visible como en la toma.
+ */
+export function esActivoHistorial(fila: LmsHistorialFila): boolean {
+  return fila.estado !== false && fila.oculto_en_asistencia !== true;
+}
+
+/**
+ * True si el estado del aprendiz coincide con el chip.
+ * @param {LmsHistorialFila} fila Nota de la tabla.
+ * @param {LmsHistorialEstadoFiltro} estado Chip elegido.
+ * @returns {boolean} Si pasa el recorte.
+ */
+export function coincideEstadoHistorial(fila: LmsHistorialFila, estado: LmsHistorialEstadoFiltro): boolean {
+  if (estado === 'todos') return true;
+  if (estado === 'ocultos') return fila.oculto_en_asistencia === true;
+  return esActivoHistorial(fila);
+}
+
+/**
+ * Deja las filas que pasan los tres filtros.
  * @param {LmsHistorialFila[]} filas Notas del aula.
- * @param {LmsHistorialFiltroQ} q Texto y lista.
+ * @param {LmsHistorialFiltroQ} q Texto y chip.
  * @returns {LmsHistorialFila[]} Filas visibles.
  */
 export function filtrarFilasHistorial(filas: LmsHistorialFila[], q: LmsHistorialFiltroQ): LmsHistorialFila[] {
   return filas.filter(
-    (f) => coincideAprendizHistorial(f, q.aprendiz) && coincideActividadHistorial(f, q.actividadId),
+    (f) =>
+      coincideAprendizHistorial(f, q.aprendiz) &&
+      coincideActividadHistorial(f, q.actividadId) &&
+      coincideEstadoHistorial(f, q.estado),
   );
 }

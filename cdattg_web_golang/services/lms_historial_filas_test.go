@@ -9,7 +9,7 @@ import (
 func TestArmarFilasHistorialCruzaAprendizYActividad(t *testing.T) {
 	max := 50.0
 	nota := 40.0
-	aps := []models.Aprendiz{{UserAuditModel: models.UserAuditModel{BaseModel: models.BaseModel{ID: 2}}}}
+	aps := []models.Aprendiz{{UserAuditModel: models.UserAuditModel{BaseModel: models.BaseModel{ID: 2}}, Estado: true, OcultoEnAsistencia: true}}
 	aps[0].Persona = &models.Persona{PrimerNombre: "ANA", PrimerApellido: "LOPEZ"}
 	acts := []models.LmsActividad{
 		{UserAuditModel: models.UserAuditModel{BaseModel: models.BaseModel{ID: 4}}, Titulo: "Guía 1", CalificacionMax: &max},
@@ -24,6 +24,9 @@ func TestArmarFilasHistorialCruzaAprendizYActividad(t *testing.T) {
 	}
 	if got[0].Calificacion == nil || *got[0].Calificacion != 40 || got[0].CalificacionMax != 50 {
 		t.Fatal("la nota no coincide")
+	}
+	if !got[0].Estado || !got[0].OcultoEnAsistencia {
+		t.Fatal("faltó el estado de asistencia")
 	}
 }
 

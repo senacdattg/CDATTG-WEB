@@ -91,4 +91,6 @@ export interface LmsHistorialFila {
   titulo: string;
   calificacion: number | null;
   calificacion_max: number;
+  estado?: boolean;
+  oculto_en_asistencia?: boolean;
 }

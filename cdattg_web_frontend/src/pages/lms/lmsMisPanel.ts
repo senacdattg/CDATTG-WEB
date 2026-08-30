@@ -19,6 +19,30 @@ export function lmsPanelEditar(id: number): LmsMisPanel {
 }
 
 /**
+ * Abre la lectura de esa actividad.
+ * @param {number} id Actividad.
+ * @returns {LmsMisPanel} Panel de lectura.
+ */
+export function lmsPanelVer(id: number): LmsMisPanel {
+  return { modo: 'ver', id };
+}
+
+/**
+ * Panel al entrar: el que mandaron o la lectura de verInicial.
+ * @param {LmsMisPanel | null | undefined} panelInicial Panel ya armado.
+ * @param {number | null | undefined} verInicial Id para abrir en lectura.
+ * @returns {LmsMisPanel | null} Panel o nada.
+ */
+export function lmsPanelInicioAula(
+  panelInicial?: LmsMisPanel | null,
+  verInicial?: number | null,
+): LmsMisPanel | null {
+  if (panelInicial) return panelInicial;
+  if (verInicial == null) return null;
+  return lmsPanelVer(verInicial);
+}
+
+/**
  * Estado de ruta para abrir Editar al volver al aula.
  * @param {number} id Actividad.
  * @returns {{ editarActividadId: number }} Estado de navegación.

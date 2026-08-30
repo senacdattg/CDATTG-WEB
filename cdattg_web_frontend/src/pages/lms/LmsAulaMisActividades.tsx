@@ -3,12 +3,10 @@
  * @description Lista o pantalla completa de ver, editar o confirmar el borrado.
  * @author Cristian Deysdayr Jiménez
  */
-import { useState, type ReactNode } from 'react';
+import { useState } from 'react';
 import { LmsEntregaExito, type LmsAvisoEntrega } from './LmsEntregaExito';
-import { LmsMisActividadBorrar } from './LmsMisActividadBorrar';
-import { LmsMisActividadEditar } from './LmsMisActividadEditar';
 import { LmsMisActividadFila } from './LmsMisActividadFila';
-import { LmsMisActividadVer } from './LmsMisActividadVer';
+import { LmsMisPanelVista } from './LmsMisPanelVista';
 import { encenderAvisoEntrega } from './lmsToast';
 import { lmsActividadDePanel, type LmsMisPanel } from './lmsMisPanel';
 import type { LmsActividadItem } from '../../types/lms';
@@ -23,6 +21,36 @@ type Props = Readonly<{
   onCerrarPanel?: () => void;
   soloLectura?: boolean;
 }>;
+
+/**
+ * Texto de lista vacía: el instructor publica; el superadmin solo mira.
+ * @param {boolean} soloLectura Si no puede publicar.
+ * @returns {string} Mensaje visible.
+ */
+function lmsMisVacioMensaje(soloLectura: boolean): string {
+  if (soloLectura) return 'Aún no hay actividades en esta aula.';
+  return 'Aún no ha publicado actividades en esta aula.';
+}
+
+/**
+ * Borra y avisa; si falla dejo el error en pantalla.
+ */
+async function lmsBorrarActividadMis(
+  id: number,
+  onEliminar: (actividadId: number) => Promise<void>,
+  cerrar: () => void,
+  setError: (msg: string) => void,
+  setAviso: (v: LmsAvisoEntrega | null) => void,
+): Promise<void> {
+  setError('');
+  try {
+    await onEliminar(id);
+    cerrar();
+    encenderAvisoEntrega('eliminada', setAviso);
+  } catch (cause: unknown) {
+    setError(cause instanceof Error ? cause.message : 'No se pudo eliminar');
+  }
+}
 
 /**
  * Ver y Editar llenan el espacio. Eliminar pide una segunda confirmación.
@@ -47,78 +75,70 @@ export function LmsAulaMisActividades({
     onCerrarPanel?.();
   };
 
-  let vista: ReactNode;
-  if (panel && actual && panel.modo === 'ver') {
-    vista = (
-      <LmsMisActividadVer
-        fichaId={fichaId}
-        actividad={actual}
-        onCerrar={cerrar}
-        onEditar={soloLectura ? undefined : () => setPanel({ modo: 'editar', id: actual.id })}
-      />
-    );
-  } else if (panel && actual && panel.modo === 'editar') {
-    vista = (
-      <LmsMisActividadEditar
-        fichaId={fichaId}
-        actividad={actual}
-        saving={saving}
-        onCerrar={cerrar}
-        onGuardar={async (body) => {
-          await onEditar(actual.id, body);
-          cerrar();
-          encenderAvisoEntrega('actualizada', setAviso);
-        }}
-      />
-    );
-  } else if (panel && actual && panel.modo === 'borrar') {
-    vista = (
-      <div className="space-y-3">
-        {error ? <p role="alert" className="text-sm text-red-600">{error}</p> : null}
-        <LmsMisActividadBorrar
-          titulo={actual.titulo}
-          saving={saving}
-          onCancelar={cerrar}
-          onConfirmar={async () => {
-            setError('');
-            try {
-              await onEliminar(actual.id);
-              cerrar();
-              encenderAvisoEntrega('eliminada', setAviso);
-            } catch (cause: unknown) {
-              setError(cause instanceof Error ? cause.message : 'No se pudo eliminar');
-            }
-          }}
-        />
-      </div>
-    );
-  } else if (actividades.length === 0) {
-    vista = (
-      <p className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-8 text-center text-sm text-gray-500 dark:border-gray-600 dark:bg-gray-900/40">
-        {soloLectura ? 'Aún no hay actividades en esta aula.' : 'Aún no ha publicado actividades en esta aula.'}
-      </p>
-    );
-  } else {
-    vista = (
-      <ul className="space-y-3">
-        {actividades.map((a) => (
-          <li key={a.id}>
-            <LmsMisActividadFila
-              actividad={a}
-              onVer={() => setPanel({ modo: 'ver', id: a.id })}
-              onEditar={soloLectura ? undefined : () => setPanel({ modo: 'editar', id: a.id })}
-              onEliminar={soloLectura ? undefined : () => setPanel({ modo: 'borrar', id: a.id })}
-            />
-          </li>
-        ))}
-      </ul>
-    );
-  }
-
   return (
     <>
       <LmsEntregaExito visible={Boolean(aviso)} variante={aviso ?? 'exito'} />
-      {vista}
+      {panel && actual ? (
+        <LmsMisPanelVista
+          fichaId={fichaId}
+          panel={panel}
+          actividad={actual}
+          saving={saving}
+          soloLectura={soloLectura}
+          error={error}
+          onCerrar={cerrar}
+          onEditar={() => setPanel({ modo: 'editar', id: actual.id })}
+          onGuardar={async (body) => {
+            await onEditar(actual.id, body);
+            cerrar();
+            encenderAvisoEntrega('actualizada', setAviso);
+          }}
+          onConfirmarBorrar={() => lmsBorrarActividadMis(actual.id, onEliminar, cerrar, setError, setAviso)}
+        />
+      ) : (
+        <LmsMisActividadesLista
+          actividades={actividades}
+          soloLectura={soloLectura}
+          onVer={(id) => setPanel({ modo: 'ver', id })}
+          onEditar={(id) => setPanel({ modo: 'editar', id })}
+          onEliminar={(id) => setPanel({ modo: 'borrar', id })}
+        />
+      )}
     </>
+  );
+}
+
+type ListaProps = Readonly<{
+  actividades: LmsActividadItem[];
+  soloLectura: boolean;
+  onVer: (id: number) => void;
+  onEditar: (id: number) => void;
+  onEliminar: (id: number) => void;
+}>;
+
+/**
+ * Lista de publicaciones o el aviso de aula vacía.
+ */
+function LmsMisActividadesLista({ actividades, soloLectura, onVer, onEditar, onEliminar }: ListaProps) {
+  if (actividades.length === 0) {
+    return (
+      <p className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-8 text-center text-sm text-gray-500 dark:border-gray-600 dark:bg-gray-900/40">
+        {lmsMisVacioMensaje(soloLectura)}
+      </p>
+    );
+  }
+  return (
+    <ul className="space-y-3">
+      {actividades.map((a) => (
+        <li key={a.id}>
+          <LmsMisActividadFila
+            actividad={a}
+            onVer={() => onVer(a.id)}
+            onEditar={soloLectura ? undefined : () => onEditar(a.id)}
+            onEliminar={soloLectura ? undefined : () => onEliminar(a.id)}
+          />
+        </li>
+      ))}
+    </ul>
   );
 }

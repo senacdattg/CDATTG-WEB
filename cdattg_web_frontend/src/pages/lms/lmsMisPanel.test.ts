@@ -4,7 +4,7 @@
  * @author Cristian Deysdayr Jiménez
  */
 import { describe, expect, it } from 'vitest';
-import { lmsActividadDePanel, lmsAulaStateEditar, lmsAulaStateVer, lmsMisPanelDesdeState, lmsPanelEditar, lmsVerIdDesdeState } from './lmsMisPanel';
+import { lmsActividadDePanel, lmsAulaStateEditar, lmsAulaStateVer, lmsMisPanelDesdeState, lmsPanelEditar, lmsPanelInicioAula, lmsPanelVer, lmsVerIdDesdeState } from './lmsMisPanel';
 import type { LmsActividadItem } from '../../types/lms';
 
 const item = (id: number): LmsActividadItem => ({
@@ -33,12 +33,21 @@ describe('lmsActividadDePanel', () => {
 describe('lmsMisPanelDesdeState', () => {
   it('abre editar con un id válido', () => {
     expect(lmsMisPanelDesdeState(lmsAulaStateEditar(4))).toEqual(lmsPanelEditar(4));
+    expect(lmsPanelVer(4)).toEqual({ modo: 'ver', id: 4 });
   });
 
   it('ignora estado vacío o inválido', () => {
     expect(lmsMisPanelDesdeState(null)).toBeNull();
     expect(lmsMisPanelDesdeState({ editarActividadId: '4' })).toBeNull();
     expect(lmsMisPanelDesdeState({ editarActividadId: 0 })).toBeNull();
+  });
+});
+
+describe('lmsPanelInicioAula', () => {
+  it('usa el panel mandado o abre lectura si hay id', () => {
+    expect(lmsPanelInicioAula(lmsPanelEditar(4), 9)).toEqual(lmsPanelEditar(4));
+    expect(lmsPanelInicioAula(null, 4)).toEqual(lmsPanelVer(4));
+    expect(lmsPanelInicioAula(null, null)).toBeNull();
   });
 });
 

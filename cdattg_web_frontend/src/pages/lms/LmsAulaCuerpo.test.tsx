@@ -12,10 +12,6 @@ vi.mock('../../context/AuthContext', () => ({
   useAuth: () => auth,
 }));
 
-vi.mock('./useLmsHistorial', () => ({
-  useLmsHistorial: () => ({ filas: [], loading: true, error: '' }),
-}));
-
 import { LmsAulaCuerpo } from './LmsAulaCuerpo';
 import type { useLmsAula } from './useLmsAula';
 import type { LmsAulaDetalle, LmsActividadItem } from '../../types/lms';
@@ -55,6 +51,10 @@ const act: LmsActividadItem = {
 };
 
 describe('LmsAulaCuerpo', () => {
+  beforeEach(() => {
+    auth.roles = [];
+  });
+
   it('muestra aviso de solo consulta si no puede entregar', () => {
     const html = renderToStaticMarkup(
       createElement(LmsAulaCuerpo, { aula: { ...aula, puede_entregar: false }, page }),
@@ -88,42 +88,65 @@ describe('LmsAulaCuerpo', () => {
     expect(html).toContain('Guardar cambios');
   });
 
-  it('el instructor entra en Aprendices', () => {
+  it('en pendientes muestra la vista y el apartado Editar', () => {
     const html = renderToStaticMarkup(
       createElement(LmsAulaCuerpo, {
         aula: { ...aula, puede_publicar: true, actividades: [act] },
         page,
+        verInicial: 4,
       }),
     );
-    expect(html).toContain('Aprendices');
-    expect(html).toContain('Mis actividades');
-    expect(html).not.toContain('Actividades pendientes');
+    expect(html).toContain('Editar actividad');
+    expect(html).toContain('Volver');
+    expect(html).not.toContain('Guardar cambios');
   });
 
-  it('abre el historial si viene con tabHistorial', () => {
+  it('abre el historial si vuelve con esa pestaña', () => {
     const html = renderToStaticMarkup(
       createElement(LmsAulaCuerpo, {
-        aula: { ...aula, puede_publicar: true },
+        aula: { ...aula, puede_publicar: true, puede_ver_historial: true },
         page,
         tabHistorial: true,
       }),
     );
+    expect(html).toContain('Historial de actividades');
     expect(html).toContain('Cargando historial');
   });
 
-  it('el superadmin ve todos los módulos', () => {
-    auth.roles = ['SUPER ADMINISTRADOR'];
-    const html = renderToStaticMarkup(
-      createElement(LmsAulaCuerpo, {
-        aula: { ...aula, puede_publicar: false, puede_ver_historial: true },
-        page,
-      }),
-    );
+  it('el aprendiz ve pendientes, entregadas y vencidas', () => {
+    const html = renderToStaticMarkup(createElement(LmsAulaCuerpo, { aula, page }));
     expect(html).toContain('Actividades pendientes');
+    expect(html).toContain('Actividades entregadas');
     expect(html).toContain('Actividades vencidas');
+    expect(html).toContain('Aprendices');
+    expect(html).not.toContain('Mis actividades');
+  });
+
+  it('el instructor no ve pendientes ni trabajos', () => {
+    const html = renderToStaticMarkup(
+      createElement(LmsAulaCuerpo, { aula: { ...aula, puede_publicar: true, puede_ver_historial: true }, page }),
+    );
+    expect(html).toContain('Aprendices');
     expect(html).toContain('Mis actividades');
     expect(html).toContain('Publicar actividad');
     expect(html).toContain('Historial de actividades');
+    expect(html).not.toContain('Actividades pendientes');
+    expect(html).not.toContain('Actividades entregadas');
+    expect(html).not.toContain('Actividades vencidas');
+  });
+
+  it('el superadmin ve todos los módulos en solo consulta', () => {
+    auth.roles = ['SUPER ADMINISTRADOR'];
+    const html = renderToStaticMarkup(
+      createElement(LmsAulaCuerpo, {
+        aula: { ...aula, puede_publicar: false, puede_ver_historial: true, puede_entregar: false },
+        page,
+        tabHistorial: true,
+      }),
+    );
+    expect(html).toContain('Historial de actividades');
+    expect(html).toContain('Publicar actividad');
+    expect(html).toContain('Mis actividades');
     expect(html).toContain('no está asignado a esta ficha');
   });
 });

@@ -16,6 +16,11 @@ func lmsEsSuperAdmin(roles []string) bool {
 	return lmsTieneRol(roles, rolSuperAdminLMS)
 }
 
+// lmsPuedeAuditar solo el superadministrador abre el submódulo de auditoría.
+func lmsPuedeAuditar(roles []string) bool {
+	return lmsEsSuperAdmin(roles)
+}
+
 // lmsPuedeVerHistorial el instructor de la ficha o el superadministrador.
 func lmsPuedeVerHistorial(puedePublicar, esSuperAdmin bool) bool {
 	return puedePublicar || esSuperAdmin

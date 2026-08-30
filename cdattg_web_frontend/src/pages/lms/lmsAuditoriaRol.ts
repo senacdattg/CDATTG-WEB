@@ -6,13 +6,6 @@
 
 const ROL_SUPER_ADMIN = 'SUPER ADMINISTRADOR';
 
-const ROLES_AUDITORIA = new Set([
-  'SUPER ADMINISTRADOR',
-  'ADMINISTRADOR',
-  'COORDINADOR',
-  'INSTRUCTOR',
-]);
-
 /**
  * Solo el superadministrador ve todos los módulos del aula.
  * @param {string[]} roles Roles del usuario.
@@ -23,10 +16,10 @@ export function lmsEsSuperAdmin(roles: string[]): boolean {
 }
 
 /**
- * Auditoría: admin/coordinador o instructor. El aprendiz no entra.
+ * Auditoría: solo el superadministrador.
  * @param {string[]} roles Roles de Casbin del usuario.
  * @returns {boolean} True si muestro el submódulo.
  */
 export function lmsPuedeAuditar(roles: string[]): boolean {
-  return roles.some((r) => ROLES_AUDITORIA.has(r));
+  return lmsEsSuperAdmin(roles);
 }

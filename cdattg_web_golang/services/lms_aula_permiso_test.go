@@ -74,6 +74,15 @@ func TestLmsPuedeVerHistorial(t *testing.T) {
 	}
 }
 
+func TestLmsPuedeAuditarSoloSuperAdmin(t *testing.T) {
+	if !lmsPuedeAuditar([]string{"SUPER ADMINISTRADOR"}) {
+		t.Fatal("superadmin sí audita")
+	}
+	if lmsPuedeAuditar([]string{"ADMINISTRADOR", "INSTRUCTOR", "COORDINADOR"}) {
+		t.Fatal("otro rol no audita")
+	}
+}
+
 func TestLmsEsSuperAdmin(t *testing.T) {
 	if !lmsEsSuperAdmin([]string{"SUPER ADMINISTRADOR"}) {
 		t.Fatal("sí es superadmin")

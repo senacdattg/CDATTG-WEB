@@ -209,7 +209,7 @@ export const SIDEBAR_MANIFEST: SidebarManifestItem[] = [
     path: lmsPaths.auditoria,
     label: 'Auditoría',
     permission: 'VER LMS',
-    rolesRequired: ['SUPER ADMINISTRADOR', 'ADMINISTRADOR', 'COORDINADOR', 'INSTRUCTOR'],
+    rolesRequired: ['SUPER ADMINISTRADOR'],
     iconKey: 'lms',
   },
 

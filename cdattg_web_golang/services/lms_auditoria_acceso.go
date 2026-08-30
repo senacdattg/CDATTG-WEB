@@ -1,6 +1,5 @@
 // Este archivo decide quién puede abrir la auditoría LMS.
-// Lo hice porque el aprendiz no debe ver carpetas de otros.
-// Staff ve todas; el instructor solo las fichas donde está asignado.
+// Lo hice para que solo el superadministrador vea las carpetas.
 // Lo usa LmsAuditoriaService.
 //
 // @author Cristian Deysdayr Jiménez
@@ -12,31 +11,16 @@ type lmsAlcanceAuditoria struct {
 	fichaIDs []uint
 }
 
-// exigirAuditoria staff sin tope de fichas; instructor solo las suyas.
+// exigirAuditoria solo el superadministrador. Ve todas las fichas.
 func (s *lmsAuditoriaService) exigirAuditoria(userID uint) (*lmsAlcanceAuditoria, error) {
-	user, roles, err := s.usuarioYRoles(userID)
+	_, roles, err := s.usuarioYRoles(userID)
 	if err != nil {
 		return nil, err
 	}
-	if lmsEsStaff(roles) {
-		return &lmsAlcanceAuditoria{}, nil
-	}
-	if !listaTieneRolInstructor(roles) {
+	if !lmsPuedeAuditar(roles) {
 		return nil, ErrLmsSinAcceso
 	}
-	instID := s.acceso.instructorID(user)
-	if instID == nil {
-		return nil, ErrLmsSinAcceso
-	}
-	asig, err := s.instFichas.FindByInstructorID(*instID)
-	if err != nil {
-		return nil, err
-	}
-	ids := make([]uint, 0, len(asig))
-	for i := range asig {
-		ids = append(ids, asig[i].FichaID)
-	}
-	return &lmsAlcanceAuditoria{fichaIDs: ids}, nil
+	return &lmsAlcanceAuditoria{}, nil
 }
 
 // personaEnAlcance staff sí; instructor si comparte al menos una ficha.

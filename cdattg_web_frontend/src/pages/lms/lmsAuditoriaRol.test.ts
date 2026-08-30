@@ -7,9 +7,11 @@ import { describe, expect, it } from 'vitest';
 import { lmsEsSuperAdmin, lmsPuedeAuditar } from './lmsAuditoriaRol';
 
 describe('lmsPuedeAuditar', () => {
-  it('deja entrar a admin e instructor', () => {
-    expect(lmsPuedeAuditar(['ADMINISTRADOR'])).toBe(true);
-    expect(lmsPuedeAuditar(['INSTRUCTOR'])).toBe(true);
+  it('solo deja entrar al superadministrador', () => {
+    expect(lmsPuedeAuditar(['SUPER ADMINISTRADOR'])).toBe(true);
+    expect(lmsPuedeAuditar(['ADMINISTRADOR'])).toBe(false);
+    expect(lmsPuedeAuditar(['COORDINADOR'])).toBe(false);
+    expect(lmsPuedeAuditar(['INSTRUCTOR'])).toBe(false);
   });
 
   it('reconoce solo al superadministrador', () => {

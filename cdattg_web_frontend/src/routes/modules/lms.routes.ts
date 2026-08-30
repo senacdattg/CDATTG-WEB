@@ -79,6 +79,10 @@ export const lmsRoutes: RouteObject = {
     {
       path: 'auditoria',
       handle: { breadcrumb: { label: 'Auditoría', to: lmsPaths.auditoria } },
+      lazy: async () => {
+        const { LmsAuditoriaGuard } = await import('../../pages/lms/LmsAuditoriaGuard');
+        return { Component: LmsAuditoriaGuard };
+      },
       children: [
         {
           index: true,

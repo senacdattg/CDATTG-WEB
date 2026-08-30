@@ -39,17 +39,22 @@ describe('LmsAulaTabs', () => {
     expect(html).not.toContain('Actividades vencidas');
   });
 
-  it('el superadmin ve historial sin publicar', () => {
+  it('el superadmin ve todos los módulos', () => {
     const html = renderToStaticMarkup(
       createElement(LmsAulaTabs, {
         tab: LMS_TABS.tablon,
         onTab: vi.fn(),
         puedePublicar: false,
         puedeVerHistorial: true,
+        esSuperAdmin: true,
       }),
     );
+    expect(html).toContain('Actividades pendientes');
+    expect(html).toContain('Actividades entregadas');
+    expect(html).toContain('Actividades vencidas');
+    expect(html).toContain('Aprendices');
+    expect(html).toContain('Mis actividades');
+    expect(html).toContain('Publicar actividad');
     expect(html).toContain('Historial de actividades');
-    expect(html).not.toContain('Publicar actividad');
-    expect(html).not.toContain('Mis actividades');
   });
 });

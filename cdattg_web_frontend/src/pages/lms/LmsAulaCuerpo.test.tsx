@@ -5,7 +5,12 @@
  */
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+const auth = { roles: [] as string[] };
+vi.mock('../../context/AuthContext', () => ({
+  useAuth: () => auth,
+}));
 
 vi.mock('./useLmsHistorial', () => ({
   useLmsHistorial: () => ({ filas: [], loading: true, error: '' }),
@@ -104,5 +109,20 @@ describe('LmsAulaCuerpo', () => {
       }),
     );
     expect(html).toContain('Cargando historial');
+  });
+
+  it('el superadmin ve todos los módulos', () => {
+    auth.roles = ['SUPER ADMINISTRADOR'];
+    const html = renderToStaticMarkup(
+      createElement(LmsAulaCuerpo, {
+        aula: { ...aula, puede_publicar: false, puede_ver_historial: true },
+        page,
+      }),
+    );
+    expect(html).toContain('Actividades pendientes');
+    expect(html).toContain('Actividades vencidas');
+    expect(html).toContain('Mis actividades');
+    expect(html).toContain('Publicar actividad');
+    expect(html).toContain('Historial de actividades');
   });
 });

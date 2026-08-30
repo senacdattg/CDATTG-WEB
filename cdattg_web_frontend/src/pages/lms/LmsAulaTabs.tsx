@@ -1,7 +1,7 @@
 /**
  * @module pages/lms/LmsAulaTabs
  * @description Barra de pestañas del aula según el rol.
- * Lo hice para pintar el orden del aprendiz y el del instructor.
+ * Lo hice para pintar el orden del instructor y las tres listas del aprendiz.
  * Lo usa LmsAulaCuerpo.
  * @author Cristian Deysdayr Jiménez
  */
@@ -13,13 +13,20 @@ type Props = Readonly<{
   onTab: (t: LmsTab) => void;
   puedePublicar: boolean;
   puedeVerHistorial?: boolean;
+  esSuperAdmin?: boolean;
 }>;
 
 /**
  * Pestañas del aula.
  */
-export function LmsAulaTabs({ tab, onTab, puedePublicar, puedeVerHistorial = false }: Props) {
-  const items = lmsAulaTabItems(puedePublicar, puedeVerHistorial);
+export function LmsAulaTabs({
+  tab,
+  onTab,
+  puedePublicar,
+  puedeVerHistorial = false,
+  esSuperAdmin = false,
+}: Props) {
+  const items = lmsAulaTabItems(puedePublicar, puedeVerHistorial, esSuperAdmin);
   return (
     <nav className="flex flex-wrap gap-2 border-b border-gray-200 pb-2 dark:border-gray-700" aria-label="Secciones del aula">
       {items.map((item) => (

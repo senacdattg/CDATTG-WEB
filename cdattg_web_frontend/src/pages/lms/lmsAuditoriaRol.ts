@@ -4,12 +4,23 @@
  * @author Cristian Deysdayr Jiménez
  */
 
+const ROL_SUPER_ADMIN = 'SUPER ADMINISTRADOR';
+
 const ROLES_AUDITORIA = new Set([
   'SUPER ADMINISTRADOR',
   'ADMINISTRADOR',
   'COORDINADOR',
   'INSTRUCTOR',
 ]);
+
+/**
+ * Solo el superadministrador ve todos los módulos del aula.
+ * @param {string[]} roles Roles del usuario.
+ * @returns {boolean} Si es SUPER ADMINISTRADOR.
+ */
+export function lmsEsSuperAdmin(roles: string[]): boolean {
+  return roles.includes(ROL_SUPER_ADMIN);
+}
 
 /**
  * Auditoría: admin/coordinador o instructor. El aprendiz no entra.

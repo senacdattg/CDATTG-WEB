@@ -1,6 +1,6 @@
 /**
  * @module pages/lms/lmsAulaTabItems
- * @description Qué pestañas ve el aprendiz y el instructor.
+ * @description Qué pestañas ve cada rol en el aula.
  * Lo hice para que el aprendiz vea pendientes, entregadas y vencidas.
  * Lo usa LmsAulaTabs.
  * @author Cristian Deysdayr Jiménez
@@ -21,12 +21,20 @@ const TABS_APRENDIZ: LmsAulaTabItem[] = [
 ];
 
 /**
- * El aprendiz ve pendientes, entregadas y vencidas. El instructor sigue con el orden anterior.
+ * El superadministrador ve cada módulo. El instructor: los suyos. El aprendiz: pendientes.
  * @param {boolean} puedePublicar Instructor de la ficha.
  * @param {boolean} puedeVerHistorial Instructor o superadministrador.
+ * @param {boolean} [esSuperAdmin] Ve todos los módulos; solo actúa si publica.
  * @returns {LmsAulaTabItem[]} Pestañas en orden.
  */
-export function lmsAulaTabItems(puedePublicar: boolean, puedeVerHistorial: boolean): LmsAulaTabItem[] {
+export function lmsAulaTabItems(
+  puedePublicar: boolean,
+  puedeVerHistorial: boolean,
+  esSuperAdmin = false,
+): LmsAulaTabItem[] {
+  if (esSuperAdmin) {
+    return [...TABS_APRENDIZ, TAB_MIS, TAB_PUBLICAR, TAB_HISTORIAL];
+  }
   if (puedePublicar) {
     return [TAB_APRENDICES, TAB_MIS, TAB_PUBLICAR, TAB_HISTORIAL];
   }

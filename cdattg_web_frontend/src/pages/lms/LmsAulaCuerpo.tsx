@@ -4,6 +4,7 @@
  * @author Cristian Deysdayr Jiménez
  */
 import { useState } from 'react';
+import { useAuth } from '../../context/AuthContext';
 import { labelTipoFormacion } from '../../constants/tipoFormacion';
 import { LMS_TABS, type LmsTab } from './lmsConstants';
 import type { useLmsAula } from './useLmsAula';
@@ -16,6 +17,7 @@ import { LmsAulaVencidas } from './LmsAulaVencidas';
 import { LmsAulaMisActividades } from './LmsAulaMisActividades';
 import { LmsPublicarActividadForm } from './LmsPublicarActividadForm';
 import { LmsSoloConsultaAviso } from './LmsSoloConsultaAviso';
+import { lmsEsSuperAdmin } from './lmsAuditoriaRol';
 import { lmsVeNotas } from './lmsActividadVista';
 import { lmsTabInicialAula } from './lmsHistorialTab';
 import { lmsPanelEditar, type LmsMisPanel } from './lmsMisPanel';
@@ -26,12 +28,15 @@ type Props = Readonly<{
   page: ReturnType<typeof useLmsAula>;
   panelInicial?: LmsMisPanel | null;
   verInicial?: number | null;
+  tabHistorial?: boolean;
 }>;
 
 /**
  * Pendientes, trabajos, aprendices, historial, mis actividades o publicar.
  */
 export function LmsAulaCuerpo({ aula, page, panelInicial = null, verInicial = null, tabHistorial = false }: Props) {
+  const { roles } = useAuth();
+  const esSuper = lmsEsSuperAdmin(roles);
   const veNotas = lmsVeNotas(aula);
   const [tab, setTab] = useState<LmsTab>(() =>
     lmsTabInicialAula(panelInicial, tabHistorial, veNotas, aula.puede_publicar),
@@ -55,7 +60,7 @@ export function LmsAulaCuerpo({ aula, page, panelInicial = null, verInicial = nu
           Solo consulta: puede ver el aula y lo que ya entregó. No puede subir archivos.
         </LmsSoloConsultaAviso>
       ) : null}
-      <LmsAulaTabs tab={tab} onTab={setTab} puedePublicar={aula.puede_publicar} puedeVerHistorial={veNotas} />
+      <LmsAulaTabs tab={tab} onTab={setTab} puedePublicar={aula.puede_publicar} puedeVerHistorial={veNotas} esSuperAdmin={esSuper} />
       {tab === LMS_TABS.tablon ? (
         <LmsAulaTablon
           fichaId={aula.ficha_id}

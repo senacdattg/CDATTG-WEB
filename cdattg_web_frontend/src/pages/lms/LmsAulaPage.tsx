@@ -1,6 +1,6 @@
 /**
  * @module pages/lms/LmsAulaPage
- * @description Aula de una ficha: pendientes, trabajos, aprendices y publicar.
+ * @description Aula de una ficha: pendientes, trabajos, historial y publicar.
  * @author Cristian Deysdayr Jiménez
  */
 import { useState } from 'react';
@@ -10,6 +10,7 @@ import { lmsPaths } from '../../routes/paths';
 import { useLmsAula } from './useLmsAula';
 import { LmsAulaCuerpo } from './LmsAulaCuerpo';
 import { LmsFichaDetalleModal } from './LmsFichaDetalleModal';
+import { lmsEsTabHistorial } from './lmsHistorialTab';
 import { lmsMisPanelDesdeState, lmsVerIdDesdeState } from './lmsMisPanel';
 
 /**
@@ -45,7 +46,15 @@ export function LmsAulaPage() {
           {page.error}
         </p>
       ) : null}
-      {aula ? <LmsAulaCuerpo aula={aula} page={page} panelInicial={panelInicial} verInicial={verInicial} /> : null}
+      {aula ? (
+        <LmsAulaCuerpo
+          aula={aula}
+          page={page}
+          panelInicial={panelInicial}
+          verInicial={verInicial}
+          tabHistorial={lmsEsTabHistorial(location.state)}
+        />
+      ) : null}
       {verFicha && aula ? <LmsFichaDetalleModal fichaId={aula.ficha_id} onClose={() => setVerFicha(false)} /> : null}
     </main>
   );

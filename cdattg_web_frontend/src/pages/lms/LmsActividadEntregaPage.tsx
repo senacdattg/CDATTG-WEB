@@ -3,21 +3,24 @@
  * @description Lo que un aprendiz subió: archivos, nota y comentario.
  * @author Cristian Deysdayr Jiménez
  */
-import { Link, Navigate, useParams } from 'react-router-dom';
+import { Link, Navigate, useLocation, useParams } from 'react-router-dom';
 import { ArrowLeftIcon } from '@heroicons/react/24/outline';
 import { lmsPaths } from '../../routes/paths';
 import { useLmsActividad } from './useLmsActividad';
 import { LmsEntregaFila } from './LmsEntregaFila';
 import { lmsEntregaDeAprendiz } from './lmsActividadVista';
+import { lmsVolverDesdeEntrega } from './lmsHistorialTab';
 
 /**
- * Calificación de un envío. Vuelve al listado de aprendices.
+ * Calificación de un envío. Vuelve a aprendices o al historial.
  */
 export function LmsActividadEntregaPage() {
   const { fichaId, actividadId, aprendizId } = useParams();
+  const location = useLocation();
   const fid = Number(fichaId);
   const aid = Number(actividadId);
   const apid = Number(aprendizId);
+  const volver = lmsVolverDesdeEntrega(fid, aid, location.state);
   const page = useLmsActividad(Number.isFinite(fid) ? fid : null, Number.isFinite(aid) ? aid : null);
   const d = page.detalle;
   if (d && !d.puede_publicar) {
@@ -26,7 +29,7 @@ export function LmsActividadEntregaPage() {
   const entrega = d ? lmsEntregaDeAprendiz(d.entregas, apid) : undefined;
   return (
     <main className="space-y-6">
-      <Link to={lmsPaths.actividadAprendices(fid, aid)} className="btn-secondary inline-flex items-center gap-2">
+      <Link to={volver.to} state={volver.state} className="btn-secondary inline-flex items-center gap-2">
         <ArrowLeftIcon className="h-5 w-5" aria-hidden />
         Volver
       </Link>

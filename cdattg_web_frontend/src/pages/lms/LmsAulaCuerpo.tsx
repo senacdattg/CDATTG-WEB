@@ -15,6 +15,7 @@ import { LmsAulaHistorial } from './LmsAulaHistorial';
 import { LmsAulaMisActividades } from './LmsAulaMisActividades';
 import { LmsPublicarActividadForm } from './LmsPublicarActividadForm';
 import { LmsSoloConsultaAviso } from './LmsSoloConsultaAviso';
+import { lmsTabInicialAula } from './lmsHistorialTab';
 import { lmsPanelEditar, type LmsMisPanel } from './lmsMisPanel';
 import type { LmsAulaDetalle } from '../../types/lms';
 
@@ -28,8 +29,10 @@ type Props = Readonly<{
 /**
  * Pendientes, trabajos, aprendices, historial, mis actividades o publicar.
  */
-export function LmsAulaCuerpo({ aula, page, panelInicial = null, verInicial = null }: Props) {
-  const [tab, setTab] = useState<LmsTab>(panelInicial ? LMS_TABS.mis : LMS_TABS.tablon);
+export function LmsAulaCuerpo({ aula, page, panelInicial = null, verInicial = null, tabHistorial = false }: Props) {
+  const [tab, setTab] = useState<LmsTab>(() =>
+    lmsTabInicialAula(panelInicial, tabHistorial, aula.puede_publicar),
+  );
   const [editarId, setEditarId] = useState<number | null>(panelInicial?.id ?? null);
 
   function abrirEditar(id: number) {

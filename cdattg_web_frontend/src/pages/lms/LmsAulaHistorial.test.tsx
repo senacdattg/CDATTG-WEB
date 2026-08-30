@@ -4,6 +4,7 @@
  * @author Cristian Deysdayr Jiménez
  */
 import { createElement } from 'react';
+import { MemoryRouter } from 'react-router-dom';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -29,7 +30,7 @@ describe('LmsAulaHistorial', () => {
     estado.filas = [fila];
     estado.loading = false;
     estado.error = '';
-    const html = renderToStaticMarkup(createElement(LmsAulaHistorial, { fichaId: 1 }));
+    const html = renderToStaticMarkup(createElement(MemoryRouter, null, createElement(LmsAulaHistorial, { fichaId: 1 })));
     expect(html).toContain('ANA LOPEZ');
     expect(html).toContain('Guía 1');
     expect(html).toContain('85 / 100');
@@ -37,13 +38,13 @@ describe('LmsAulaHistorial', () => {
 
   it('avisa si no hay filas', () => {
     estado.filas = [];
-    const html = renderToStaticMarkup(createElement(LmsAulaHistorial, { fichaId: 1 }));
+    const html = renderToStaticMarkup(createElement(MemoryRouter, null, createElement(LmsAulaHistorial, { fichaId: 1 })));
     expect(html).toContain('Aún no hay aprendices o actividades');
   });
 
   it('muestra el error de carga', () => {
     estado.error = 'No se pudo cargar el historial';
-    const html = renderToStaticMarkup(createElement(LmsAulaHistorial, { fichaId: 1 }));
+    const html = renderToStaticMarkup(createElement(MemoryRouter, null, createElement(LmsAulaHistorial, { fichaId: 1 })));
     expect(html).toContain('No se pudo cargar el historial');
   });
 });

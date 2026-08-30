@@ -5,7 +5,12 @@
  */
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+
+vi.mock('./useLmsHistorial', () => ({
+  useLmsHistorial: () => ({ filas: [], loading: true, error: '' }),
+}));
+
 import { LmsAulaCuerpo } from './LmsAulaCuerpo';
 import type { useLmsAula } from './useLmsAula';
 import type { LmsAulaDetalle, LmsActividadItem } from '../../types/lms';
@@ -89,5 +94,16 @@ describe('LmsAulaCuerpo', () => {
     expect(html).toContain('Editar actividad');
     expect(html).toContain('Volver');
     expect(html).not.toContain('Guardar cambios');
+  });
+
+  it('abre el historial si viene con tabHistorial', () => {
+    const html = renderToStaticMarkup(
+      createElement(LmsAulaCuerpo, {
+        aula: { ...aula, puede_publicar: true },
+        page,
+        tabHistorial: true,
+      }),
+    );
+    expect(html).toContain('Cargando historial');
   });
 });

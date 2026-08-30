@@ -25,10 +25,10 @@ describe('lmsHistorialTab', () => {
     expect(lmsVieneDelHistorial(null)).toBe(false);
   });
 
-  it('prioriza editar y abre historial si lo piden', () => {
-    expect(lmsTabInicialAula({ id: 1 }, true, true)).toBe(LMS_TABS.mis);
-    expect(lmsTabInicialAula(null, true, true)).toBe(LMS_TABS.historial);
-    expect(lmsTabInicialAula(null, false, true)).toBe(LMS_TABS.tablon);
+  it('prioriza editar y abre aprendices al instructor', () => {
+    expect(lmsTabInicialAula({ id: 1 }, true, true, true)).toBe(LMS_TABS.mis);
+    expect(lmsTabInicialAula(null, true, true, true)).toBe(LMS_TABS.historial);
+    expect(lmsTabInicialAula(null, false, true, true)).toBe(LMS_TABS.aprendices);
     expect(lmsTabInicialAula(null, true, false)).toBe(LMS_TABS.tablon);
   });
 

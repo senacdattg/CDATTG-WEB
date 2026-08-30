@@ -28,14 +28,7 @@ const TABS_APRENDIZ: LmsAulaTabItem[] = [
  */
 export function lmsAulaTabItems(puedePublicar: boolean, puedeVerHistorial: boolean): LmsAulaTabItem[] {
   if (puedePublicar) {
-    const extra = [TAB_MIS, TAB_PUBLICAR];
-    if (puedeVerHistorial) extra.push(TAB_HISTORIAL);
-    return [
-      { id: LMS_TABS.tablon, label: 'Actividades pendientes' },
-      { id: LMS_TABS.trabajos, label: 'Actividades entregadas' },
-      TAB_APRENDICES,
-      ...extra,
-    ];
+    return [TAB_APRENDICES, TAB_MIS, TAB_PUBLICAR, TAB_HISTORIAL];
   }
   if (puedeVerHistorial) return [...TABS_APRENDIZ, TAB_HISTORIAL];
   return TABS_APRENDIZ;

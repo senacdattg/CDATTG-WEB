@@ -34,7 +34,7 @@ type Props = Readonly<{
 export function LmsAulaCuerpo({ aula, page, panelInicial = null, verInicial = null, tabHistorial = false }: Props) {
   const veNotas = lmsVeNotas(aula);
   const [tab, setTab] = useState<LmsTab>(() =>
-    lmsTabInicialAula(panelInicial, tabHistorial, veNotas),
+    lmsTabInicialAula(panelInicial, tabHistorial, veNotas, aula.puede_publicar),
   );
   const [editarId, setEditarId] = useState<number | null>(panelInicial?.id ?? null);
 

@@ -38,19 +38,22 @@ export function lmsVieneDelHistorial(state: unknown): boolean {
 }
 
 /**
- * Pestaña al entrar al aula: editar, historial o pendientes.
+ * Pestaña al entrar al aula: editar, historial, aprendices o pendientes.
  * @param {unknown} panelInicial Panel de Mis actividades.
  * @param {boolean} tabHistorial Si el state pide historial.
  * @param {boolean} puedeVerHistorial Instructor o quien ve notas.
+ * @param {boolean} [puedePublicar] El instructor abre en Aprendices.
  * @returns {LmsTab} Pestaña inicial.
  */
 export function lmsTabInicialAula(
   panelInicial: unknown,
   tabHistorial: boolean,
   puedeVerHistorial: boolean,
+  puedePublicar = false,
 ): LmsTab {
   if (panelInicial) return LMS_TABS.mis;
   if (tabHistorial && puedeVerHistorial) return LMS_TABS.historial;
+  if (puedePublicar) return LMS_TABS.aprendices;
   return LMS_TABS.tablon;
 }
 

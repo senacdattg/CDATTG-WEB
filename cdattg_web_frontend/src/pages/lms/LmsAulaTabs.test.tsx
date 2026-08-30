@@ -31,9 +31,11 @@ describe('LmsAulaTabs', () => {
         puedeVerHistorial: true,
       }),
     );
+    expect(html).toContain('Aprendices');
     expect(html).toContain('Publicar actividad');
     expect(html).toContain('Mis actividades');
     expect(html).toContain('Historial de actividades');
+    expect(html).not.toContain('Actividades pendientes');
     expect(html).not.toContain('Actividades vencidas');
   });
 

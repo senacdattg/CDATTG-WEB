@@ -16,10 +16,8 @@ describe('lmsAulaTabItems', () => {
     ]);
   });
 
-  it('el instructor sigue con pendientes, entregadas, aprendices, mis, publicar e historial', () => {
+  it('el instructor ve aprendices, mis, publicar e historial', () => {
     expect(lmsAulaTabItems(true, true).map((t) => t.label)).toEqual([
-      'Actividades pendientes',
-      'Actividades entregadas',
       'Aprendices',
       'Mis actividades',
       'Publicar actividad',

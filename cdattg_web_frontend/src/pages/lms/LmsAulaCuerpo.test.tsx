@@ -83,17 +83,16 @@ describe('LmsAulaCuerpo', () => {
     expect(html).toContain('Guardar cambios');
   });
 
-  it('en pendientes muestra la vista y el apartado Editar', () => {
+  it('el instructor entra en Aprendices', () => {
     const html = renderToStaticMarkup(
       createElement(LmsAulaCuerpo, {
         aula: { ...aula, puede_publicar: true, actividades: [act] },
         page,
-        verInicial: 4,
       }),
     );
-    expect(html).toContain('Editar actividad');
-    expect(html).toContain('Volver');
-    expect(html).not.toContain('Guardar cambios');
+    expect(html).toContain('Aprendices');
+    expect(html).toContain('Mis actividades');
+    expect(html).not.toContain('Actividades pendientes');
   });
 
   it('abre el historial si viene con tabHistorial', () => {

@@ -51,6 +51,9 @@ func RunRolePermissionSeeder(db *gorm.DB) error {
 	if err := seedFPIPermissions(e); err != nil {
 		return err
 	}
+	if err := seedBibliotecarioPermissions(e); err != nil {
+		return err
+	}
 
 	if err := e.SavePolicy(); err != nil {
 		return err
@@ -105,6 +108,12 @@ func seedInstructorPermissions(e *casbin.Enforcer) error {
 	if _, err := authz.AddPermissionForRole(e, "INSTRUCTOR", authz.ObjPersona, authz.ActVerPersona); err != nil {
 		return err
 	}
+	if _, err := authz.AddPermissionForRole(e, "INSTRUCTOR", authz.ObjPersona, authz.ActEditarMiPersona); err != nil {
+		return err
+	}
+	if _, err := authz.AddPermissionForRole(e, "INSTRUCTOR", authz.ObjCarnet, authz.ActValidarCarnetDigital); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -142,6 +151,9 @@ func seedAprendizPermissions(e *casbin.Enforcer) error {
 		return err
 	}
 	if _, err := authz.AddPermissionForRole(e, "APRENDIZ", authz.ObjAsistencia, "VER MIS INASISTENCIAS"); err != nil {
+		return err
+	}
+	if _, err := authz.AddPermissionForRole(e, "APRENDIZ", authz.ObjCarnet, authz.ActVerCarnetDigital); err != nil {
 		return err
 	}
 	return nil

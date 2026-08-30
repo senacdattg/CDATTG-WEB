@@ -19,6 +19,8 @@ var RoleNames = []string{
 	"BIENESTAR AL APRENDIZ",
 	// Rol solo para módulo FPI (Sofía / Betowa / complementarios)
 	"FPI",
+	// Ve carnets regulares ya validados para imprimir el físico
+	"BIBLIOTECARIO",
 	// Roles del módulo Personal (se toman rol al vincular una persona a un rol de personal)
 	"PERSONAL OPERATIVO Y DE APOYO",
 	"PERSONAL ADMINISTRATIVO",
@@ -69,6 +71,7 @@ var (
 		ActRegistrarAccesoSede,
 		ActVerAccesoSede,
 	}
+	PermisosCarnet = []string{ActVerCarnetDigital, ActValidarCarnetDigital, ActVerCarnetBiblioteca}
 )
 
 // ObjPersona, ObjPrograma, ... nombres de objeto usados en rutas y Casbin.
@@ -78,6 +81,9 @@ const (
 	ActEditarMiPersona      = "EDITAR MI PERSONA"
 	ActRegistrarAccesoSede  = "REGISTRAR ACCESO SEDE"
 	ActVerAccesoSede        = "VER ACCESO SEDE"
+	ActVerCarnetDigital     = "VER CARNET DIGITAL"
+	ActValidarCarnetDigital = "VALIDAR CARNET DIGITAL"
+	ActVerCarnetBiblioteca  = "VER CARNET BIBLIOTECA"
 
 	ObjPersona     = "persona"
 	ObjPrograma    = "programa"
@@ -91,6 +97,7 @@ const (
 	ObjEleccion    = "eleccion"
 	ObjUsuario     = "usuario"
 	ObjVigilancia  = "vigilancia"
+	ObjCarnet      = "carnet"
 	ObjInventario = "inventario"
 	ObjProducto   = "producto"
 	ObjOrden      = "orden"
@@ -106,6 +113,7 @@ const (
 	RolPersonalOperativoYDeApoyo       = "PERSONAL OPERATIVO Y DE APOYO"
 	RolPersonalAdministrativo          = "PERSONAL ADMINISTRATIVO"
 	RolContratistaPrestacionServicios = "CONTRATISTA PRESTACIÓN DE SERVICIOS"
+	RolBibliotecario                  = "BIBLIOTECARIO"
 )
 
 // IsValidPermiso indica si (obj, act) es un permiso definido en el sistema.
@@ -156,6 +164,9 @@ func AllPermissionPairs() []struct{ Obj, Act string } {
 	}
 	for _, act := range PermisosVigilancia {
 		out = append(out, struct{ Obj, Act string }{ObjVigilancia, act})
+	}
+	for _, act := range PermisosCarnet {
+		out = append(out, struct{ Obj, Act string }{ObjCarnet, act})
 	}
 	// Inventario desactivado: no se añaden permisos de inventario a AllPermissionPairs
 	return out

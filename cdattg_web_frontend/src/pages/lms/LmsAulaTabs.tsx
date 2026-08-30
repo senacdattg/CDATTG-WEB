@@ -1,9 +1,12 @@
 /**
  * @module pages/lms/LmsAulaTabs
- * @description Pestañas del aula: pendientes, trabajos, aprendices, mis, publicar e historial.
+ * @description Barra de pestañas del aula según el rol.
+ * Lo hice para pintar el orden del aprendiz y el del instructor.
+ * Lo usa LmsAulaCuerpo.
  * @author Cristian Deysdayr Jiménez
  */
-import { LMS_LABEL_HISTORIAL, LMS_TABS, type LmsTab } from './lmsConstants';
+import type { LmsTab } from './lmsConstants';
+import { lmsAulaTabItems } from './lmsAulaTabItems';
 
 type Props = Readonly<{
   tab: LmsTab;
@@ -13,23 +16,10 @@ type Props = Readonly<{
 }>;
 
 /**
- * Barra de pestañas del aula.
+ * Pestañas del aula.
  */
 export function LmsAulaTabs({ tab, onTab, puedePublicar, puedeVerHistorial = false }: Props) {
-  const base: Array<{ id: LmsTab; label: string }> = [
-    { id: LMS_TABS.tablon, label: 'Actividades pendientes' },
-    { id: LMS_TABS.trabajos, label: 'Actividades entregadas' },
-    ...(!puedePublicar ? [{ id: LMS_TABS.vencidas, label: 'Actividades vencidas' }] : []),
-    { id: LMS_TABS.aprendices, label: 'Aprendices' },
-  ];
-  const extra = puedePublicar
-    ? [
-        { id: LMS_TABS.mis, label: 'Mis actividades' },
-        { id: LMS_TABS.publicar, label: 'Publicar actividad' },
-      ]
-    : [];
-  const hist = puedeVerHistorial ? [{ id: LMS_TABS.historial, label: LMS_LABEL_HISTORIAL }] : [];
-  const items = [...base, ...extra, ...hist];
+  const items = lmsAulaTabItems(puedePublicar, puedeVerHistorial);
   return (
     <nav className="flex flex-wrap gap-2 border-b border-gray-200 pb-2 dark:border-gray-700" aria-label="Secciones del aula">
       {items.map((item) => (

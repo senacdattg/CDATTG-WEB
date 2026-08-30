@@ -49,6 +49,7 @@ export interface PersonaRequest {
   status?: boolean;
   parametro_id?: number;
   nivel_escolaridad_id?: number;
+  rh?: string;
 }
 
 /** Actualización de perfil propio (sin número de documento ni estado). */
@@ -69,6 +70,7 @@ export interface PersonaSelfUpdateRequest {
   direccion?: string;
   parametro_id?: number;
   nivel_escolaridad_id?: number;
+  rh?: string;
 }
 
 export interface PersonaResponse {
@@ -91,6 +93,8 @@ export interface PersonaResponse {
   direccion?: string;
   status: boolean;
   parametro_id?: number;
+  rh?: string;
+  tiene_foto?: boolean;
 }
 
 export interface PaginatedResponse<T> {
@@ -1209,6 +1213,8 @@ export interface AccesoPersonaFicha {
   tipo_sugerido: string;
   /** Todos los roles detectados (ej. aprendiz e instructor a la vez). */
   tipos?: string[];
+  tiene_foto?: boolean;
+  foto_desde_carnet?: boolean;
 }
 
 export interface AccesoVisitaAbierta {

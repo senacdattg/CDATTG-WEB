@@ -9,8 +9,12 @@ import (
 // Literales Casbin y segmentos de ruta reutilizados (Sonar: evitar duplicación).
 const (
 	routeUsuarios         = "/usuarios"
-	routeImport       = "/import"
-	routeIDAprendices = "/:id/aprendices"
+	routeImport         = "/import"
+	routeImportTemplate = "/import/template"
+	routeImports        = "/imports"
+	routeIDAprendices   = "/:id/aprendices"
+	objPersOpApoyo      = "personal-operativo-apoyo"
+	objPersAdmin        = "personal-administrativo"
 
 	routeSedes      = "/sedes"
 	routeAmbientes  = "/ambientes"
@@ -104,6 +108,7 @@ func SetupRouter() *gin.Engine {
 
 		// WebSocket dashboard asistencia (token por query; solo superadmin; sin AuthMiddleware)
 		api.GET("/asistencias/dashboard/ws", handlers.DashboardWebSocket)
+		registerCarnetImpresora(api)
 
 		auth := api.Group("/auth")
 		{
@@ -119,10 +124,11 @@ func SetupRouter() *gin.Engine {
 			personas := protected.Group("/personas")
 			{
 				personas.GET("", middleware.RequirePermission("persona", permVerPersonas), personaHandler.GetAll)
-				personas.GET("/import/template", middleware.RequirePermission("persona", permCrearPersona), personaHandler.DownloadPersonaImportTemplate)
-				personas.GET("/imports", middleware.RequirePermission("persona", permVerPersonas), personaHandler.ListPersonaImports)
+				personas.GET(routeImportTemplate, middleware.RequirePermission("persona", permCrearPersona), personaHandler.DownloadPersonaImportTemplate)
+				personas.GET(routeImports, middleware.RequirePermission("persona", permVerPersonas), personaHandler.ListPersonaImports)
 				personas.POST(routeImport, middleware.RequirePermission("persona", permCrearPersona), personaHandler.ImportPersonas)
 				personas.PUT("/mi-perfil", middleware.RequirePermission("persona", permEditarMiPersona), personaHandler.UpdateMiPerfil)
+				registerPersonaFotoYCarnet(protected, personas)
 				personas.GET("/:id", middleware.RequirePermission("persona", "VER PERSONA"), personaHandler.GetByID)
 				personas.POST("", middleware.RequirePermission("persona", permCrearPersona), personaHandler.Create)
 				personas.PUT("/:id", middleware.RequirePermission("persona", "EDITAR PERSONA"), personaHandler.Update)
@@ -190,42 +196,42 @@ func SetupRouter() *gin.Engine {
 
 			instructorSelf := protected.Group("/instructor")
 			instructorSelf.GET("/agenda", middleware.RequirePermission("asistencia", permVerMiAgenda), agendaHandler.GetMiAgenda)
-			instructores.GET("/imports", middleware.RequirePermission("instructor", permCrearInstructor), instructorHandler.ListInstructorImports)
+			instructores.GET(routeImports, middleware.RequirePermission("instructor", permCrearInstructor), instructorHandler.ListInstructorImports)
 			instructores.POST(routeImport, middleware.RequirePermission("instructor", permCrearInstructor), instructorHandler.ImportInstructores)
 			instructores.GET("/:id", middleware.RequirePermission("ficha", permVerFichas), instructorHandler.GetByID)
 			instructores.POST("", middleware.RequirePermission("instructor", permCrearInstructor), instructorHandler.CreateFromPersona)
 			instructores.PUT("/:id", middleware.RequirePermission("instructor", "EDITAR INSTRUCTOR"), instructorHandler.Update)
 			instructores.DELETE("/:id", middleware.RequirePermission("instructor", "ELIMINAR INSTRUCTOR"), instructorHandler.Delete)
 
-			personalOperativoApoyo := protected.Group("/personal-operativo-apoyo")
-			personalOperativoApoyo.GET("", middleware.RequirePermission("personal-operativo-apoyo", permVerPersonalOperativoYDeApoyo), personalOperativoApoyoHandler.GetAll)
-			personalOperativoApoyo.GET("/import/template", middleware.RequirePermission("personal-operativo-apoyo", permCrearPersonalOperativoYDeApoyo), personalOperativoApoyoHandler.DownloadTemplate)
-			personalOperativoApoyo.GET("/imports", middleware.RequirePermission("personal-operativo-apoyo", permVerPersonalOperativoYDeApoyo), personalOperativoApoyoHandler.ListImports)
-			personalOperativoApoyo.POST(routeImport, middleware.RequirePermission("personal-operativo-apoyo", permCrearPersonalOperativoYDeApoyo), personalOperativoApoyoHandler.ImportRolPersonal)
-			personalOperativoApoyo.GET("/:id", middleware.RequirePermission("personal-operativo-apoyo", permVerPersonalOperativoYDeApoyo), personalOperativoApoyoHandler.GetByID)
-			personalOperativoApoyo.POST("", middleware.RequirePermission("personal-operativo-apoyo", permCrearPersonalOperativoYDeApoyo), personalOperativoApoyoHandler.CreateFromPersona)
-			personalOperativoApoyo.PUT("/:id", middleware.RequirePermission("personal-operativo-apoyo", permEditarPersonalOperativoYDeApoyo), personalOperativoApoyoHandler.Update)
-			personalOperativoApoyo.DELETE("/:id", middleware.RequirePermission("personal-operativo-apoyo", permEliminarPersonalOperativoYDeApoyo), personalOperativoApoyoHandler.Delete)
+			personalOperativoApoyo := protected.Group("/" + objPersOpApoyo)
+			personalOperativoApoyo.GET("", middleware.RequirePermission(objPersOpApoyo, permVerPersonalOperativoYDeApoyo), personalOperativoApoyoHandler.GetAll)
+			personalOperativoApoyo.GET(routeImportTemplate, middleware.RequirePermission(objPersOpApoyo, permCrearPersonalOperativoYDeApoyo), personalOperativoApoyoHandler.DownloadTemplate)
+			personalOperativoApoyo.GET(routeImports, middleware.RequirePermission(objPersOpApoyo, permVerPersonalOperativoYDeApoyo), personalOperativoApoyoHandler.ListImports)
+			personalOperativoApoyo.POST(routeImport, middleware.RequirePermission(objPersOpApoyo, permCrearPersonalOperativoYDeApoyo), personalOperativoApoyoHandler.ImportRolPersonal)
+			personalOperativoApoyo.GET("/:id", middleware.RequirePermission(objPersOpApoyo, permVerPersonalOperativoYDeApoyo), personalOperativoApoyoHandler.GetByID)
+			personalOperativoApoyo.POST("", middleware.RequirePermission(objPersOpApoyo, permCrearPersonalOperativoYDeApoyo), personalOperativoApoyoHandler.CreateFromPersona)
+			personalOperativoApoyo.PUT("/:id", middleware.RequirePermission(objPersOpApoyo, permEditarPersonalOperativoYDeApoyo), personalOperativoApoyoHandler.Update)
+			personalOperativoApoyo.DELETE("/:id", middleware.RequirePermission(objPersOpApoyo, permEliminarPersonalOperativoYDeApoyo), personalOperativoApoyoHandler.Delete)
 
 			contratistas := protected.Group("/contratistas")
 			contratistas.GET("", middleware.RequirePermission("contratista", permVerContratista), contratistaHandler.GetAll)
-			contratistas.GET("/import/template", middleware.RequirePermission("contratista", permCrearContratista), contratistaHandler.DownloadTemplate)
-			contratistas.GET("/imports", middleware.RequirePermission("contratista", permVerContratista), contratistaHandler.ListImports)
+			contratistas.GET(routeImportTemplate, middleware.RequirePermission("contratista", permCrearContratista), contratistaHandler.DownloadTemplate)
+			contratistas.GET(routeImports, middleware.RequirePermission("contratista", permVerContratista), contratistaHandler.ListImports)
 			contratistas.POST(routeImport, middleware.RequirePermission("contratista", permCrearContratista), contratistaHandler.ImportRolPersonal)
 			contratistas.GET("/:id", middleware.RequirePermission("contratista", permVerContratista), contratistaHandler.GetByID)
 			contratistas.POST("", middleware.RequirePermission("contratista", permCrearContratista), contratistaHandler.CreateFromPersona)
 			contratistas.PUT("/:id", middleware.RequirePermission("contratista", permEditarContratista), contratistaHandler.Update)
 			contratistas.DELETE("/:id", middleware.RequirePermission("contratista", permEliminarContratista), contratistaHandler.Delete)
 
-			personalAdministrativo := protected.Group("/personal-administrativo")
-			personalAdministrativo.GET("", middleware.RequirePermission("personal-administrativo", permVerPersonalAdministrativo), personalAdministrativoHandler.GetAll)
-			personalAdministrativo.GET("/import/template", middleware.RequirePermission("personal-administrativo", permCrearPersonalAdministrativo), personalAdministrativoHandler.DownloadTemplate)
-			personalAdministrativo.GET("/imports", middleware.RequirePermission("personal-administrativo", permVerPersonalAdministrativo), personalAdministrativoHandler.ListImports)
-			personalAdministrativo.POST(routeImport, middleware.RequirePermission("personal-administrativo", permCrearPersonalAdministrativo), personalAdministrativoHandler.ImportRolPersonal)
-			personalAdministrativo.GET("/:id", middleware.RequirePermission("personal-administrativo", permVerPersonalAdministrativo), personalAdministrativoHandler.GetByID)
-			personalAdministrativo.POST("", middleware.RequirePermission("personal-administrativo", permCrearPersonalAdministrativo), personalAdministrativoHandler.CreateFromPersona)
-			personalAdministrativo.PUT("/:id", middleware.RequirePermission("personal-administrativo", permEditarPersonalAdministrativo), personalAdministrativoHandler.Update)
-			personalAdministrativo.DELETE("/:id", middleware.RequirePermission("personal-administrativo", permEliminarPersonalAdministrativo), personalAdministrativoHandler.Delete)
+			personalAdministrativo := protected.Group("/" + objPersAdmin)
+			personalAdministrativo.GET("", middleware.RequirePermission(objPersAdmin, permVerPersonalAdministrativo), personalAdministrativoHandler.GetAll)
+			personalAdministrativo.GET(routeImportTemplate, middleware.RequirePermission(objPersAdmin, permCrearPersonalAdministrativo), personalAdministrativoHandler.DownloadTemplate)
+			personalAdministrativo.GET(routeImports, middleware.RequirePermission(objPersAdmin, permVerPersonalAdministrativo), personalAdministrativoHandler.ListImports)
+			personalAdministrativo.POST(routeImport, middleware.RequirePermission(objPersAdmin, permCrearPersonalAdministrativo), personalAdministrativoHandler.ImportRolPersonal)
+			personalAdministrativo.GET("/:id", middleware.RequirePermission(objPersAdmin, permVerPersonalAdministrativo), personalAdministrativoHandler.GetByID)
+			personalAdministrativo.POST("", middleware.RequirePermission(objPersAdmin, permCrearPersonalAdministrativo), personalAdministrativoHandler.CreateFromPersona)
+			personalAdministrativo.PUT("/:id", middleware.RequirePermission(objPersAdmin, permEditarPersonalAdministrativo), personalAdministrativoHandler.Update)
+			personalAdministrativo.DELETE("/:id", middleware.RequirePermission(objPersAdmin, permEliminarPersonalAdministrativo), personalAdministrativoHandler.Delete)
 
 			asistencias := protected.Group("/asistencias")
 			// Dashboard de asistencia: SUPER ADMINISTRADOR y BIENESTAR AL APRENDIZ
@@ -340,6 +346,7 @@ func SetupRouter() *gin.Engine {
 				vigilancia.POST("/lookup", middleware.RequirePermission("vigilancia", permRegistrarAccesoSede), vigilanciaAccesoHandler.Lookup)
 				vigilancia.POST("/ingreso", middleware.RequirePermission("vigilancia", permRegistrarAccesoSede), vigilanciaAccesoHandler.Ingreso)
 				vigilancia.POST("/salida", middleware.RequirePermission("vigilancia", permRegistrarAccesoSede), vigilanciaAccesoHandler.Salida)
+				vigilancia.GET("/foto", middleware.RequirePermission("vigilancia", permRegistrarAccesoSede), vigilanciaAccesoHandler.VerFotoAcceso)
 				vigilancia.GET("/dentro", middleware.RequirePermission("vigilancia", permVerAccesoSede), vigilanciaAccesoHandler.ListDentro)
 				vigilancia.GET("/historial", middleware.RequirePermission("vigilancia", permVerAccesoSede), vigilanciaAccesoHandler.Historial)
 				vigilancia.GET("/estadisticas", middleware.RequirePermission("vigilancia", permVerAccesoSede), vigilanciaAccesoHandler.Estadisticas)

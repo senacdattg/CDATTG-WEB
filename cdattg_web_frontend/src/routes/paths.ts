@@ -33,6 +33,15 @@ export const aprendicesPaths = {
 
 export const aprendizPaths = {
   misInasistencias: '/mis-inasistencias',
+  carnetDigital: '/carnet-digital',
+} as const;
+
+export const instructorPaths = {
+  validarCarnet: '/instructor/validar-carnet',
+} as const;
+
+export const bibliotecaPaths = {
+  carnets: '/biblioteca/carnets',
 } as const;
 
 export const programasPaths = {

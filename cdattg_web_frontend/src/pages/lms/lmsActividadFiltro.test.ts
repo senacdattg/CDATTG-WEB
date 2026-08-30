@@ -1,10 +1,10 @@
 /**
  * @module pages/lms/lmsActividadFiltro.test
- * @description Pendientes vs entregados según el rol.
+ * @description Pendientes, entregadas y vencidas según el rol.
  * @author Cristian Deysdayr Jiménez
  */
 import { describe, expect, it } from 'vitest';
-import { actividadEnPlazo, actividadesEntregadas, actividadesPendientes } from './lmsActividadFiltro';
+import { actividadEnPlazo, actividadesEntregadas, actividadesPendientes, actividadesVencidas } from './lmsActividadFiltro';
 import type { LmsActividadItem } from '../../types/lms';
 
 const now = new Date('2026-08-26T12:00:00');
@@ -40,8 +40,12 @@ describe('actividadEnPlazo', () => {
 });
 
 describe('actividadesPendientes', () => {
-  it('el aprendiz no ve las ya entregadas', () => {
-    const list = actividadesPendientes([item(1, null, false), item(2, null, true)], false, now);
+  it('el aprendiz no ve las ya entregadas ni las vencidas', () => {
+    const list = actividadesPendientes(
+      [item(1, '2026-09-10T10:00:00', false), item(2, null, true), item(3, '2026-08-20T10:00:00', false)],
+      false,
+      now,
+    );
     expect(list.map((a) => a.id)).toEqual([1]);
   });
 
@@ -67,5 +71,25 @@ describe('actividadesEntregadas', () => {
       true,
     );
     expect(list.map((a) => a.id)).toEqual([2]);
+  });
+});
+
+describe('actividadesVencidas', () => {
+  it('el aprendiz solo ve las que no envió y ya vencieron', () => {
+    const list = actividadesVencidas(
+      [item(1, '2026-08-20T10:00:00', false), item(2, '2026-08-20T10:00:00', true), item(3, '2026-09-10T10:00:00')],
+      false,
+      now,
+    );
+    expect(list.map((a) => a.id)).toEqual([1]);
+  });
+
+  it('el staff ve todas las vencidas', () => {
+    const list = actividadesVencidas(
+      [item(1, '2026-08-20T10:00:00', true), item(2, '2026-09-10T10:00:00')],
+      true,
+      now,
+    );
+    expect(list.map((a) => a.id)).toEqual([1]);
   });
 });

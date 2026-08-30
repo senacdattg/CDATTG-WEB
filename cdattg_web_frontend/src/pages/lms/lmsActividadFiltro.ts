@@ -1,7 +1,7 @@
 /**
  * @module pages/lms/lmsActividadFiltro
- * @description Parte las actividades del aula en pendientes y ya entregadas.
- * Lo hice porque sin fecha de entrega también es una actividad pendiente.
+ * @description Parte las actividades en pendientes, entregadas y vencidas.
+ * Lo hice para que el aprendiz no mezcle lo que falta con lo que ya venció.
  * @author Cristian Deysdayr Jiménez
  */
 import type { LmsActividadItem } from '../../types/lms';
@@ -18,30 +18,47 @@ export function actividadEnPlazo(a: LmsActividadItem, now = new Date()): boolean
 }
 
 /**
- * Pendientes: aprendiz lo que falta; instructor las que no están vencidas.
+ * Pendientes: lo que falta y aún está en plazo. El staff ve las no vencidas.
  * @param {LmsActividadItem[]} actividades Publicaciones del aula.
- * @param {boolean} esInstructor True si puede publicar.
+ * @param {boolean} esStaff True si mira como instructor o superadmin.
  * @param {Date} [now] Reloj inyectable.
  * @returns {LmsActividadItem[]} Lista de pendientes.
  */
 export function actividadesPendientes(
   actividades: LmsActividadItem[],
-  esInstructor: boolean,
+  esStaff: boolean,
   now = new Date(),
 ): LmsActividadItem[] {
-  if (esInstructor) return actividades.filter((a) => actividadEnPlazo(a, now));
-  return actividades.filter((a) => a.entregada !== true);
+  if (esStaff) return actividades.filter((a) => actividadEnPlazo(a, now));
+  return actividades.filter((a) => a.entregada !== true && actividadEnPlazo(a, now));
 }
 
 /**
- * Trabajos de clase: aprendiz los que envió; instructor los que ya tienen envíos.
+ * Entregadas: aprendiz las que envió; staff las que ya tienen envíos.
  * @param {LmsActividadItem[]} actividades Publicaciones del aula.
- * @param {boolean} esInstructor True si puede publicar.
+ * @param {boolean} esStaff True si mira como instructor o superadmin.
+ * @returns {LmsActividadItem[]} Lista de entregadas.
  */
 export function actividadesEntregadas(
   actividades: LmsActividadItem[],
-  esInstructor: boolean,
+  esStaff: boolean,
 ): LmsActividadItem[] {
-  if (esInstructor) return actividades.filter((a) => (a.cantidad_entregas ?? 0) > 0);
+  if (esStaff) return actividades.filter((a) => (a.cantidad_entregas ?? 0) > 0);
   return actividades.filter((a) => a.entregada === true);
+}
+
+/**
+ * Vencidas: aprendiz las que no envió y ya pasó el plazo; staff las vencidas.
+ * @param {LmsActividadItem[]} actividades Publicaciones del aula.
+ * @param {boolean} esStaff True si mira como instructor o superadmin.
+ * @param {Date} [now] Reloj inyectable.
+ * @returns {LmsActividadItem[]} Lista de vencidas.
+ */
+export function actividadesVencidas(
+  actividades: LmsActividadItem[],
+  esStaff: boolean,
+  now = new Date(),
+): LmsActividadItem[] {
+  if (esStaff) return actividades.filter((a) => !actividadEnPlazo(a, now));
+  return actividades.filter((a) => a.entregada !== true && !actividadEnPlazo(a, now));
 }

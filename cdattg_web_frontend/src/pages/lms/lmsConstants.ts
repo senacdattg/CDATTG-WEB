@@ -8,6 +8,7 @@ import type { LmsActividadTipo } from '../../types/lms';
 export const LMS_TABS = {
   tablon: 'tablon',
   trabajos: 'trabajos',
+  vencidas: 'vencidas',
   aprendices: 'aprendices',
   historial: 'historial',
   mis: 'mis',

@@ -12,6 +12,7 @@ import { LmsAulaTablon } from './LmsAulaTablon';
 import { LmsAulaTrabajos } from './LmsAulaTrabajos';
 import { LmsAulaAprendices } from './LmsAulaAprendices';
 import { LmsAulaHistorial } from './LmsAulaHistorial';
+import { LmsAulaVencidas } from './LmsAulaVencidas';
 import { LmsAulaMisActividades } from './LmsAulaMisActividades';
 import { LmsPublicarActividadForm } from './LmsPublicarActividadForm';
 import { LmsSoloConsultaAviso } from './LmsSoloConsultaAviso';
@@ -66,6 +67,9 @@ export function LmsAulaCuerpo({ aula, page, panelInicial = null, verInicial = nu
       ) : null}
       {tab === LMS_TABS.trabajos ? (
         <LmsAulaTrabajos fichaId={aula.ficha_id} actividades={aula.actividades} puedePublicar={aula.puede_publicar} />
+      ) : null}
+      {tab === LMS_TABS.vencidas && !aula.puede_publicar ? (
+        <LmsAulaVencidas fichaId={aula.ficha_id} actividades={aula.actividades} />
       ) : null}
       {tab === LMS_TABS.aprendices ? (
         <LmsAulaAprendices fichaId={aula.ficha_id} aprendices={aula.aprendices} soloActivos={!aula.puede_publicar} />

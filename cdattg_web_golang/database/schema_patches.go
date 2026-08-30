@@ -278,6 +278,7 @@ func EnsureSchemaPatches() error {
 		patchFichaNombreYProgramaOpcional,
 		patchAutoMigrateSofiaCredencial,
 		patchFichaStatusManual,
+		patchAutoMigrateCarnetSolicitud,
 	}
 	for _, patch := range patches {
 		if err := patch(); err != nil {

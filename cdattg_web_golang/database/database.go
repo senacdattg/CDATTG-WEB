@@ -161,6 +161,7 @@ func Migrate() error {
 		&models.EleccionVoto{},
 		&models.EleccionResultado{},
 		&models.RepresentanteAprendiz{},
+		&models.CarnetSolicitud{},
 	)
 	
 	if err != nil {

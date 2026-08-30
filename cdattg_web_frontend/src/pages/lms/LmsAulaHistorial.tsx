@@ -9,17 +9,23 @@ import { useMemo, useState } from 'react';
 import { LmsAulaHistorialFiltros } from './LmsAulaHistorialFiltros';
 import { LmsAulaHistorialTabla } from './LmsAulaHistorialTabla';
 import { filtrarFilasHistorial } from './lmsHistorialFiltro';
+import { columnasHistorial } from './lmsHistorialMatriz';
 import { useLmsHistorial } from './useLmsHistorial';
 
 type Props = Readonly<{ fichaId: number }>;
 
 /**
- * Carga las filas, recorta por aprendiz y muestra la tabla o el aviso.
+ * Carga las filas, recorta y muestra la tabla o el aviso.
  */
 export function LmsAulaHistorial({ fichaId }: Props) {
   const { filas, loading, error } = useLmsHistorial(fichaId);
   const [aprendiz, setAprendiz] = useState('');
-  const visibles = useMemo(() => filtrarFilasHistorial(filas, aprendiz), [filas, aprendiz]);
+  const [actividadId, setActividadId] = useState<number | null>(null);
+  const actividades = useMemo(() => columnasHistorial(filas), [filas]);
+  const visibles = useMemo(
+    () => filtrarFilasHistorial(filas, { aprendiz, actividadId }),
+    [filas, aprendiz, actividadId],
+  );
   if (loading) {
     return <p className="text-sm text-gray-500">Cargando historial…</p>;
   }
@@ -39,7 +45,13 @@ export function LmsAulaHistorial({ fichaId }: Props) {
   }
   return (
     <div className="space-y-4">
-      <LmsAulaHistorialFiltros aprendiz={aprendiz} onAprendiz={setAprendiz} />
+      <LmsAulaHistorialFiltros
+        aprendiz={aprendiz}
+        actividadId={actividadId}
+        actividades={actividades}
+        onAprendiz={setAprendiz}
+        onActividad={setActividadId}
+      />
       {visibles.length === 0 ? (
         <p className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-8 text-center text-sm text-gray-500 dark:border-gray-600 dark:bg-gray-900/40">
           Ningún resultado con estos filtros.

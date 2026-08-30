@@ -1,10 +1,10 @@
 /**
  * @module pages/lms/lmsHistorialFiltro.test
- * @description Recorte por nombre de aprendiz.
+ * @description Recorte por aprendiz y actividad.
  * @author Cristian Deysdayr Jiménez
  */
 import { describe, expect, it } from 'vitest';
-import { filtrarFilasHistorial } from './lmsHistorialFiltro';
+import { filtrarFilasHistorial, leerActividadId } from './lmsHistorialFiltro';
 import type { LmsHistorialFila } from '../../types/lms';
 
 function fila(parcial: Partial<LmsHistorialFila>): LmsHistorialFila {
@@ -26,11 +26,22 @@ const base = [
 
 describe('filtrarFilasHistorial', () => {
   it('filtra por nombre de aprendiz', () => {
-    const list = filtrarFilasHistorial(base, 'juan');
+    const list = filtrarFilasHistorial(base, { aprendiz: 'juan', actividadId: null });
     expect(list.map((f) => f.aprendiz_nombre)).toEqual(['JUAN PEREZ']);
   });
 
-  it('sin texto deja todas', () => {
-    expect(filtrarFilasHistorial(base, '')).toHaveLength(2);
+  it('filtra por la actividad elegida en la lista', () => {
+    const list = filtrarFilasHistorial(base, { aprendiz: '', actividadId: 8 });
+    expect(list.map((f) => f.titulo)).toEqual(['Tarea 2']);
+  });
+
+  it('sin texto ni lista deja todas', () => {
+    expect(filtrarFilasHistorial(base, { aprendiz: '', actividadId: null })).toHaveLength(2);
+  });
+
+  it('lee el id de la lista o lo deja vacío', () => {
+    expect(leerActividadId('8')).toBe(8);
+    expect(leerActividadId('')).toBeNull();
+    expect(leerActividadId('x')).toBeNull();
   });
 });

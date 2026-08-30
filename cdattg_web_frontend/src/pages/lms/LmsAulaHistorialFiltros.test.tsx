@@ -1,6 +1,6 @@
 /**
  * @module pages/lms/LmsAulaHistorialFiltros.test
- * @description Pinta el recorte por aprendiz.
+ * @description Pinta aprendiz y la lista de actividades.
  * @author Cristian Deysdayr Jiménez
  */
 import { createElement } from 'react';
@@ -9,14 +9,24 @@ import { describe, expect, it, vi } from 'vitest';
 import { LmsAulaHistorialFiltros } from './LmsAulaHistorialFiltros';
 
 describe('LmsAulaHistorialFiltros', () => {
-  it('muestra el recuadro de aprendiz', () => {
+  it('muestra aprendiz y lista de actividades', () => {
     const html = renderToStaticMarkup(
       createElement(LmsAulaHistorialFiltros, {
         aprendiz: '',
+        actividadId: null,
+        actividades: [
+          { actividadId: 4, titulo: 'Guía 1' },
+          { actividadId: 8, titulo: 'Tarea 2' },
+        ],
         onAprendiz: vi.fn(),
+        onActividad: vi.fn(),
       }),
     );
     expect(html).toContain('Filtrar por aprendiz');
-    expect(html).toContain('Nombre del aprendiz');
+    expect(html).toContain('Filtrar por actividad');
+    expect(html).toContain('Todas las actividades');
+    expect(html).toContain('<select');
+    expect(html).toContain('Guía 1');
+    expect(html).toContain('Tarea 2');
   });
 });

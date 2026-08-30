@@ -18,7 +18,7 @@ type Props = Readonly<{
 export function LmsAulaTabs({ tab, onTab, puedePublicar, puedeVerHistorial = false }: Props) {
   const base: Array<{ id: LmsTab; label: string }> = [
     { id: LMS_TABS.tablon, label: 'Actividades pendientes' },
-    { id: LMS_TABS.trabajos, label: 'Trabajos de clase' },
+    { id: LMS_TABS.trabajos, label: 'Actividades entregadas' },
     ...(!puedePublicar ? [{ id: LMS_TABS.vencidas, label: 'Actividades vencidas' }] : []),
     { id: LMS_TABS.aprendices, label: 'Aprendices' },
   ];

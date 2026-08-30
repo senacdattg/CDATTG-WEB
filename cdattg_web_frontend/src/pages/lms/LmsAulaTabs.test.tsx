@@ -15,6 +15,7 @@ describe('LmsAulaTabs', () => {
       createElement(LmsAulaTabs, { tab: LMS_TABS.tablon, onTab: vi.fn(), puedePublicar: false }),
     );
     expect(html).toContain('Actividades pendientes');
+    expect(html).toContain('Actividades entregadas');
     expect(html).toContain('Actividades vencidas');
     expect(html).not.toContain('Publicar actividad');
     expect(html).not.toContain('Mis actividades');

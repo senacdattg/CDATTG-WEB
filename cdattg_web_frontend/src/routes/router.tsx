@@ -20,6 +20,7 @@ import { vigilanciaRoutes } from './modules/vigilancia.routes';
 import { permisosRoutes } from './modules/permisos.routes';
 import { administracionRoutes } from './modules/administracion.routes';
 import { aprendizRoutes } from './modules/aprendiz.routes';
+import { bibliotecaRoutes } from './modules/biblioteca.routes';
 import { complementariosRoutes } from './modules/complementarios.routes';
 
 /**
@@ -35,6 +36,7 @@ export const appRouter = createBrowserRouter([
     children: [
       ...homeRoutes,
       ...aprendizRoutes,
+      ...bibliotecaRoutes,
       ...personasRoutes,
       ...instructoresRoutes,
       ...personalOperativoApoyoRoutes,

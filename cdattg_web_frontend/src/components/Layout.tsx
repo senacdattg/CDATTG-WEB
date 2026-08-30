@@ -49,6 +49,7 @@ function readSidebarHidden(): boolean {
 
 const ICONS: Record<string, ReactNode> = {
   perfil: <UsersIcon className="w-5 h-5" />,
+  carnet: <IdentificationIcon className="w-5 h-5" />,
   dashboard: <HomeIcon className="w-5 h-5" />,
   programas: <BookOpenIcon className="w-5 h-5" />,
   fichas: <DocumentTextIcon className="w-5 h-5" />,

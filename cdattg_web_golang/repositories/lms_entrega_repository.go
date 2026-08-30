@@ -13,6 +13,7 @@ type LmsEntregaRepository interface {
 	FindByActividadID(actividadID uint) ([]models.LmsEntrega, error)
 	FindByActividadYAprendiz(actividadID, aprendizID uint) (*models.LmsEntrega, error)
 	FindByAprendizYActividades(aprendizID uint, actividadIDs []uint) ([]models.LmsEntrega, error)
+	FindByActividadIDs(actividadIDs []uint) ([]models.LmsEntrega, error)
 	CountEntregadasByActividadIDs(actividadIDs []uint) (map[uint]int, error)
 	Create(row *models.LmsEntrega) error
 	Save(row *models.LmsEntrega) error
@@ -52,6 +53,16 @@ func (r *lmsEntregaRepository) FindByAprendizYActividades(aprendizID uint, activ
 		return list, nil
 	}
 	err := r.db.Preload("Archivos").Where("aprendiz_id = ? AND actividad_id IN ?", aprendizID, actividadIDs).Find(&list).Error
+	return list, err
+}
+
+// FindByActividadIDs envíos de varias actividades (historial del aula).
+func (r *lmsEntregaRepository) FindByActividadIDs(actividadIDs []uint) ([]models.LmsEntrega, error) {
+	var list []models.LmsEntrega
+	if len(actividadIDs) == 0 {
+		return list, nil
+	}
+	err := r.db.Where("actividad_id IN ?", actividadIDs).Find(&list).Error
 	return list, err
 }
 

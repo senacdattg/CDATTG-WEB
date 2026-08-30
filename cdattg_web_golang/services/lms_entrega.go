@@ -25,9 +25,10 @@ func (s *lmsAulaService) GetActividad(userID, fichaID, actividadID uint) (*dto.L
 	puede := s.acceso.puedePublicar(user, fichaID, roles)
 	nombres := s.nombresCreadores([]models.LmsActividad{*act})
 	det := &dto.LmsActividadDetalle{
-		LmsActividadItem: mapActividadAula(*act, nombres),
-		PuedePublicar:    puede,
-		Entregas:         []dto.LmsEntregaItem{},
+		LmsActividadItem:  mapActividadAula(*act, nombres),
+		PuedePublicar:     puede,
+		PuedeVerHistorial: puede,
+		Entregas:          []dto.LmsEntregaItem{},
 	}
 	if det.PuedePublicar {
 		det.Entregas = s.listarEntregasInstructor(fichaID, act)

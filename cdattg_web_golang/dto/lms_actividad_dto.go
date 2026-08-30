@@ -37,8 +37,9 @@ type LmsActividadRequest struct {
 // LmsActividadDetalle vista de una actividad (alumno o instructor).
 type LmsActividadDetalle struct {
 	LmsActividadItem
-	PuedePublicar bool             `json:"puede_publicar"`
-	PuedeEntregar bool             `json:"puede_entregar"`
+	PuedePublicar     bool             `json:"puede_publicar"`
+	PuedeVerHistorial bool             `json:"puede_ver_historial"`
+	PuedeEntregar     bool             `json:"puede_entregar"`
 	MiEntrega     *LmsEntregaItem  `json:"mi_entrega"`
 	Entregas      []LmsEntregaItem `json:"entregas"`
 }

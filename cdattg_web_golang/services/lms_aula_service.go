@@ -22,6 +22,7 @@ type LmsAulaService interface {
 	DeshacerEntrega(userID, fichaID, actividadID uint) (*dto.LmsEntregaItem, error)
 	Calificar(userID, fichaID, actividadID, entregaID uint, req dto.LmsNotaRequest) (*dto.LmsEntregaItem, error)
 	DescargarArchivoEntrega(userID, fichaID, actividadID, entregaID, archivoID uint) (*models.LmsEntregaArchivo, error)
+	HistorialCalificaciones(userID, fichaID uint) ([]dto.LmsHistorialFila, error)
 }
 
 type lmsAulaService struct {
@@ -94,8 +95,9 @@ func (s *lmsAulaService) GetAula(userID, fichaID uint) (*dto.LmsAulaDetalle, err
 		NumeroFicha:    item.NumeroFicha,
 		NombrePrograma: item.NombrePrograma,
 		TipoFormacion:  item.TipoFormacion,
-		PuedePublicar:  item.PuedePublicar,
-		PuedeEntregar:  lmsAprendizPuedeEntregar(s.aprendizDeUsuario(user, fichaID)),
+		PuedePublicar:     item.PuedePublicar,
+		PuedeVerHistorial: puede,
+		PuedeEntregar:     lmsAprendizPuedeEntregar(s.aprendizDeUsuario(user, fichaID)),
 		Aprendices:     mapAprendicesAula(aps),
 		Actividades:    items,
 	}

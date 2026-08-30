@@ -14,4 +14,7 @@ func TestLmsStatusFromErrSoloConsulta(t *testing.T) {
 	if lmsStatusFromErr(services.ErrLmsSinAcceso) != http.StatusForbidden {
 		t.Fatal("sin acceso debe ser 403")
 	}
+	if lmsStatusFromErr(services.ErrLmsSinHistorial) != http.StatusForbidden {
+		t.Fatal("sin historial debe ser 403")
+	}
 }

@@ -22,8 +22,9 @@ type LmsAulaDetalle struct {
 	NumeroFicha    string             `json:"numero_ficha"`
 	NombrePrograma string             `json:"nombre_programa"`
 	TipoFormacion  string             `json:"tipo_formacion"`
-	PuedePublicar  bool               `json:"puede_publicar"`
-	PuedeEntregar  bool               `json:"puede_entregar"`
+	PuedePublicar      bool               `json:"puede_publicar"`
+	PuedeVerHistorial  bool               `json:"puede_ver_historial"`
+	PuedeEntregar      bool               `json:"puede_entregar"`
 	Aprendices     []LmsAulaAprendiz  `json:"aprendices"`
 	Actividades    []LmsActividadItem `json:"actividades"`
 }

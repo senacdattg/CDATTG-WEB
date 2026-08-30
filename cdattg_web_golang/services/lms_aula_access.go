@@ -87,6 +87,11 @@ func (a *lmsAcceso) instructorID(user *models.User) *uint {
 
 var ErrLmsSinAcceso = errors.New("no tiene acceso a este aula")
 var ErrLmsSinPublicar = errors.New("no puede publicar en este aula")
+var ErrLmsSinHistorial = errors.New("no puede ver el historial de este aula")
+
+func (a *lmsAcceso) puedeVerHistorial(user *models.User, fichaID uint, roles []string) bool {
+	return a.puedePublicar(user, fichaID, roles)
+}
 
 func (a *lmsAcceso) exigirEntrar(user *models.User, fichaID uint, roles []string) error {
 	if !a.puedeEntrar(user, fichaID, roles) {
@@ -98,6 +103,13 @@ func (a *lmsAcceso) exigirEntrar(user *models.User, fichaID uint, roles []string
 func (a *lmsAcceso) exigirPublicar(user *models.User, fichaID uint, roles []string) error {
 	if !a.puedePublicar(user, fichaID, roles) {
 		return ErrLmsSinPublicar
+	}
+	return nil
+}
+
+func (a *lmsAcceso) exigirVerHistorial(user *models.User, fichaID uint, roles []string) error {
+	if !a.puedeVerHistorial(user, fichaID, roles) {
+		return ErrLmsSinHistorial
 	}
 	return nil
 }

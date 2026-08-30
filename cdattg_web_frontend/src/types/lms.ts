@@ -65,6 +65,7 @@ export interface LmsEntregaItem {
 
 export interface LmsActividadDetalle extends LmsActividadItem {
   puede_publicar: boolean;
+  puede_ver_historial?: boolean;
   puede_entregar?: boolean;
   mi_entrega: LmsEntregaItem | null;
   entregas: LmsEntregaItem[];
@@ -76,7 +77,18 @@ export interface LmsAulaDetalle {
   nombre_programa: string;
   tipo_formacion: string;
   puede_publicar: boolean;
+  puede_ver_historial?: boolean;
   puede_entregar?: boolean;
   aprendices: LmsAulaAprendiz[];
   actividades: LmsActividadItem[];
+}
+
+/** Nota de un aprendiz en una actividad del instructor. */
+export interface LmsHistorialFila {
+  aprendiz_id: number;
+  aprendiz_nombre: string;
+  actividad_id: number;
+  titulo: string;
+  calificacion: number | null;
+  calificacion_max: number;
 }

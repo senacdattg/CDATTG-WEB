@@ -314,6 +314,7 @@ func SetupRouter() *gin.Engine {
 				lms.GET("/auditoria/personas/:personaId", middleware.RequirePermission("lms", permVerLMS), lmsAuditoriaHandler.Persona)
 				lms.GET("/auditoria/personas/:personaId/tipos/:tipo", middleware.RequirePermission("lms", permVerLMS), lmsAuditoriaHandler.Tipo)
 				lms.GET("/aulas/:fichaId", middleware.RequirePermission("lms", permEntrarAulaLMS), lmsHandler.GetAula)
+				lms.GET("/aulas/:fichaId/calificaciones", middleware.RequirePermission("lms", permEntrarAulaLMS), lmsHandler.HistorialCalificaciones)
 				lms.POST("/aulas/:fichaId/actividades", middleware.RequirePermission("lms", permPublicarActividadLMS), lmsHandler.CreateActividad)
 				lms.PUT(routeLmsActividad, middleware.RequirePermission("lms", permPublicarActividadLMS), lmsHandler.UpdateActividad)
 				lms.DELETE(routeLmsActividad, middleware.RequirePermission("lms", permPublicarActividadLMS), lmsHandler.DeleteActividad)

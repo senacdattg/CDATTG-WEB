@@ -60,7 +60,7 @@ func parseLmsID(c *gin.Context, name, msg string) (uint, bool) {
 }
 
 func lmsStatusFromErr(err error) int {
-	if errors.Is(err, services.ErrLmsSinAcceso) || errors.Is(err, services.ErrLmsSinPublicar) || errors.Is(err, services.ErrLmsSoloConsulta) {
+	if errors.Is(err, services.ErrLmsSinAcceso) || errors.Is(err, services.ErrLmsSinPublicar) || errors.Is(err, services.ErrLmsSinHistorial) || errors.Is(err, services.ErrLmsSoloConsulta) {
 		return http.StatusForbidden
 	}
 	return http.StatusBadRequest

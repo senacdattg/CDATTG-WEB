@@ -11,6 +11,7 @@ import { LmsAulaTabs } from './LmsAulaTabs';
 import { LmsAulaTablon } from './LmsAulaTablon';
 import { LmsAulaTrabajos } from './LmsAulaTrabajos';
 import { LmsAulaAprendices } from './LmsAulaAprendices';
+import { LmsAulaHistorial } from './LmsAulaHistorial';
 import { LmsAulaMisActividades } from './LmsAulaMisActividades';
 import { LmsPublicarActividadForm } from './LmsPublicarActividadForm';
 import { LmsSoloConsultaAviso } from './LmsSoloConsultaAviso';
@@ -25,7 +26,7 @@ type Props = Readonly<{
 }>;
 
 /**
- * Pendientes, trabajos, aprendices, mis actividades o publicar.
+ * Pendientes, trabajos, aprendices, historial, mis actividades o publicar.
  */
 export function LmsAulaCuerpo({ aula, page, panelInicial = null, verInicial = null }: Props) {
   const [tab, setTab] = useState<LmsTab>(panelInicial ? LMS_TABS.mis : LMS_TABS.tablon);
@@ -63,6 +64,9 @@ export function LmsAulaCuerpo({ aula, page, panelInicial = null, verInicial = nu
       ) : null}
       {tab === LMS_TABS.aprendices ? (
         <LmsAulaAprendices fichaId={aula.ficha_id} aprendices={aula.aprendices} soloActivos={!aula.puede_publicar} />
+      ) : null}
+      {tab === LMS_TABS.historial && aula.puede_publicar ? (
+        <LmsAulaHistorial fichaId={aula.ficha_id} />
       ) : null}
       {tab === LMS_TABS.mis && aula.puede_publicar ? (
         <LmsAulaMisActividades

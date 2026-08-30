@@ -17,6 +17,7 @@ describe('LmsAulaTabs', () => {
     expect(html).toContain('Actividades pendientes');
     expect(html).not.toContain('Publicar actividad');
     expect(html).not.toContain('Mis actividades');
+    expect(html).not.toContain('Historial de actividades');
   });
 
   it('muestra Publicar actividad al instructor', () => {
@@ -25,5 +26,6 @@ describe('LmsAulaTabs', () => {
     );
     expect(html).toContain('Publicar actividad');
     expect(html).toContain('Mis actividades');
+    expect(html).toContain('Historial de actividades');
   });
 });

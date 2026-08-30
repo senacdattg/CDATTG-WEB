@@ -9,11 +9,14 @@ export const LMS_TABS = {
   tablon: 'tablon',
   trabajos: 'trabajos',
   aprendices: 'aprendices',
+  historial: 'historial',
   mis: 'mis',
   publicar: 'publicar',
 } as const;
 
 export type LmsTab = (typeof LMS_TABS)[keyof typeof LMS_TABS];
+
+export const LMS_LABEL_HISTORIAL = 'Historial de actividades';
 
 export const LMS_TIPO_OPTIONS: ReadonlyArray<{ value: LmsActividadTipo; label: string }> = [
   { value: 'TABLON', label: 'Publicación' },

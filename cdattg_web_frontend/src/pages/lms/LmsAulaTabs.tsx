@@ -1,9 +1,9 @@
 /**
  * @module pages/lms/LmsAulaTabs
- * @description Pestañas del aula: pendientes, trabajos, aprendices, mis actividades y publicar.
+ * @description Pestañas del aula: pendientes, trabajos, aprendices, mis, publicar e historial.
  * @author Cristian Deysdayr Jiménez
  */
-import { LMS_TABS, type LmsTab } from './lmsConstants';
+import { LMS_LABEL_HISTORIAL, LMS_TABS, type LmsTab } from './lmsConstants';
 
 type Props = Readonly<{
   tab: LmsTab;
@@ -24,6 +24,7 @@ export function LmsAulaTabs({ tab, onTab, puedePublicar }: Props) {
     ? [
         { id: LMS_TABS.mis, label: 'Mis actividades' },
         { id: LMS_TABS.publicar, label: 'Publicar actividad' },
+        { id: LMS_TABS.historial, label: LMS_LABEL_HISTORIAL },
       ]
     : [];
   const items = [...base, ...extra];

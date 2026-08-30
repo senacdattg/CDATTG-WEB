@@ -60,4 +60,13 @@ describe('LmsAulaMisActividades', () => {
     expect(html).toContain('Cancelar');
     expect(html).not.toContain('Sí, eliminar');
   });
+
+  it('en solo lectura oculta Editar y Eliminar', () => {
+    const html = renderToStaticMarkup(
+      createElement(LmsAulaMisActividades, { ...props, actividades: [item], soloLectura: true }),
+    );
+    expect(html).toContain('Ver');
+    expect(html).not.toContain('Editar');
+    expect(html).not.toContain('Eliminar');
+  });
 });

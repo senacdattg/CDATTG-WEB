@@ -9,8 +9,8 @@ import type { LmsActividadItem } from '../../types/lms';
 type Props = Readonly<{
   actividad: LmsActividadItem;
   onVer: () => void;
-  onEditar: () => void;
-  onEliminar: () => void;
+  onEditar?: () => void;
+  onEliminar?: () => void;
 }>;
 
 /**
@@ -27,12 +27,16 @@ export function LmsMisActividadFila({ actividad, onVer, onEditar, onEliminar }: 
         <button type="button" className="btn-secondary w-full" onClick={onVer}>
           Ver
         </button>
-        <button type="button" className="btn-secondary w-full" onClick={onEditar}>
-          Editar
-        </button>
-        <button type="button" className="btn-secondary w-full text-red-700 dark:text-red-300" onClick={onEliminar}>
-          Eliminar
-        </button>
+        {onEditar ? (
+          <button type="button" className="btn-secondary w-full" onClick={onEditar}>
+            Editar
+          </button>
+        ) : null}
+        {onEliminar ? (
+          <button type="button" className="btn-secondary w-full text-red-700 dark:text-red-300" onClick={onEliminar}>
+            Eliminar
+          </button>
+        ) : null}
       </p>
     </article>
   );

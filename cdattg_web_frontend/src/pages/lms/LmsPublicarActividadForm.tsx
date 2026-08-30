@@ -22,12 +22,13 @@ type Props = Readonly<{
   onSubmit: (body: FormData) => Promise<void>;
   initial?: LmsActividadFormInitial;
   onCancel?: () => void;
+  soloLectura?: boolean;
 }>;
 
 /**
  * Formulario de alta o edición. `initial` activa el modo editar.
  */
-export function LmsPublicarActividadForm({ saving, onSubmit, initial, onCancel }: Props) {
+export function LmsPublicarActividadForm({ saving, onSubmit, initial, onCancel, soloLectura = false }: Props) {
   const plazoIni = partirPlazo(initial?.plazo_entrega);
   const [titulo, setTitulo] = useState(initial?.titulo ?? '');
   const [cuerpo, setCuerpo] = useState(initial?.cuerpo ?? '');
@@ -77,10 +78,12 @@ export function LmsPublicarActividadForm({ saving, onSubmit, initial, onCancel }
         <DocumentPlusIcon className="mt-0.5 h-6 w-6 shrink-0 text-primary-600" aria-hidden />
         <div className="min-w-0">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white">{textos.titulo}</h2>
-          <p className="text-sm text-gray-500">{textos.pista}</p>
+          <p className="text-sm text-gray-500">
+            {soloLectura ? 'Solo consulta: no puede publicar si no está asignado a esta ficha.' : textos.pista}
+          </p>
         </div>
       </header>
-      <div className="space-y-4 px-4 py-5 sm:px-5">
+      <fieldset disabled={soloLectura} className="space-y-4 px-4 py-5 sm:px-5">
         {error ? <p className="text-sm text-red-600">{error}</p> : null}
         <p>
           <label htmlFor="lms-titulo" className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-200">
@@ -109,16 +112,18 @@ export function LmsPublicarActividadForm({ saving, onSubmit, initial, onCancel }
         <LmsPublicarVistaPrevia files={files} />
         <LmsPublicarPlazo fecha={fecha} hora={hora} onFecha={setFecha} onHora={setHora} />
         <p className="flex flex-col gap-2 sm:flex-row">
-          <button type="submit" disabled={saving} className="btn-primary w-full sm:w-auto">
-            {textos.boton}
-          </button>
+          {soloLectura ? null : (
+            <button type="submit" disabled={saving} className="btn-primary w-full sm:w-auto">
+              {textos.boton}
+            </button>
+          )}
           {onCancel ? (
             <button type="button" className="btn-secondary w-full sm:w-auto" onClick={onCancel}>
               Cancelar
             </button>
           ) : null}
         </p>
-      </div>
+      </fieldset>
     </form>
   );
 }

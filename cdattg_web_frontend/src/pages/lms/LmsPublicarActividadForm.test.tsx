@@ -49,4 +49,17 @@ describe('LmsPublicarActividadForm', () => {
     );
     expect(html).toContain('Cancelar');
   });
+
+  it('en solo lectura no deja publicar', () => {
+    const html = renderToStaticMarkup(
+      createElement(LmsPublicarActividadForm, {
+        saving: false,
+        onSubmit: async () => undefined,
+        soloLectura: true,
+      }),
+    );
+    expect(html).toContain('Solo consulta');
+    expect(html).toContain('disabled');
+    expect(html).not.toContain('type="submit"');
+  });
 });

@@ -124,5 +124,6 @@ describe('LmsAulaCuerpo', () => {
     expect(html).toContain('Mis actividades');
     expect(html).toContain('Publicar actividad');
     expect(html).toContain('Historial de actividades');
+    expect(html).toContain('no está asignado a esta ficha');
   });
 });

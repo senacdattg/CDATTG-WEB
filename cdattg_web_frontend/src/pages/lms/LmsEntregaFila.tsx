@@ -5,6 +5,7 @@
  */
 import { useState } from 'react';
 import { LmsArchivosEntrega } from './LmsArchivosEntrega';
+import { LmsAuditoriaNota } from './LmsAuditoriaNota';
 import { labelEstadoEntrega } from './lmsActividadEstado';
 import type { LmsEntregaItem } from '../../types/lms';
 
@@ -14,13 +15,22 @@ type Props = Readonly<{
   puntos: number;
   entrega: LmsEntregaItem;
   saving: boolean;
+  soloLectura?: boolean;
   onCalificar: (entregaId: number, nota: number | null, comentario: string) => Promise<void>;
 }>;
 
 /**
- * Revisión de un envío. El formulario solo aparece si ya entregó.
+ * Revisión de un envío. En solo lectura no aparece Guardar nota.
  */
-export function LmsEntregaFila({ fichaId, actividadId, puntos, entrega, saving, onCalificar }: Props) {
+export function LmsEntregaFila({
+  fichaId,
+  actividadId,
+  puntos,
+  entrega,
+  saving,
+  soloLectura = false,
+  onCalificar,
+}: Props) {
   const notaInicial = typeof entrega.calificacion === 'number' ? String(entrega.calificacion) : '';
   const [nota, setNota] = useState(notaInicial);
   const [comentario, setComentario] = useState(entrega.comentario_instructor || '');
@@ -57,7 +67,10 @@ export function LmsEntregaFila({ fichaId, actividadId, puntos, entrega, saving, 
         archivos={entrega.archivos}
         vacio="Sin archivos."
       />
-      {entrego ? (
+      {soloLectura ? (
+        <LmsAuditoriaNota calificacion={entrega.calificacion} comentario={entrega.comentario_instructor} />
+      ) : null}
+      {entrego && !soloLectura ? (
         <form
           className="grid gap-3 sm:grid-cols-2"
           onSubmit={(e) => {

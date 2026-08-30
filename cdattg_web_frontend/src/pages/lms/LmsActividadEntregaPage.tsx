@@ -49,6 +49,7 @@ export function LmsActividadEntregaPage() {
             puntos={d.calificacion_max ?? 100}
             entrega={entrega}
             saving={page.saving}
+            soloLectura={!d.puede_publicar}
             onCalificar={page.calificar}
           />
         </>

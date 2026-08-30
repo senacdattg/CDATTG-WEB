@@ -60,6 +60,11 @@ export function LmsAulaCuerpo({ aula, page, panelInicial = null, verInicial = nu
           Solo consulta: puede ver el aula y lo que ya entregó. No puede subir archivos.
         </LmsSoloConsultaAviso>
       ) : null}
+      {esSuper && !aula.puede_publicar ? (
+        <LmsSoloConsultaAviso>
+          Solo consulta: ve todos los módulos. No puede publicar ni editar si no está asignado a esta ficha.
+        </LmsSoloConsultaAviso>
+      ) : null}
       <LmsAulaTabs tab={tab} onTab={setTab} puedePublicar={aula.puede_publicar} puedeVerHistorial={veNotas} esSuperAdmin={esSuper} />
       {tab === LMS_TABS.tablon ? (
         <LmsAulaTablon
@@ -82,7 +87,7 @@ export function LmsAulaCuerpo({ aula, page, panelInicial = null, verInicial = nu
       {tab === LMS_TABS.historial && veNotas ? (
         <LmsAulaHistorial fichaId={aula.ficha_id} />
       ) : null}
-      {tab === LMS_TABS.mis && aula.puede_publicar ? (
+      {tab === LMS_TABS.mis && (aula.puede_publicar || esSuper) ? (
         <LmsAulaMisActividades
           fichaId={aula.ficha_id}
           actividades={aula.actividades}
@@ -91,10 +96,11 @@ export function LmsAulaCuerpo({ aula, page, panelInicial = null, verInicial = nu
           onEliminar={page.eliminar}
           panelInicial={editarId == null ? null : lmsPanelEditar(editarId)}
           onCerrarPanel={() => setEditarId(null)}
+          soloLectura={!aula.puede_publicar}
         />
       ) : null}
-      {tab === LMS_TABS.publicar && aula.puede_publicar ? (
-        <LmsPublicarActividadForm saving={page.saving} onSubmit={page.publicar} />
+      {tab === LMS_TABS.publicar && (aula.puede_publicar || esSuper) ? (
+        <LmsPublicarActividadForm saving={page.saving} onSubmit={page.publicar} soloLectura={!aula.puede_publicar} />
       ) : null}
     </>
   );

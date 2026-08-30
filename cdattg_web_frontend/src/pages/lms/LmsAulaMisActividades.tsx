@@ -21,6 +21,7 @@ type Props = Readonly<{
   onEliminar: (actividadId: number) => Promise<void>;
   panelInicial?: LmsMisPanel | null;
   onCerrarPanel?: () => void;
+  soloLectura?: boolean;
 }>;
 
 /**
@@ -34,6 +35,7 @@ export function LmsAulaMisActividades({
   onEliminar,
   panelInicial = null,
   onCerrarPanel,
+  soloLectura = false,
 }: Props) {
   const [panel, setPanel] = useState<LmsMisPanel | null>(panelInicial);
   const [error, setError] = useState('');
@@ -47,7 +49,14 @@ export function LmsAulaMisActividades({
 
   let vista: ReactNode;
   if (panel && actual && panel.modo === 'ver') {
-    vista = <LmsMisActividadVer fichaId={fichaId} actividad={actual} onCerrar={cerrar} />;
+    vista = (
+      <LmsMisActividadVer
+        fichaId={fichaId}
+        actividad={actual}
+        onCerrar={cerrar}
+        onEditar={soloLectura ? undefined : () => setPanel({ modo: 'editar', id: actual.id })}
+      />
+    );
   } else if (panel && actual && panel.modo === 'editar') {
     vista = (
       <LmsMisActividadEditar
@@ -86,7 +95,7 @@ export function LmsAulaMisActividades({
   } else if (actividades.length === 0) {
     vista = (
       <p className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-8 text-center text-sm text-gray-500 dark:border-gray-600 dark:bg-gray-900/40">
-        Aún no ha publicado actividades en esta aula.
+        {soloLectura ? 'Aún no hay actividades en esta aula.' : 'Aún no ha publicado actividades en esta aula.'}
       </p>
     );
   } else {
@@ -97,8 +106,8 @@ export function LmsAulaMisActividades({
             <LmsMisActividadFila
               actividad={a}
               onVer={() => setPanel({ modo: 'ver', id: a.id })}
-              onEditar={() => setPanel({ modo: 'editar', id: a.id })}
-              onEliminar={() => setPanel({ modo: 'borrar', id: a.id })}
+              onEditar={soloLectura ? undefined : () => setPanel({ modo: 'editar', id: a.id })}
+              onEliminar={soloLectura ? undefined : () => setPanel({ modo: 'borrar', id: a.id })}
             />
           </li>
         ))}

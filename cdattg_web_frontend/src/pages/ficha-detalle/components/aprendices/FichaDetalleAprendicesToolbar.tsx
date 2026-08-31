@@ -40,10 +40,10 @@ export function FichaDetalleAprendicesToolbar({
               onClick={onExportarClick}
               disabled={exportando || stats.total === 0}
               className="btn-secondary inline-flex items-center gap-2"
-              title="Exportar lista en formato oficial SENA (GD-F-008)"
+              title="Exportar lista en PDF con membrete SENA (GD-F-008)"
             >
               <ArrowDownTrayIcon className="h-4 w-4" aria-hidden />
-              {exportando ? 'Generando…' : 'Exportar lista SENA'}
+              {exportando ? 'Generando…' : 'Exportar PDF'}
             </button>
           )}
           {puedeGestionar && (

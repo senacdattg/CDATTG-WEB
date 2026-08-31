@@ -2,7 +2,7 @@ import { useCallback, useState } from 'react';
 import Swal from 'sweetalert2';
 import type { FichaAprendicesTabModel } from '../../hooks/useFichaAprendices';
 import type { FichaCaracterizacionResponse } from '../../../../types';
-import { exportarListaAprendicesSenaDocx } from '../../exportAprendicesListaSenaDocx';
+import { exportarListaAprendicesSenaPdf } from '../../exportAprendicesListaSenaPdf';
 import { FichaDetalleAprendicesTable } from './FichaDetalleAprendicesTable';
 import { FichaDetalleAprendicesToolbar } from './FichaDetalleAprendicesToolbar';
 import { FichaDetalleAsignarAprendicesPanel } from './FichaDetalleAsignarAprendicesPanel';
@@ -36,7 +36,7 @@ export function FichaDetalleAprendicesTab({
   const handleExportar = useCallback(async () => {
     setExportando(true);
     try {
-      await exportarListaAprendicesSenaDocx(ficha, aprendices);
+      await exportarListaAprendicesSenaPdf(ficha, aprendices);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'No se pudo generar el documento.';
       await Swal.fire({ icon: 'error', title: 'Exportación', text: msg });

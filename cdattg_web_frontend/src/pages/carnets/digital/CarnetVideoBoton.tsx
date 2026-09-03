@@ -16,9 +16,6 @@ type Props = Readonly<{
   fotoUrl: string | null;
 }>;
 
-/**
- * Preparo el video en el navegador y lo bajo.
- */
 export function CarnetVideoBoton({ persona, ficha, fotoUrl }: Props) {
   const caraRef = useRef<HTMLDivElement>(null);
   const reversoRef = useRef<HTMLDivElement>(null);

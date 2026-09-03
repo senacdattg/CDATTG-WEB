@@ -4,10 +4,10 @@
  * @author Cristian Deysdayr Jiménez
  */
 import { useEffect, useState } from 'react';
-import { decidirCarnet, listarCarnetsPendientes } from '../../services/carnetApi';
-import { CarnetPendienteFoto } from './CarnetPendienteFoto';
+import { decidirCarnet, listarCarnetsPendientes } from '../../../services/carnetApi';
+import { CarnetPendienteFoto } from '../shared/CarnetPendienteFoto';
 import { CarnetVistaDialog } from './CarnetVistaDialog';
-import type { CarnetPendienteItem } from '../../types/carnet';
+import type { CarnetPendienteItem } from '../../../types/carnet';
 
 /**
  * Listo pendientes y dejo ver, aceptar o devolver.

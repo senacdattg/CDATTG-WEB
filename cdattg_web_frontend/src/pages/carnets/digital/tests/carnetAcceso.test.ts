@@ -4,7 +4,7 @@
  * @author Cristian Deysdayr Jiménez
  */
 import { describe, expect, it } from 'vitest';
-import { puedeVerCarnetDigital } from './carnetAcceso';
+import { puedeVerCarnetDigital } from '../carnetAcceso';
 
 describe('puedeVerCarnetDigital', () => {
   it('deja pasar al aprendiz', () => {

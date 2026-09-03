@@ -4,7 +4,7 @@
  * @author Cristian Deysdayr Jiménez
  */
 import { describe, expect, it } from 'vitest';
-import { textoQrCarnet } from './carnetQr';
+import { textoQrCarnet } from '../carnetQr';
 
 describe('textoQrCarnet', () => {
   it('deja solo dígitos', () => {

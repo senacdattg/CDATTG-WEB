@@ -5,7 +5,7 @@
  * @author Cristian Deysdayr Jiménez
  */
 import { useEffect, useState } from 'react';
-import LogoSena from '../../../logo-sena-verde-complementario-svg-2022.svg';
+import LogoSena from '../../../../logo-sena-verde-complementario-svg-2022.svg';
 import { svgUrlAPng } from './carnetLogo';
 
 /**

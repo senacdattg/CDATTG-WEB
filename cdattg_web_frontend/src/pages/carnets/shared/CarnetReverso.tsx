@@ -3,10 +3,10 @@
  *
  * @author Cristian Deysdayr Jiménez
  */
-import EscudoColombia from '../../assets/escudo-colombia.png';
+import EscudoColombia from '../../../assets/escudo-colombia.png';
 import { CARNET_TEXTO_EXTRAVIO, CARNET_TEXTO_LEGAL } from './carnetTextos';
 import { etiquetaRegionalCarnet } from './carnetRegional';
-import type { CarnetFichaOpcion } from '../../types/carnet';
+import type { CarnetFichaOpcion } from '../../../types/carnet';
 
 type CarnetReversoProps = Readonly<{ ficha: CarnetFichaOpcion }>;
 

@@ -4,7 +4,7 @@
  * @author Cristian Deysdayr Jiménez
  */
 import { afterEach, describe, expect, it } from 'vitest';
-import { esImagenSvg, prepararImagenesCarnet, svgUrlAPng } from './carnetLogo';
+import { esImagenSvg, prepararImagenesCarnet, svgUrlAPng } from '../carnetLogo';
 
 const ImageOrig = globalThis.Image;
 const ctxOrig = HTMLCanvasElement.prototype.getContext;

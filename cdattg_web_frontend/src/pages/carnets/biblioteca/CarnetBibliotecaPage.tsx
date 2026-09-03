@@ -5,8 +5,8 @@
  * @author Cristian Deysdayr Jiménez
  */
 import { useEffect, useState } from 'react';
-import { listarCarnetsBiblioteca } from '../../services/carnetApi';
-import type { CarnetBibliotecaItem, CarnetBibliotecaResponse } from '../../types/carnet';
+import { listarCarnetsBiblioteca } from '../../../services/carnetApi';
+import type { CarnetBibliotecaItem, CarnetBibliotecaResponse } from '../../../types/carnet';
 import { CarnetBibliotecaFila } from './CarnetBibliotecaFila';
 import { CarnetBibliotecaFiltro } from './CarnetBibliotecaFiltro';
 import { CarnetBibliotecaFotoDialog } from './CarnetBibliotecaFotoDialog';

@@ -4,7 +4,7 @@
  * @author Cristian Deysdayr Jiménez
  */
 import html2canvas from 'html2canvas';
-import { prepararImagenesCarnet } from './carnetLogo';
+import { prepararImagenesCarnet } from '../shared/carnetLogo';
 import { anguloGiroCarnet, caraVisibleEnGiro, CARNET_VIDEO_MS, mimeVideoCarnet, tamanoDibujo } from './carnetVideoGiro';
 
 /**

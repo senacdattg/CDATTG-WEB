@@ -3,9 +3,9 @@
  *
  * @author Cristian Deysdayr Jiménez
  */
-import { urlFotoBiblioteca } from '../../services/carnetApi';
-import type { CarnetBibliotecaItem } from '../../types/carnet';
-import { CarnetPendienteFoto } from './CarnetPendienteFoto';
+import { urlFotoBiblioteca } from '../../../services/carnetApi';
+import type { CarnetBibliotecaItem } from '../../../types/carnet';
+import { CarnetPendienteFoto } from '../shared/CarnetPendienteFoto';
 
 type Props = Readonly<{
   item: CarnetBibliotecaItem;

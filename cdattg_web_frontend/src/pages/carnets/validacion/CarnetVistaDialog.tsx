@@ -4,10 +4,10 @@
  * @author Cristian Deysdayr Jiménez
  */
 import { useEffect, useState } from 'react';
-import { getVistaSolicitud, urlFotoSolicitud } from '../../services/carnetApi';
-import { CarnetCara } from './CarnetCara';
-import { CarnetReverso } from './CarnetReverso';
-import type { CarnetVistaInstructor } from '../../types/carnet';
+import { getVistaSolicitud, urlFotoSolicitud } from '../../../services/carnetApi';
+import { CarnetCara } from '../shared/CarnetCara';
+import { CarnetReverso } from '../shared/CarnetReverso';
+import type { CarnetVistaInstructor } from '../../../types/carnet';
 
 type Props = Readonly<{
   id: number;

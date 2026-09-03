@@ -3,7 +3,7 @@
  *
  * @author Cristian Deysdayr Jiménez
  */
-import type { CarnetBibliotecaItem } from '../../types/carnet';
+import type { CarnetBibliotecaItem } from '../../../types/carnet';
 
 /**
  * Dejo solo los de esa ficha. Si no hay ficha, dejo todos.

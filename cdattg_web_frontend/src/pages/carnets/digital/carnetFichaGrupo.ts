@@ -4,7 +4,7 @@
  *
  * @author Cristian Deysdayr Jiménez
  */
-import type { CarnetFichaOpcion } from '../../types/carnet';
+import type { CarnetFichaOpcion } from '../../../types/carnet';
 
 const ORDEN_TIPO = ['FORMACION_REGULAR', 'MEDIA_TECNICA', 'FORMACION_COMPLEMENTARIA'];
 

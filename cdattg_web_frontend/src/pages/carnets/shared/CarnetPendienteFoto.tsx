@@ -4,7 +4,7 @@
  * @author Cristian Deysdayr Jiménez
  */
 import { useEffect, useState } from 'react';
-import { urlFotoSolicitud } from '../../services/carnetApi';
+import { urlFotoSolicitud } from '../../../services/carnetApi';
 
 /**
  * Cargo la foto de la solicitud con el token de la sesión.

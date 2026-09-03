@@ -3,7 +3,7 @@
  *
  * @author Cristian Deysdayr Jiménez
  */
-import type { CarnetBibliotecaFicha } from '../../types/carnet';
+import type { CarnetBibliotecaFicha } from '../../../types/carnet';
 
 type Props = Readonly<{
   fichas: CarnetBibliotecaFicha[];

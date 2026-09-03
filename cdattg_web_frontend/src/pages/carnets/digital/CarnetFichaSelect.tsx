@@ -4,7 +4,7 @@
  * @author Cristian Deysdayr Jiménez
  */
 import { agruparFichasPorTipo } from './carnetFichaGrupo';
-import type { CarnetFichaOpcion } from '../../types/carnet';
+import type { CarnetFichaOpcion } from '../../../types/carnet';
 
 type Props = Readonly<{
   fichas: CarnetFichaOpcion[];

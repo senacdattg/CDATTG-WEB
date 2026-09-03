@@ -4,8 +4,8 @@
  * @author Cristian Deysdayr Jiménez
  */
 import { describe, expect, it } from 'vitest';
-import { filtrarItemsBiblioteca } from './carnetBiblioteca';
-import type { CarnetBibliotecaItem } from '../../types/carnet';
+import { filtrarItemsBiblioteca } from '../carnetBiblioteca';
+import type { CarnetBibliotecaItem } from '../../../types/carnet';
 
 function item(id: number, fichaId: number): CarnetBibliotecaItem {
   return {

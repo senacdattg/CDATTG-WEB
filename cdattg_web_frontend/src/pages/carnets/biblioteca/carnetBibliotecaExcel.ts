@@ -3,8 +3,8 @@
  *
  * @author Cristian Deysdayr Jiménez
  */
-import { bajarExcelBiblioteca } from '../../services/carnetApi';
-import { descargarBlob } from './carnetVideoGiro';
+import { bajarExcelBiblioteca } from '../../../services/carnetApi';
+import { descargarBlob } from '../digital/carnetVideoGiro';
 
 /**
  * Pido el archivo a la API y lo guardo.

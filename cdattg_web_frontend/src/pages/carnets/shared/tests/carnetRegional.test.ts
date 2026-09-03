@@ -4,7 +4,7 @@
  * @author Cristian Deysdayr Jiménez
  */
 import { describe, expect, it } from 'vitest';
-import { etiquetaRegionalCarnet } from './carnetRegional';
+import { etiquetaRegionalCarnet } from '../carnetRegional';
 
 describe('etiquetaRegionalCarnet', () => {
   it('antepone Regional. si solo viene Guaviare', () => {

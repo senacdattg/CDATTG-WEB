@@ -4,7 +4,7 @@
  * @author Cristian Deysdayr Jiménez
  */
 import { describe, expect, it } from 'vitest';
-import { fichaCarnetAprobado, fichaCarnetDevuelto, fichaCarnetPendiente } from './carnetEstado';
+import { fichaCarnetAprobado, fichaCarnetDevuelto, fichaCarnetPendiente } from '../carnetEstado';
 
 describe('estado del carnet', () => {
   it('detecta pendiente', () => {

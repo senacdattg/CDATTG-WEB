@@ -4,11 +4,11 @@
  * @author Cristian Deysdayr Jiménez
  */
 import { useRef, useState } from 'react';
-import { CarnetCara } from './CarnetCara';
-import { CarnetReverso } from './CarnetReverso';
+import { CarnetCara } from '../shared/CarnetCara';
+import { CarnetReverso } from '../shared/CarnetReverso';
 import { grabarVideoCarnet } from './carnetVideoGrabar';
 import { descargarBlob, mimeVideoCarnet, nombreVideoCarnet } from './carnetVideoGiro';
-import type { CarnetFichaOpcion, CarnetPersonaDatos } from '../../types/carnet';
+import type { CarnetFichaOpcion, CarnetPersonaDatos } from '../../../types/carnet';
 
 type Props = Readonly<{
   persona: CarnetPersonaDatos;

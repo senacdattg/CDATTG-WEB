@@ -4,8 +4,8 @@
  * @author Cristian Deysdayr Jiménez
  */
 import { describe, expect, it } from 'vitest';
-import { agruparFichasPorTipo } from './carnetFichaGrupo';
-import type { CarnetFichaOpcion } from '../../types/carnet';
+import { agruparFichasPorTipo } from '../carnetFichaGrupo';
+import type { CarnetFichaOpcion } from '../../../types/carnet';
 
 function ficha(partial: Partial<CarnetFichaOpcion>): CarnetFichaOpcion {
   return {

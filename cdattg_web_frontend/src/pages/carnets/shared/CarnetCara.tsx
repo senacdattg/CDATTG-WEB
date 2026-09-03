@@ -6,7 +6,7 @@
 import { CarnetLogoSena } from './CarnetLogoSena';
 import { CarnetQrImg } from './CarnetQrImg';
 import { etiquetaRegionalCarnet } from './carnetRegional';
-import type { CarnetFichaOpcion, CarnetPersonaDatos } from '../../types/carnet';
+import type { CarnetFichaOpcion, CarnetPersonaDatos } from '../../../types/carnet';
 
 type CarnetCaraProps = Readonly<{
   persona: CarnetPersonaDatos;

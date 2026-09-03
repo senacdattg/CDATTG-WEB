@@ -4,7 +4,7 @@
  * @author Cristian Deysdayr Jiménez
  */
 import { useEffect, useState } from 'react';
-import { urlFotoBiblioteca } from '../../services/carnetApi';
+import { urlFotoBiblioteca } from '../../../services/carnetApi';
 
 type Props = Readonly<{
   id: number;

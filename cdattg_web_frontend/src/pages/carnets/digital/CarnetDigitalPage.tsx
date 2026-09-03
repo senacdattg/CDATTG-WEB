@@ -5,16 +5,16 @@
  * @author Cristian Deysdayr Jiménez
  */
 import { useCallback, useEffect, useState } from 'react';
-import { useAuth } from '../../context/AuthContext';
-import { bajarFotoCarnet, getMiCarnet, solicitarMiCarnet } from '../../services/carnetApi';
-import { CarnetCara } from './CarnetCara';
+import { useAuth } from '../../../context/AuthContext';
+import { bajarFotoCarnet, getMiCarnet, solicitarMiCarnet } from '../../../services/carnetApi';
+import { CarnetCara } from '../shared/CarnetCara';
 import { CarnetEstadoAvisos } from './CarnetEstadoAvisos';
 import { CarnetFichaSelect } from './CarnetFichaSelect';
-import { CarnetReverso } from './CarnetReverso';
+import { CarnetReverso } from '../shared/CarnetReverso';
 import { CarnetVideoBoton } from './CarnetVideoBoton';
 import { puedeVerCarnetDigital } from './carnetAcceso';
 import { fichaCarnetAprobado } from './carnetEstado';
-import type { CarnetDigitalResponse } from '../../types/carnet';
+import type { CarnetDigitalResponse } from '../../../types/carnet';
 
 /**
  * Cargo estado, dejo crear o renovar y voltear el carnet.

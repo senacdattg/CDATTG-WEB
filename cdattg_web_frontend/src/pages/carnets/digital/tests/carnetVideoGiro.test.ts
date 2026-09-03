@@ -4,7 +4,7 @@
  * @author Cristian Deysdayr Jiménez
  */
 import { describe, expect, it } from 'vitest';
-import { anguloGiroCarnet, caraVisibleEnGiro, mimeVideoCarnet, nombreVideoCarnet, tamanoDibujo } from './carnetVideoGiro';
+import { anguloGiroCarnet, caraVisibleEnGiro, mimeVideoCarnet, nombreVideoCarnet, tamanoDibujo } from '../carnetVideoGiro';
 
 describe('giro del carnet', () => {
   it('empieza de cara y termina de reverso', () => {

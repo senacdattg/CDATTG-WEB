@@ -4,7 +4,7 @@
  * @author Cristian Deysdayr Jiménez
  */
 import { fichaCarnetAprobado, fichaCarnetDevuelto, fichaCarnetPendiente } from './carnetEstado';
-import type { CarnetDigitalResponse, CarnetFichaOpcion } from '../../types/carnet';
+import type { CarnetDigitalResponse, CarnetFichaOpcion } from '../../../types/carnet';
 
 type Props = Readonly<{
   data: CarnetDigitalResponse;

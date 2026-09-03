@@ -2,6 +2,7 @@ package router
 
 import (
 	"github.com/gin-gonic/gin"
+	"github.com/sena/cdattg-web-golang/database"
 	"github.com/sena/cdattg-web-golang/handlers"
 	"github.com/sena/cdattg-web-golang/middleware"
 )
@@ -108,7 +109,7 @@ func SetupRouter() *gin.Engine {
 
 		// WebSocket dashboard asistencia (token por query; solo superadmin; sin AuthMiddleware)
 		api.GET("/asistencias/dashboard/ws", handlers.DashboardWebSocket)
-		registerCarnetImpresora(api)
+		registerCarnetImpresora(api, database.DB)
 
 		auth := api.Group("/auth")
 		{
@@ -128,7 +129,7 @@ func SetupRouter() *gin.Engine {
 				personas.GET(routeImports, middleware.RequirePermission("persona", permVerPersonas), personaHandler.ListPersonaImports)
 				personas.POST(routeImport, middleware.RequirePermission("persona", permCrearPersona), personaHandler.ImportPersonas)
 				personas.PUT("/mi-perfil", middleware.RequirePermission("persona", permEditarMiPersona), personaHandler.UpdateMiPerfil)
-				registerPersonaFotoYCarnet(protected, personas)
+				registerPersonaFotoYCarnet(protected, personas, database.DB)
 				personas.GET("/:id", middleware.RequirePermission("persona", "VER PERSONA"), personaHandler.GetByID)
 				personas.POST("", middleware.RequirePermission("persona", permCrearPersona), personaHandler.Create)
 				personas.PUT("/:id", middleware.RequirePermission("persona", "EDITAR PERSONA"), personaHandler.Update)

@@ -42,6 +42,7 @@ type carnetDigitalService struct {
 	aprendizRepo  repositories.AprendizRepository
 	solicitudRepo repositories.CarnetSolicitudRepository
 	fichaRepo     repositories.FichaRepository
+	configSvc     *CarnetConfigService
 }
 
 // NewCarnetDigitalService crea el servicio del carnet.
@@ -51,6 +52,17 @@ func NewCarnetDigitalService() CarnetDigitalService {
 		aprendizRepo:  repositories.NewAprendizRepository(),
 		solicitudRepo: repositories.NewCarnetSolicitudRepository(),
 		fichaRepo:     repositories.NewFichaRepository(),
+	}
+}
+
+// NewCarnetDigitalServiceWithConfig inyecta el servicio de configuración en las pruebas.
+func NewCarnetDigitalServiceWithConfig(configSvc *CarnetConfigService) CarnetDigitalService {
+	return &carnetDigitalService{
+		personaRepo:   repositories.NewPersonaRepository(),
+		aprendizRepo:  repositories.NewAprendizRepository(),
+		solicitudRepo: repositories.NewCarnetSolicitudRepository(),
+		fichaRepo:     repositories.NewFichaRepository(),
+		configSvc:     configSvc,
 	}
 }
 
@@ -69,7 +81,11 @@ func (s *carnetDigitalService) ObtenerMiCarnet(personaID uint) (*dto.CarnetDigit
 	aprobada, _ := s.solicitudRepo.FindUltimaAprobadaByPersonaID(personaID)
 	ultimas, _ := s.solicitudRepo.FindUltimasPorPersona(personaID)
 	aplicarEstadosFichas(fichas, ultimas, datosListosParaCarnet(*persona))
-	return armarRespuestaCarnet(*persona, fichas, aprobada), nil
+	var cargo string
+	if s.configSvc != nil {
+		cargo = s.configSvc.CargoRegional()
+	}
+	return armarRespuestaCarnet(*persona, fichas, aprobada, cargo), nil
 }
 
 func personaACarnetDatos(p models.Persona) dto.CarnetPersonaDatos {

@@ -18,11 +18,13 @@ func armarRespuestaCarnet(
 	persona models.Persona,
 	fichas []dto.CarnetFichaOpcion,
 	aprobada *models.CarnetSolicitud,
+	cargoRegional string,
 ) *dto.CarnetDigitalResponse {
 	resp := &dto.CarnetDigitalResponse{
 		Fichas:          fichas,
 		EstadoSolicitud: "ninguna",
 		Persona:         personaACarnetDatos(persona),
+		CargoRegional:   cargoRegional,
 	}
 	if len(fichas) == 0 {
 		resp.Motivo = carnetMotivoSinVigente

@@ -94,3 +94,21 @@ export async function getVistaSolicitud(id: number): Promise<CarnetVistaInstruct
   const res = await fetch(`${API_BASE_URL}/carnets/${id}`, { headers: auth() });
   return leerJson(res, 'No pude cargar la solicitud');
 }
+
+/** Traigo la configuración del carnet (cargo y regional para el QR). */
+export async function getConfiguracionCarnet(): Promise<{ nombre: string; cargo: string; regional: string }> {
+  const res = await fetch(`${API_BASE_URL}/carnets/configuracion`, { headers: auth() });
+  return leerJson(res, 'No pude cargar la configuración');
+}
+
+/** Actualizo la configuración del carnet (requiere permiso CONFIGURAR CARNET). */
+export async function actualizarConfiguracionCarnet(
+  dato: { nombre: string; cargo: string; regional: string },
+): Promise<void> {
+  const res = await fetch(`${API_BASE_URL}/carnets/configuracion`, {
+    method: 'PUT',
+    headers: { ...auth(), 'Content-Type': 'application/json' },
+    body: JSON.stringify(dato),
+  });
+  await leerJson(res, 'No pude guardar la configuración');
+}

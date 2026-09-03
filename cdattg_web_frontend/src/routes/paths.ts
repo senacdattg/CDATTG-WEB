@@ -166,6 +166,10 @@ export const eleccionAprendizPaths = {
   index: '/eleccion-aprendices',
 } as const;
 
+export const carnetPaths = {
+  configuracion: '/carnet/configuracion',
+} as const;
+
 export const complementariosPaths = {
   index: '/complementarios',
   betowa: '/complementarios/betowa',

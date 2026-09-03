@@ -15,12 +15,13 @@ import {
   instructoresPaths,
   instructorPaths,
   bibliotecaPaths,
-  personalOperativoApoyoPaths,
-  personalAdministrativoPaths,
-  contratistasPaths,
-  vigilanciaPaths,
-  complementariosPaths,
-} from '../../routes/paths';
+   personalOperativoApoyoPaths,
+   personalAdministrativoPaths,
+   contratistasPaths,
+   vigilanciaPaths,
+   complementariosPaths,
+   carnetPaths,
+ } from '../../routes/paths';
 import type { SidebarManifestItem } from './types';
 
 /** Orden y agrupación del menú lateral (de arriba hacia abajo). */
@@ -76,6 +77,15 @@ export const SIDEBAR_MANIFEST: SidebarManifestItem[] = [
     permission: 'VER CARNET BIBLIOTECA',
     rolesRequired: ['BIBLIOTECARIO'],
     alsoVisibleForPermissions: ['VER CARNET BIBLIOTECA'],
+    iconKey: 'carnet',
+  },
+  {
+    section: 'Carnet',
+    path: carnetPaths.configuracion,
+    label: 'Configuración carnet',
+    permission: 'CONFIGURAR CARNET',
+    rolesRequired: ['SUPER ADMINISTRADOR'],
+    alsoVisibleForPermissions: ['CONFIGURAR CARNET'],
     iconKey: 'carnet',
   },
   {

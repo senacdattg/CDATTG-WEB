@@ -52,7 +52,7 @@ export const SIDEBAR_MANIFEST: SidebarManifestItem[] = [
     iconKey: 'asistencia/mis-inasistencias',
   },
   {
-    section: 'Inicio',
+    section: 'Carnet',
     path: aprendizPaths.carnetDigital,
     label: 'Carnet digital',
     permission: null,
@@ -61,7 +61,7 @@ export const SIDEBAR_MANIFEST: SidebarManifestItem[] = [
     iconKey: 'carnet',
   },
   {
-    section: 'Inicio',
+    section: 'Carnet',
     path: instructorPaths.validarCarnet,
     label: 'Validar carnet',
     permission: 'VALIDAR CARNET DIGITAL',
@@ -70,7 +70,7 @@ export const SIDEBAR_MANIFEST: SidebarManifestItem[] = [
     iconKey: 'carnet',
   },
   {
-    section: 'Inicio',
+    section: 'Carnet',
     path: bibliotecaPaths.carnets,
     label: 'Carnets regulares',
     permission: 'VER CARNET BIBLIOTECA',

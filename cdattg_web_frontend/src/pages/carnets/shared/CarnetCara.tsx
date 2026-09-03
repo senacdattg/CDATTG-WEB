@@ -19,7 +19,7 @@ type CarnetCaraProps = Readonly<{
  */
 export function CarnetCara({ persona, ficha, fotoUrl }: CarnetCaraProps) {
   return (
-    <article className="carnet-sello mx-auto flex min-h-[34rem] w-full max-w-sm flex-col rounded-2xl border border-gray-200 bg-white px-5 pb-6 pt-5 shadow-md">
+    <article className="carnet-sello mx-auto flex h-[34rem] w-full max-w-sm flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white px-5 pb-6 pt-5 shadow-md">
       <header className="flex items-start justify-between gap-3">
         <CarnetLogoSena />
         <figure className="m-0 h-44 w-36 shrink-0 overflow-hidden rounded-sm bg-gray-100">

@@ -60,19 +60,21 @@ export function PerfilFotoAvatar({
           onKeyDown={(e) => { if (e.key === 'Escape') setAbierta(false); }}
           tabIndex={-1}
         >
-          <img
-            src={url}
-            alt="Foto de perfil ampliada"
-            className="max-h-[80vh] max-w-[90vw] rounded-lg object-contain shadow-2xl"
-            draggable={false}
-          />
-          <button
-            type="button"
-            className="absolute top-2 right-2 flex h-10 w-10 items-center justify-center rounded-full bg-black/60 text-3xl font-bold text-white hover:bg-black/80"
-            onClick={() => setAbierta(false)}
-          >
-            &times;
-          </button>
+          <div className="relative">
+            <img
+              src={url}
+              alt="Foto de perfil ampliada"
+              className="max-h-[80vh] max-w-[90vw] rounded-lg object-contain shadow-2xl"
+              draggable={false}
+            />
+            <button
+              type="button"
+              className="absolute -right-3 -top-3 flex h-10 w-10 items-center justify-center rounded-full bg-black/60 text-3xl font-bold text-white hover:bg-black/80"
+              onClick={() => setAbierta(false)}
+            >
+              &times;
+            </button>
+          </div>
         </div>
       ) : null}
     </>

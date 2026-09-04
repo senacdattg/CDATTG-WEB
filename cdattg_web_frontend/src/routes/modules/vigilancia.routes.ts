@@ -32,4 +32,14 @@ export const vigilanciaRoutes: RouteObject[] = [
       return { Component: VigilanciaAmbientes };
     },
   },
+  {
+    path: vigilanciaPaths.registroPersonas,
+    handle: {
+      breadcrumb: [{ label: 'Vigilancia' }, { label: 'Registro de personas' }],
+    },
+    lazy: async () => {
+      const { VigilanciaRegistroPersonas } = await import('../../pages/VigilanciaRegistroPersonas');
+      return { Component: VigilanciaRegistroPersonas };
+    },
+  },
 ];

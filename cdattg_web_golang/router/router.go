@@ -52,6 +52,7 @@ const (
 	permVerMiAgenda            = "VER MI AGENDA"
 	permRegistrarAccesoSede    = "REGISTRAR ACCESO SEDE"
 	permVerAccesoSede          = "VER ACCESO SEDE"
+	permRegistrarPersona       = "REGISTRAR PERSONA"
 )
 
 func SetupRouter() *gin.Engine {
@@ -100,6 +101,7 @@ func SetupRouter() *gin.Engine {
 	configAsistenciaHandler := handlers.NewConfiguracionAsistenciaHandler()
 	eleccionHandler := handlers.NewEleccionHandler()
 	vigilanciaAccesoHandler := handlers.NewVigilanciaAccesoHandler()
+	vigilanciaPersonaHandler := handlers.NewVigilanciaPersonaHandler()
 	complementariosHandler := handlers.NewComplementariosHandler()
 
 	// Rutas públicas
@@ -352,6 +354,13 @@ func SetupRouter() *gin.Engine {
 				vigilancia.GET("/historial", middleware.RequirePermission("vigilancia", permVerAccesoSede), vigilanciaAccesoHandler.Historial)
 				vigilancia.GET("/estadisticas", middleware.RequirePermission("vigilancia", permVerAccesoSede), vigilanciaAccesoHandler.Estadisticas)
 			}
+
+	vigilanciaPersonas := protected.Group("/vigilancia/personas")
+		{
+			vigilanciaPersonas.GET("/lookup", middleware.RequirePermission("persona", permRegistrarPersona), vigilanciaPersonaHandler.Lookup)
+			vigilanciaPersonas.PUT("/:id/datos-basicos", middleware.RequirePermission("persona", permRegistrarPersona), vigilanciaPersonaHandler.ActualizarDatosBasicos)
+			vigilanciaPersonas.POST("/:id/foto", middleware.RequirePermission("persona", permRegistrarPersona), vigilanciaPersonaHandler.SubirFoto)
+		}
 
 			// Complementarios (FPI): credenciales SofiaPlus por operador + verificación de aspirantes
 			const rutaCredencialesSofia = "/credenciales"

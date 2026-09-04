@@ -1366,6 +1366,36 @@ class ApiService {
     return response.data.data;
   }
 
+  // --- Vigilancia / registro de personas ---
+  async vigilanciaPersonaLookup(numeroDocumento: string): Promise<PersonaResponse> {
+    const response = await this.api.get<PersonaResponse>('/vigilancia/personas/lookup', {
+      params: { numero_documento: numeroDocumento },
+    });
+    return response.data;
+  }
+
+  async vigilanciaActualizarDatosBasicos(id: number, data: {
+    tipo_documento?: number;
+    primer_nombre: string;
+    segundo_nombre?: string;
+    primer_apellido: string;
+    segundo_apellido?: string;
+    celular?: string;
+    rh?: string;
+  }): Promise<PersonaResponse> {
+    const response = await this.api.put<PersonaResponse>(`/vigilancia/personas/${id}/datos-basicos`, data);
+    return response.data;
+  }
+
+  async vigilanciaSubirFoto(id: number, archivo: Blob): Promise<PersonaResponse> {
+    const body = new FormData();
+    body.append('file', archivo, 'foto.jpg');
+    const response = await this.api.post<PersonaResponse>(`/vigilancia/personas/${id}/foto`, body, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return response.data;
+  }
+
   // Inventario
   async getInventarioDashboard(): Promise<InventarioDashboardResponse> {
     const response = await this.api.get<InventarioDashboardResponse>('/inventario/dashboard');

@@ -139,6 +139,7 @@ export const vigilanciaPaths = {
   porteria: '/vigilancia/porteria',
   reporte: '/vigilancia/accesos',
   ambientes: '/vigilancia/ambientes',
+  registroPersonas: '/vigilancia/registro-personas',
 } as const;
 
 export const infraestructuraPaths = {

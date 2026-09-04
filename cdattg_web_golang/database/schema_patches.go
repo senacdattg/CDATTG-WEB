@@ -280,6 +280,7 @@ func EnsureSchemaPatches() error {
 		patchFichaStatusManual,
 		patchAutoMigrateCarnetSolicitud,
 		patchAutoMigrateConfiguracionCarnet,
+		patchAutoMigratePersonaCambioPendiente,
 	}
 	for _, patch := range patches {
 		if err := patch(); err != nil {

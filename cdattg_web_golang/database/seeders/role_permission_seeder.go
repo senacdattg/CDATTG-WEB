@@ -223,6 +223,9 @@ func seedVigilanciaPermissions(e *casbin.Enforcer) error {
 		if _, err := authz.AddPermissionForRole(e, role, authz.ObjPersona, authz.ActEditarMiPersona); err != nil {
 			return err
 		}
+		if _, err := authz.AddPermissionForRole(e, role, authz.ObjPersona, authz.ActRegistrarPersonaVig); err != nil {
+			return err
+		}
 	}
 	return nil
 }

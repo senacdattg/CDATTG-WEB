@@ -31,7 +31,7 @@ var RoleNames = []string{
 var (
 	PermisosPersona = []string{
 		"CREAR PERSONA", ActVerPersona, ActEditarMiPersona, "VER PERSONAS", "EDITAR PERSONA", "ELIMINAR PERSONA",
-		"CAMBIAR ESTADO PERSONA", "RESTABLECER PASSWORD",
+		"CAMBIAR ESTADO PERSONA", "RESTABLECER PASSWORD", ActRegistrarPersonaVig,
 	}
 	PermisosPrograma = []string{
 		"VER PROGRAMAS", "VER PROGRAMA", "CREAR PROGRAMA", "EDITAR PROGRAMA", "ELIMINAR PROGRAMA",
@@ -85,6 +85,7 @@ const (
 	ActValidarCarnetDigital = "VALIDAR CARNET DIGITAL"
 	ActVerCarnetBiblioteca  = "VER CARNET BIBLIOTECA"
 	ActConfigurarCarnet     = "CONFIGURAR CARNET"
+	ActRegistrarPersonaVig  = "REGISTRAR PERSONA"
 
 	ObjPersona     = "persona"
 	ObjPrograma    = "programa"

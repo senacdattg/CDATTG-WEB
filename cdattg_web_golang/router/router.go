@@ -362,6 +362,14 @@ func SetupRouter() *gin.Engine {
 			vigilanciaPersonas.POST("/:id/foto", middleware.RequirePermission("persona", permRegistrarPersona), vigilanciaPersonaHandler.SubirFoto)
 		}
 
+		cambiosPendientes := protected.Group("/cambios-pendientes")
+		{
+			cambiosPendientes.GET("", middleware.RequirePermission("persona", permRegistrarPersona), handlers.NewPersonaCambioPendienteHandler().ListarPendientes)
+			cambiosPendientes.GET("/mi-estado", handlers.NewPersonaCambioPendienteHandler().VerificarPendiente)
+			cambiosPendientes.PUT("/:id/aprobar", middleware.RequirePermission("persona", permRegistrarPersona), handlers.NewPersonaCambioPendienteHandler().Aprobar)
+			cambiosPendientes.PUT("/:id/rechazar", middleware.RequirePermission("persona", permRegistrarPersona), handlers.NewPersonaCambioPendienteHandler().Rechazar)
+		}
+
 			// Complementarios (FPI): credenciales SofiaPlus por operador + verificación de aspirantes
 			const rutaCredencialesSofia = "/credenciales"
 			complementarios := protected.Group("/complementarios")

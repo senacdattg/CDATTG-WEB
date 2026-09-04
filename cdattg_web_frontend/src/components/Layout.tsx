@@ -86,6 +86,7 @@ const ICONS: Record<string, ReactNode> = {
   'vigilancia/reporte': <EyeIcon className="w-5 h-5" />,
   'vigilancia/ambientes': <EyeIcon className="w-5 h-5" />,
   'vigilancia/registro': <UserGroupIcon className="w-5 h-5" />,
+  'vigilancia/cambios': <ClockIcon className="w-5 h-5" />,
 };
 
 export const Layout = ({ children }: LayoutProps) => {

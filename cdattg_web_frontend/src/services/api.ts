@@ -1396,6 +1396,25 @@ class ApiService {
     return response.data;
   }
 
+  // Cambios pendientes
+  async listarCambiosPendientes(): Promise<{ data: any[] }> {
+    const response = await this.api.get('/cambios-pendientes');
+    return response.data;
+  }
+
+  async aprobarCambioPendiente(id: number): Promise<void> {
+    await this.api.put(`/cambios-pendientes/${id}/aprobar`);
+  }
+
+  async rechazarCambioPendiente(id: number): Promise<void> {
+    await this.api.put(`/cambios-pendientes/${id}/rechazar`);
+  }
+
+  async verificarCambioPendiente(): Promise<{ pendiente: boolean }> {
+    const response = await this.api.get('/cambios-pendientes/mi-estado');
+    return response.data;
+  }
+
   // Inventario
   async getInventarioDashboard(): Promise<InventarioDashboardResponse> {
     const response = await this.api.get<InventarioDashboardResponse>('/inventario/dashboard');

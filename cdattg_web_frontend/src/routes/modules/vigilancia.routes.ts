@@ -42,4 +42,14 @@ export const vigilanciaRoutes: RouteObject[] = [
       return { Component: VigilanciaRegistroPersonas };
     },
   },
+  {
+    path: vigilanciaPaths.cambiosPendientes,
+    handle: {
+      breadcrumb: [{ label: 'Vigilancia' }, { label: 'Cambios pendientes' }],
+    },
+    lazy: async () => {
+      const { VigilanciaCambiosPendientes } = await import('../../pages/VigilanciaCambiosPendientes');
+      return { Component: VigilanciaCambiosPendientes };
+    },
+  },
 ];

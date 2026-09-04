@@ -342,6 +342,14 @@ export const SIDEBAR_MANIFEST: SidebarManifestItem[] = [
     rolesRequired: ['VIGILANTE', 'SUPER ADMINISTRADOR', 'ADMINISTRADOR', 'COORDINADOR'],
     iconKey: 'vigilancia/registro',
   },
+  {
+    section: 'Vigilancia',
+    path: vigilanciaPaths.cambiosPendientes,
+    label: 'Cambios pendientes',
+    permission: 'REGISTRAR PERSONA',
+    rolesRequired: ['VIGILANTE', 'SUPER ADMINISTRADOR', 'ADMINISTRADOR', 'COORDINADOR'],
+    iconKey: 'vigilancia/cambios',
+  },
 
   // —— Administración ——
   {

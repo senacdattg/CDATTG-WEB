@@ -377,8 +377,14 @@ export const Perfil = () => {
     async (data: PersonaRequest) => {
       try {
         setSaveError('');
-        const updated = await apiService.updateMiPersona(personaRequestToSelfUpdate(data));
-        setPersona(updated);
+        const result = await apiService.updateMiPersona(personaRequestToSelfUpdate(data));
+        if (result && 'cambio_pendiente_id' in result) {
+          setSaveError('');
+          alert('Sus cambios han sido enviados para aprobación. Acérquese a porteria para validar los cambios.');
+          setEditOpen(false);
+          return;
+        }
+        setPersona(result as PersonaResponse);
         setEditOpen(false);
         await refreshUser();
       } catch (e: unknown) {

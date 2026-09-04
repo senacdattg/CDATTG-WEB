@@ -44,7 +44,14 @@ export function PerfilFotoCamara({ onCerrar, onGuardada }: PerfilFotoCamaraProps
     setGuardando(true);
     setError('');
     try {
-      onGuardada(await subirMiFoto(await prepararFotoPerfil(fuente)));
+      // Para el visitante la foto va a aprobación del vigilante (responde con
+      // un mensaje); para los demás se guarda directo y se actualiza la persona.
+      const resultado = await subirMiFoto(await prepararFotoPerfil(fuente));
+      if ('id' in resultado) {
+        onGuardada(resultado);
+      } else {
+        alert(resultado.message);
+      }
       onCerrar();
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'No pude guardar la foto');

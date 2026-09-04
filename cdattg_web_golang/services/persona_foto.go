@@ -58,14 +58,30 @@ func rutaFotoPersona(personaID uint) string {
 	return filepath.Join(personaFotoDir, fmt.Sprintf("%d.jpg", personaID))
 }
 
+// rutaFotoPersonaPendiente es una ruta aparte para la foto que aún no aprueba el
+// vigilante. Así no piso la foto vigente de la persona hasta que se apruebe.
+func rutaFotoPersonaPendiente(personaID uint) string {
+	return filepath.Join(personaFotoDir, fmt.Sprintf("pendiente_%d.jpg", personaID))
+}
+
 func guardarFotoPersona(personaID uint, data []byte) (string, error) {
+	return escribirFotoPersona(rutaFotoPersona(personaID), data)
+}
+
+// guardarFotoPersonaPendiente escribe la foto en la ruta de pendiente sin tocar la
+// persona. La usa el visitante cuando su foto debe pasar por aprobación.
+func guardarFotoPersonaPendiente(personaID uint, data []byte) (string, error) {
+	return escribirFotoPersona(rutaFotoPersonaPendiente(personaID), data)
+}
+
+// escribirFotoPersona valida, crea la carpeta y escribe el archivo en disco.
+func escribirFotoPersona(ruta string, data []byte) (string, error) {
 	if err := validarBytesFoto(data); err != nil {
 		return "", err
 	}
 	if err := os.MkdirAll(personaFotoDir, 0o750); err != nil {
 		return "", fmt.Errorf("no pude crear la carpeta de fotos: %w", err)
 	}
-	ruta := rutaFotoPersona(personaID)
 	if err := os.WriteFile(ruta, data, 0o640); err != nil {
 		return "", fmt.Errorf("no pude guardar la foto: %w", err)
 	}

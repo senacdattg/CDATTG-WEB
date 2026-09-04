@@ -322,7 +322,7 @@ class ApiService {
     return response.data;
   }
 
-  async updateMiPersona(data: PersonaSelfUpdateRequest): Promise<PersonaResponse> {
+  async updateMiPersona(data: PersonaSelfUpdateRequest): Promise<PersonaResponse | { cambio_pendiente_id: number; message: string }> {
     const response = await this.api.put<PersonaResponse>('/personas/mi-perfil', data);
     return response.data;
   }

@@ -602,7 +602,10 @@ export function VigilanciaAccesoPanel() {
               const hoy = hoyISO();
               setFechaDesde(hoy);
               setFechaHasta(hoy);
-              void cargar(1, { fecha_desde: hoy, fecha_hasta: hoy }, hoy);
+              const f = { ...filtrosDesdeUI(), fechaDesde: hoy, fechaHasta: hoy };
+              setFiltros(f);
+              setPage(1);
+              void cargar(1, { fecha_desde: hoy, fecha_hasta: hoy }, hoy, undefined, f);
             }}
           >
             Solo hoy
@@ -616,7 +619,10 @@ export function VigilanciaAccesoPanel() {
               const hasta = hoyISO();
               setFechaDesde(desde);
               setFechaHasta(hasta);
-              void cargar(1, { fecha_desde: desde, fecha_hasta: hasta });
+              const f = { ...filtrosDesdeUI(), fechaDesde: desde, fechaHasta: hasta };
+              setFiltros(f);
+              setPage(1);
+              void cargar(1, { fecha_desde: desde, fecha_hasta: hasta }, undefined, undefined, f);
             }}
           >
             Últimos 7 días
@@ -630,7 +636,10 @@ export function VigilanciaAccesoPanel() {
               const hasta = hoyISO();
               setFechaDesde(desde);
               setFechaHasta(hasta);
-              void cargar(1, { fecha_desde: desde, fecha_hasta: hasta });
+              const f = { ...filtrosDesdeUI(), fechaDesde: desde, fechaHasta: hasta };
+              setFiltros(f);
+              setPage(1);
+              void cargar(1, { fecha_desde: desde, fecha_hasta: hasta }, undefined, undefined, f);
             }}
           >
             Últimos 30 días
@@ -641,7 +650,10 @@ export function VigilanciaAccesoPanel() {
             disabled={loading}
             onClick={() => {
               setTipoPersona('APRENDIZ');
-              void cargar(1, { tipo_persona: 'APRENDIZ' });
+              const f = { ...filtrosDesdeUI(), tipoPersona: 'APRENDIZ' };
+              setFiltros(f);
+              setPage(1);
+              void cargar(1, { tipo_persona: 'APRENDIZ' }, undefined, undefined, f);
             }}
           >
             Solo aprendices

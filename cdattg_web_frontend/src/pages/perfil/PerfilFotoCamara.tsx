@@ -7,6 +7,7 @@ import { useEffect, useRef, useState } from 'react';
 import { archivoEsJpg } from './comprimirJpg';
 import { prepararFotoPerfil } from './prepararFotoPerfil';
 import { subirMiFoto } from '../../services/personaFotoApi';
+import { avisoAprobacionPorteria } from './avisoAprobacion';
 import type { PersonaResponse } from '../../types';
 
 type PerfilFotoCamaraProps = Readonly<{
@@ -50,7 +51,7 @@ export function PerfilFotoCamara({ onCerrar, onGuardada }: PerfilFotoCamaraProps
       if ('id' in resultado) {
         onGuardada(resultado);
       } else {
-        alert(resultado.message);
+        avisoAprobacionPorteria('foto');
       }
       onCerrar();
     } catch (e: unknown) {

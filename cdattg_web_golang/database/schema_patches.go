@@ -258,6 +258,15 @@ func patchFichaStatusManual() error {
 	)
 }
 
+func patchPersonaAceptaTerminos() error {
+	return execSchemaPatch(
+		"Esquema: columnas personas.acepta_terminos y acepta_terminos_at verificadas",
+		`ALTER TABLE personas
+		ADD COLUMN IF NOT EXISTS acepta_terminos BOOLEAN NOT NULL DEFAULT false,
+		ADD COLUMN IF NOT EXISTS acepta_terminos_at TIMESTAMPTZ`,
+	)
+}
+
 // EnsureSchemaPatches aplica cambios incrementales de esquema sin ejecutar Migrate() completo.
 func EnsureSchemaPatches() error {
 	if DB == nil {
@@ -281,6 +290,7 @@ func EnsureSchemaPatches() error {
 		patchAutoMigrateCarnetSolicitud,
 		patchAutoMigrateConfiguracionCarnet,
 		patchAutoMigratePersonaCambioPendiente,
+		patchPersonaAceptaTerminos,
 	}
 	for _, patch := range patches {
 		if err := patch(); err != nil {

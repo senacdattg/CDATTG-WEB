@@ -1389,6 +1389,7 @@ class ApiService {
     segundo_apellido?: string;
     celular?: string;
     rh?: string;
+    acepta_terminos?: boolean;
   }): Promise<PersonaResponse> {
     const response = await this.api.put<PersonaResponse>(`/vigilancia/personas/${id}/datos-basicos`, data);
     return response.data;

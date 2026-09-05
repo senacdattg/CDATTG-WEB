@@ -9,6 +9,7 @@ import { archivoEsJpg } from './perfil/comprimirJpg';
 import { prepararFotoPerfil } from './perfil/prepararFotoPerfil';
 import { axiosErrorMessage } from '../utils/httpError';
 import { mostrarToastApp } from '../utils/appToast';
+import { TerminosUsoModal } from '../components/TerminosUsoModal';
 import type { PersonaResponse } from '../types';
 
 const RH_OPTIONS = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
@@ -47,6 +48,8 @@ export function VigilanciaRegistroPersonas() {
   const [segundoApellido, setSegundoApellido] = useState('');
   const [celular, setCelular] = useState('');
   const [rh, setRh] = useState('');
+  const [aceptaTerminos, setAceptaTerminos] = useState(false);
+  const [terminosAbiertos, setTerminosAbiertos] = useState(false);
 
   const buscar = useCallback(async () => {
     const doc = docInput.trim();
@@ -149,6 +152,10 @@ export function VigilanciaRegistroPersonas() {
       setError('Primer nombre y primer apellido son requeridos');
       return;
     }
+    if (!aceptaTerminos) {
+      setError('Debe aceptar los términos de uso y confidencialidad para guardar.');
+      return;
+    }
     setGuardando(true);
     setError('');
     try {
@@ -160,6 +167,7 @@ export function VigilanciaRegistroPersonas() {
         segundo_apellido: segundoApellido.trim(),
         celular: celular.trim(),
         rh,
+        acepta_terminos: true,
       });
       if (fotoBlob) {
         // Ya viene lista de prepararFotoPerfil: JPG 240x300 sin fondo sobre blanco.
@@ -354,6 +362,31 @@ export function VigilanciaRegistroPersonas() {
             </div>
           </div>
 
+          {/* Aviso de obligatorios y aceptación de términos */}
+          <div className="border-t border-gray-200 pt-4 dark:border-gray-700">
+            <p className="mb-3 text-sm text-gray-600 dark:text-gray-400">
+              Los campos marcados con <span className="text-red-600">*</span> son obligatorios.
+            </p>
+            <label className="flex cursor-pointer items-start gap-3 rounded-lg bg-gray-50 p-3 dark:bg-gray-900">
+              <input
+                type="checkbox"
+                checked={aceptaTerminos}
+                onChange={(e) => setAceptaTerminos(e.target.checked)}
+                className="mt-1 h-4 w-4 shrink-0 cursor-pointer accent-green-700"
+              />
+              <span className="text-sm text-gray-700 dark:text-gray-300">
+                Acepto los{' '}
+                <button
+                  type="button"
+                  onClick={() => setTerminosAbiertos(true)}
+                  className="font-semibold text-green-700 underline hover:text-green-800 dark:text-green-400"
+                >
+                  términos de uso y confidencialidad
+                </button>
+              </span>
+            </label>
+          </div>
+
           {/* Botones */}
           <div className="flex justify-end gap-2 pt-2">
             <button
@@ -451,6 +484,9 @@ export function VigilanciaRegistroPersonas() {
           </div>
         </div>
       ) : null}
+
+      {/* Modal de términos de uso */}
+      <TerminosUsoModal abierto={terminosAbiertos} onCerrar={() => setTerminosAbiertos(false)} />
     </div>
   );
 }

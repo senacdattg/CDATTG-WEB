@@ -6,6 +6,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { apiService } from '../services/api';
 import { axiosErrorMessage } from '../utils/httpError';
+import { mostrarToastApp } from '../utils/appToast';
 
 interface CambioPendiente {
   id: number;
@@ -51,9 +52,20 @@ export function VigilanciaCambiosPendientes() {
     try {
       await apiService.aprobarCambioPendiente(id);
       setConfirmandoAccion(null);
+      mostrarToastApp({
+        icon: 'success',
+        titulo: 'Cambio aprobado',
+        texto: 'Los cambios fueron aprobados y ya están vigentes.',
+        timer: 3000,
+      });
       await cargar();
     } catch (e: unknown) {
-      setError(axiosErrorMessage(e, 'Error al aprobar'));
+      mostrarToastApp({
+        icon: 'error',
+        titulo: 'No se pudo aprobar',
+        texto: axiosErrorMessage(e, 'Error al aprobar'),
+        timer: 4000,
+      });
     } finally {
       setProcesando(null);
     }
@@ -65,9 +77,20 @@ export function VigilanciaCambiosPendientes() {
     try {
       await apiService.rechazarCambioPendiente(id);
       setConfirmandoAccion(null);
+      mostrarToastApp({
+        icon: 'info',
+        titulo: 'Cambio rechazado',
+        texto: 'Los cambios fueron rechazados y no se aplican.',
+        timer: 3000,
+      });
       await cargar();
     } catch (e: unknown) {
-      setError(axiosErrorMessage(e, 'Error al rechazar'));
+      mostrarToastApp({
+        icon: 'error',
+        titulo: 'No se pudo rechazar',
+        texto: axiosErrorMessage(e, 'Error al rechazar'),
+        timer: 4000,
+      });
     } finally {
       setProcesando(null);
     }

@@ -366,6 +366,7 @@ func SetupRouter() *gin.Engine {
 		{
 			cambiosPendientes.GET("", middleware.RequirePermission("persona", permRegistrarPersona), handlers.NewPersonaCambioPendienteHandler().ListarPendientes)
 			cambiosPendientes.GET("/mi-estado", handlers.NewPersonaCambioPendienteHandler().VerificarPendiente)
+			cambiosPendientes.GET("/:id/foto", middleware.RequirePermission("persona", permRegistrarPersona), handlers.NewPersonaCambioPendienteHandler().VerFotoPendiente)
 			cambiosPendientes.PUT("/:id/aprobar", middleware.RequirePermission("persona", permRegistrarPersona), handlers.NewPersonaCambioPendienteHandler().Aprobar)
 			cambiosPendientes.PUT("/:id/rechazar", middleware.RequirePermission("persona", permRegistrarPersona), handlers.NewPersonaCambioPendienteHandler().Rechazar)
 		}

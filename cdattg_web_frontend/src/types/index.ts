@@ -1251,6 +1251,8 @@ export interface AccesoLookupResponse {
   puede_confirmar: boolean;
   alerta?: string;
   permite_salida_sin_ingreso: boolean;
+  /** Segundos que faltan para poder registrar la salida (salida regular). 0 = salida habilitada. */
+  segundos_restantes_salida: number;
 }
 
 export interface AccesoRegistroResponse {

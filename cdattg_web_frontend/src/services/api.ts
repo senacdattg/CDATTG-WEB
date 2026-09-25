@@ -1372,7 +1372,7 @@ class ApiService {
 
   async accesoSalida(data: {
     numero_documento: string;
-    motivo_salida: string;
+    motivo_salida?: string;
     observacion_salida?: string;
     metodo_registro: string;
     sede_id: number;

@@ -144,7 +144,6 @@ function FichasVinculadasPanel({ fichas }: Readonly<{ fichas: AccesoFichaResumen
             <FichaRow label="Nº ficha" value={ficha.numero} />
             <FichaRow label="Nombre / programa" value={ficha.programa_nombre || '—'} />
             <FichaRow label="Jornada" value={ficha.jornada_nombre || '—'} />
-            <FichaRow label="Sede ficha" value={ficha.sede_nombre || '—'} />
           </dl>
         </div>
       ))}
@@ -168,7 +167,6 @@ function FichaPersonaResumen({
       <dl className="space-y-2 text-sm">
         <FichaRow label="Documento" value={persona.numero_documento} />
         <FichaRow label="Nombre" value={persona.nombre_completo || 'Sin nombre'} />
-        <FichaRow label="Contacto" value={persona.celular || persona.email || persona.telefono || '—'} />
         <FichaRow label="Tipo" value={labelTiposPersona(persona)} />
         {visitaLabel ? <FichaRow label="Dentro desde" value={visitaLabel} /> : null}
         {persona.foto_desde_carnet ? (
@@ -595,7 +593,7 @@ export function VigilanciaPorteria() {
     [sedeId, refreshDentro],
   );
 
-  /** Salida automática: sin confirmación y sin motivo. Respeta la espera de 10 s si hay ingreso abierto. */
+  /** Salida automática: sin confirmación y sin motivo. Respeta la espera de 10 s, tanto con ingreso abierto como entre salidas irregulares. */
   const registrarSalidaAuto = useCallback(
     async (doc: string, metodoRegistro: AccesoMetodoRegistro, permitirSinIngreso: boolean) => {
       if (!sedeId) return;
@@ -630,23 +628,21 @@ export function VigilanciaPorteria() {
 
   /**
    * Decide qué hacer tras el lookup de salida.
-   * - Sin ingreso abierto (irregular): se registra de inmediato, sin espera.
-   * - Con ingreso abierto: solo registra si ya pasaron los 10 s; si no, informa la espera.
+   * - Con ingreso abierto: la referencia de la espera es la entrada.
+   * - Sin ingreso abierto (irregular): la referencia es la última salida irregular, para que
+   *   un carnet que queda en el lector no genere registros duplicados.
+   * En ambos casos solo registra si ya pasaron los 10 s; si no, informa la espera.
    */
   const resolverSalidaAutomatica = useCallback(
     async (res: AccesoLookupResponse, doc: string, metodoRegistro: AccesoMetodoRegistro) => {
       setFlujoSalida(true);
-      const irregular = Boolean(res.permite_salida_sin_ingreso) && !res.dentro;
-      if (irregular) {
-        await registrarSalidaAuto(doc, metodoRegistro, true);
-        return;
-      }
       const restantes = segundosParaSalida(res);
       if (restantes > 0) {
         setEsperaSalida(restantes);
         return;
       }
-      await registrarSalidaAuto(doc, metodoRegistro, false);
+      const irregular = Boolean(res.permite_salida_sin_ingreso) && !res.dentro;
+      await registrarSalidaAuto(doc, metodoRegistro, irregular);
     },
     [registrarSalidaAuto],
   );
@@ -1046,8 +1042,8 @@ export function VigilanciaPorteria() {
               <p className="text-center text-sm text-primary-600 dark:text-primary-400">Buscando…</p>
             ) : (
               <p className="text-center text-xs text-gray-500 dark:text-gray-400">
-                Búsqueda automática (~3 s), Enter o botón. Entrada y salida se registran solas; la salida espera 10 s
-                desde la entrada.
+                Búsqueda automática (~3 s), Enter o botón. Entrada y salida se registran solas; toda salida espera
+                10 s, medida desde la entrada o desde la salida irregular anterior.
               </p>
             )}
           </form>

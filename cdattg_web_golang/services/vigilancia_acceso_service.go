@@ -139,26 +139,46 @@ func normalizeMotivoSalida(m string) (string, error) {
 	return "", errors.New("motivo de salida inválido")
 }
 
-// segundosRestantesSalida indica cuántos segundos faltan para poder registrar la salida
-// de una visita abierta. Devuelve 0 cuando la salida ya está habilitada.
-func segundosRestantesSalida(abierta *models.PersonaIngresoSalida, ahora time.Time) int {
-	if abierta == nil || abierta.TimestampEntrada.IsZero() {
+// segundosRestantesDesde indica cuántos segundos faltan para que se cumpla la espera
+// mínima de salida contados desde ref. Devuelve 0 cuando la espera ya se cumplió, cuando
+// no hay referencia o cuando el reloj del servidor está desfasado hacia atrás.
+func segundosRestantesDesde(ref *time.Time, ahora time.Time) int {
+	if ref == nil || ref.IsZero() {
 		return 0
 	}
-	// Reloj desfasado: una entrada "a futuro" no debe bloquear la salida.
-	if ahora.Before(abierta.TimestampEntrada) {
+	// Reloj desfasado: una referencia "a futuro" no debe bloquear la salida.
+	if ahora.Before(*ref) {
 		return 0
 	}
-	transcurrido := ahora.Sub(abierta.TimestampEntrada)
-	if transcurrido >= esperaMinimaSalida {
+	falta := esperaMinimaSalida - ahora.Sub(*ref)
+	if falta <= 0 {
 		return 0
 	}
-	falta := esperaMinimaSalida - transcurrido
 	seg := int(falta / time.Second)
 	if falta%time.Second > 0 {
 		seg++
 	}
 	return seg
+}
+
+// segundosRestantesSalida indica cuántos segundos faltan para poder registrar la salida
+// de una visita abierta. Devuelve 0 cuando la salida ya está habilitada.
+func segundosRestantesSalida(abierta *models.PersonaIngresoSalida, ahora time.Time) int {
+	if abierta == nil {
+		return 0
+	}
+	return segundosRestantesDesde(&abierta.TimestampEntrada, ahora)
+}
+
+// segundosRestantesSalidaIrregular indica cuántos segundos faltan para poder volver a
+// registrar una salida irregular de la misma persona. Sin visita abierta la referencia es
+// la última salida irregular registrada: el carnet puede quedarse en el lector y volver a
+// digitalizarse, lo que generaba registros duplicados.
+func segundosRestantesSalidaIrregular(ultima *models.PersonaIngresoSalida, ahora time.Time) int {
+	if ultima == nil {
+		return 0
+	}
+	return segundosRestantesDesde(ultima.TimestampSalida, ahora)
 }
 
 func normalizeModo(m string) string {
@@ -531,6 +551,13 @@ func (s *vigilanciaAccesoService) Lookup(req dto.AccesoLookupRequest) (*dto.Acce
 			puede = false
 			permiteSinIngreso = true
 			alerta = "No hay ingreso registrado. El sistema no puede saber si está adentro físicamente; puede registrar una salida irregular (sin ingreso previo)."
+			// Espera mínima entre salidas irregulares: solo informativa, el frontend avisa y
+			// reintenta al escanear cuando la cuenta llega a cero.
+			ultimaIrregular, err := s.accesoRepo.FindUltimaSalidaSinIngresoByPersonaSede(persona.ID, sedeID)
+			if err != nil {
+				return nil, err
+			}
+			segundosRestantes = segundosRestantesSalidaIrregular(ultimaIrregular, time.Now())
 		} else {
 			// Espera mínima desde la entrada: solo informativa (el frontend avisa y reintenta al escanear).
 			segundosRestantes = segundosRestantesSalida(abierta, time.Now())
@@ -778,6 +805,15 @@ func (s *vigilanciaAccesoService) Salida(req dto.AccesoSalidaRequest, registrado
 	}
 	if !req.PermitirSinIngreso {
 		return nil, errors.New("no hay un ingreso abierto para esta persona")
+	}
+	// Espera mínima también entre salidas irregulares: si el carnet permanece en el lector se
+	// vuelve a digitalizar el mismo número y generaba registros duplicados.
+	ultimaIrregular, err := s.accesoRepo.FindUltimaSalidaSinIngresoByPersonaSede(persona.ID, sedeID)
+	if err != nil {
+		return nil, err
+	}
+	if restante := segundosRestantesSalidaIrregular(ultimaIrregular, time.Now()); restante > 0 {
+		return nil, errors.New("faltan " + strconv.Itoa(restante) + " segundos desde la salida irregular anterior para volver a registrarla")
 	}
 	return s.crearSalidaSinIngreso(persona, sedeID, motivo, req.ObservacionSalida, metodo, req.TipoPersona, registradoPorUserID)
 }

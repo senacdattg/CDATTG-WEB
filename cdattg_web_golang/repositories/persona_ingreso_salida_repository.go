@@ -1,6 +1,7 @@
 package repositories
 
 import (
+	"errors"
 	"strings"
 	"time"
 
@@ -42,6 +43,7 @@ type AccesoStatsResult struct {
 type PersonaIngresoSalidaRepository interface {
 	FindByID(id uint) (*models.PersonaIngresoSalida, error)
 	FindAbiertaByPersonaAndSede(personaID, sedeID uint) (*models.PersonaIngresoSalida, error)
+	FindUltimaSalidaSinIngresoByPersonaSede(personaID, sedeID uint) (*models.PersonaIngresoSalida, error)
 	Create(row *models.PersonaIngresoSalida) error
 	Update(row *models.PersonaIngresoSalida) error
 	ListAbiertasBySede(sedeID uint) ([]models.PersonaIngresoSalida, error)
@@ -73,6 +75,24 @@ func (r *personaIngresoSalidaRepository) FindAbiertaByPersonaAndSede(personaID, 
 		Where("persona_id = ? AND sede_id = ? AND timestamp_salida IS NULL AND ingreso_cancelado = false", personaID, sedeID).
 		Order("timestamp_entrada DESC").
 		First(&row).Error
+	if err != nil {
+		return nil, err
+	}
+	return &row, nil
+}
+
+// FindUltimaSalidaSinIngresoByPersonaSede devuelve la salida irregular más reciente de la
+// persona en la sede. Se usa para aplicar la espera mínima entre salidas irregulares, ya que
+// no existe visita abierta que sirva de referencia. Devuelve (nil, nil) si nunca hubo una.
+func (r *personaIngresoSalidaRepository) FindUltimaSalidaSinIngresoByPersonaSede(personaID, sedeID uint) (*models.PersonaIngresoSalida, error) {
+	var row models.PersonaIngresoSalida
+	err := r.db.
+		Where("persona_id = ? AND sede_id = ? AND salida_sin_ingreso = true", personaID, sedeID).
+		Order("timestamp_salida DESC").
+		First(&row).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, nil
+	}
 	if err != nil {
 		return nil, err
 	}

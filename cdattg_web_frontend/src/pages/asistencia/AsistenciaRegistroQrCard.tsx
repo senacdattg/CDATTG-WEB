@@ -19,9 +19,9 @@ export function AsistenciaRegistroQrCard({ page, open, onToggle }: Props) {
       icon={<QrCodeIcon className="h-6 w-6" />}
     >
       <p className="mb-3 text-xs text-gray-500 dark:text-gray-400">
-        Mantenga el QR estable unos segundos. Tras cada lectura el escáner hace una pausa breve para evitar
-        registros duplicados. Si el aprendiz ya tiene entrada sin salida, el siguiente escaneo marca salida (espere
-        al menos 1 minuto desde la entrada).
+        Mantenga el QR estable. Tras cada lectura la cámara se reanuda enseguida; el mismo código no se
+        vuelve a leer de inmediato. Si el aprendiz ya tiene entrada sin salida, el siguiente escaneo marca
+        salida (espere al menos 1 minuto desde la entrada).
       </p>
       <EscanerQR
         key={`qr-${sesionId}`}

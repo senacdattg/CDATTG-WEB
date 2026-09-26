@@ -1067,7 +1067,7 @@ export function VigilanciaPorteria() {
               activo={camaraActiva && escaneoHabilitado}
               continuo
               embedded
-              registroEnCurso={loadingLookup || confirmando || autoIngresando}
+              registroEnCurso={loadingLookup || confirmando || autoIngresando || registrandoSalida}
               onEscaneado={handleEscaneoCamara}
             />
           </div>

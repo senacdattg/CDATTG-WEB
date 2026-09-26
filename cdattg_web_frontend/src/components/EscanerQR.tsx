@@ -1,11 +1,8 @@
 import { memo, useEffect, useRef, useState, type Dispatch, type SetStateAction } from 'react';
 import { Html5Qrcode } from 'html5-qrcode';
+import { DEBOUNCE_MISMO_QR_MS, PAUSA_TRAS_ESCANEO_MS } from './escanerQrTiempos';
 
 const QR_READER_ID_DEFAULT = 'asistencia-qr-reader';
-/** Mismo documento: ignorar relecturas del QR mientras la cámara apunta al código. */
-const DEBOUNCE_MS = 3000;
-/** Pausa de cámara tras cada lectura (evita doble registro). */
-const PAUSA_TRAS_ESCANEO_MS = 3000;
 
 interface EscanerQRProps {
   onEscaneado: (numeroDocumento: string) => void | Promise<void>;
@@ -101,7 +98,7 @@ function createDecodedHandler(ctx: DecodedHandlerContext): (decodedText: string)
 
       const now = Date.now();
       const ultimo = ctx.ultimoDocumentoRef.current;
-      if (ultimo?.doc === doc && now - ultimo.at < DEBOUNCE_MS) {
+      if (ultimo?.doc === doc && now - ultimo.at < DEBOUNCE_MISMO_QR_MS) {
         return;
       }
 
@@ -286,7 +283,7 @@ function EscanerQRInner({
                   aria-live="polite"
                 >
                   <span className="text-sm font-semibold">Procesando registro…</span>
-                  <span className="mt-1 text-xs text-gray-200">Pausa de 3 segundos</span>
+                  <span className="mt-1 text-xs text-gray-200">La cámara se reanuda al instante</span>
                 </div>
               ) : null}
             </div>

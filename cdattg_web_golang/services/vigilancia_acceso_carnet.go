@@ -75,6 +75,6 @@ func (s *vigilanciaAccesoService) carnetValidadoDe(personaID uint) *models.Carne
 	if err != nil || sol == nil {
 		return nil
 	}
-	fijarFotoCopiaSolicitud(s.solicitudRepo, sol)
+	// No copio el archivo en cada búsqueda: eso lee y escribe el jpg en el disco.
 	return sol
 }

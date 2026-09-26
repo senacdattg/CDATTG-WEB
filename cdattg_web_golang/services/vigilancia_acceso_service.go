@@ -485,7 +485,8 @@ func (s *vigilanciaAccesoService) findOrCreatePersona(doc string) (*models.Perso
 }
 
 func (s *vigilanciaAccesoService) Lookup(req dto.AccesoLookupRequest) (*dto.AccesoLookupResponse, error) {
-	s.sincronizarVigenciaRoles()
+	// No sincronizo vigencia aquí: el UPDATE de todas las fichas puede tardar segundos
+	// y el vigilante lo siente al buscar. Las fechas se aplican al armar la ficha.
 	doc := normalizeDocumentoAcceso(req.NumeroDocumento)
 	if doc == "" {
 		return nil, errors.New(errDocObligatorio)

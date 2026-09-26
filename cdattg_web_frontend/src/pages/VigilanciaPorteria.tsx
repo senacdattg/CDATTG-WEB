@@ -11,6 +11,7 @@ import { apiService } from '../services/api';
 import { axiosErrorMessage } from '../utils/httpError';
 import { normalizarDocumentoEscaneado } from './asistencia/asistenciaUtils';
 import { segundosParaSalida } from './vigilancia/esperaSalida';
+import { AUTO_LOOKUP_MS, DEBOUNCE_MISMO_DOC_MS } from './vigilancia/porteriaLookupTiempos';
 import type {
   AccesoLookupResponse,
   AccesoMetodoRegistro,
@@ -24,9 +25,6 @@ import type {
 } from '../types';
 
 const DOC_INPUT_ID = 'porteria-documento-input';
-const DEBOUNCE_MS = 2500;
-/** Espera tras dejar de digitar/escanear antes de consultar (evita buscar a medias). */
-const AUTO_LOOKUP_MS = 3000;
 const DOC_MIN_LEN = 5;
 const FEEDBACK_MS = 5000;
 const STORAGE_KEY = 'porteria_contexto_v1';
@@ -659,7 +657,7 @@ export function VigilanciaPorteria() {
       const now = Date.now();
       const ultimo = ultimoDocRef.current;
       if (enCursoRef.current) return;
-      if (ultimo?.doc === doc && now - ultimo.at < DEBOUNCE_MS) return;
+      if (ultimo?.doc === doc && now - ultimo.at < DEBOUNCE_MISMO_DOC_MS) return;
 
       enCursoRef.current = true;
       ultimoDocRef.current = { doc, at: now };
@@ -676,22 +674,11 @@ export function VigilanciaPorteria() {
           metodo: metodoRegistro,
           modo,
         });
-        if (modo === 'SALIDA') {
-          // La salida es automática: se consulta y se registra sin confirmación.
+        if (modo === 'SALIDA' || res.dentro) {
+          // Un solo lookup: salida automática o ya estaba adentro (antes se consultaba dos veces).
           setLookup(res);
           setDocumento('');
           await resolverSalidaAutomatica(res, doc, metodoRegistro);
-        } else if (res.dentro) {
-          // En ENTRADA, si ya está adentro: se registra la salida sin cambiar a SALIDA.
-          const resSalida = await apiService.accesoLookup({
-            numero_documento: doc,
-            sede_id: sedeId,
-            metodo: metodoRegistro,
-            modo: 'SALIDA',
-          });
-          setLookup(resSalida);
-          setDocumento('');
-          await resolverSalidaAutomatica(resSalida, doc, metodoRegistro);
         } else {
           setFlujoSalida(false);
           setLookup(res);

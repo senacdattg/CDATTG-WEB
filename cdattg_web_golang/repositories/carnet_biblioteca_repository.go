@@ -63,3 +63,17 @@ func (r *carnetSolicitudRepository) FindPersonasPorIDs(ids []uint) (map[uint]mod
 	}
 	return out, err
 }
+
+// FindFichasPorIDs trae vigencia para ocultar fichas ya cerradas en biblioteca.
+func (r *carnetSolicitudRepository) FindFichasPorIDs(ids []uint) (map[uint]models.FichaCaracterizacion, error) {
+	out := map[uint]models.FichaCaracterizacion{}
+	if len(ids) == 0 {
+		return out, nil
+	}
+	var list []models.FichaCaracterizacion
+	err := r.db.Where("id IN ?", ids).Find(&list).Error
+	for i := range list {
+		out[list[i].ID] = list[i]
+	}
+	return out, err
+}

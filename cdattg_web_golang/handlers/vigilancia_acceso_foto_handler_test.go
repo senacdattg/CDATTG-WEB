@@ -17,8 +17,9 @@ import (
 )
 
 type mockVigAccesoFoto struct {
-	foto *services.PersonaFotoArchivo
-	err  error
+	foto   *services.PersonaFotoArchivo
+	masiva *dto.AccesoSalidaMasivaResponse
+	err    error
 }
 
 func (m *mockVigAccesoFoto) Lookup(dto.AccesoLookupRequest) (*dto.AccesoLookupResponse, error) {
@@ -34,6 +35,9 @@ func (m *mockVigAccesoFoto) CancelarIngreso(dto.AccesoCancelarIngresoRequest, ui
 	return nil, m.err
 }
 func (m *mockVigAccesoFoto) ListDentro(*uint) ([]dto.AccesoDentroItem, error) { return nil, m.err }
+func (m *mockVigAccesoFoto) SalidaMasiva(dto.AccesoSalidaMasivaRequest, uint) (*dto.AccesoSalidaMasivaResponse, error) {
+	return m.masiva, m.err
+}
 func (m *mockVigAccesoFoto) Historial(dto.AccesoHistorialFiltros) (*dto.AccesoHistorialResponse, error) {
 	return nil, m.err
 }

@@ -1283,6 +1283,12 @@ export interface AccesoDentroItem {
   metodo_registro: string;
 }
 
+export interface AccesoSalidaMasivaResponse {
+  cerradas: number;
+  excluidas: number;
+  quedan: number;
+}
+
 export interface AccesoHistorialItem {
   visita_id: number;
   persona: AccesoPersonaFicha;

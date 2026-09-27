@@ -115,6 +115,7 @@ import type {
   AccesoRegistroResponse,
   AccesoCancelarIngresoResponse,
   AccesoDentroItem,
+  AccesoSalidaMasivaResponse,
   AccesoHistorialParams,
   AccesoHistorialResponse,
   AccesoEstadisticasResponse,
@@ -1394,6 +1395,14 @@ class ApiService {
   async accesoListDentro(sedeId: number): Promise<AccesoDentroItem[]> {
     const response = await this.api.get<{ data: AccesoDentroItem[] }>('/vigilancia/acceso/dentro', {
       params: { sede_id: sedeId },
+    });
+    return response.data.data;
+  }
+
+  async accesoSalidaMasiva(sedeId: number, excluirVisitaIds: number[]): Promise<AccesoSalidaMasivaResponse> {
+    const response = await this.api.post<{ data: AccesoSalidaMasivaResponse }>('/vigilancia/acceso/salida-masiva', {
+      sede_id: sedeId,
+      excluir_visita_ids: excluirVisitaIds,
     });
     return response.data.data;
   }

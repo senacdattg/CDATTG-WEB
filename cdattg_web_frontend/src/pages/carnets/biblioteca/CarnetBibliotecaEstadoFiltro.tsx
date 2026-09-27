@@ -20,7 +20,8 @@ const BOTONES: { id: FiltroListoBiblioteca; texto: string }[] = [
  */
 export function CarnetBibliotecaEstadoFiltro({ valor, onChange }: Props) {
   return (
-    <div className="flex flex-wrap gap-2" role="group" aria-label="Estado de impresión">
+    <fieldset className="m-0 flex flex-wrap gap-2 border-0 p-0">
+      <legend className="sr-only">Estado de impresión</legend>
       {BOTONES.map((b) => {
         const activo = valor === b.id;
         const clase = activo
@@ -32,6 +33,6 @@ export function CarnetBibliotecaEstadoFiltro({ valor, onChange }: Props) {
           </button>
         );
       })}
-    </div>
+    </fieldset>
   );
 }

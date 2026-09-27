@@ -1,7 +1,6 @@
 /**
- * Tiempos de la búsqueda de portería (láser y teclado).
- * Lo hice porque había 3 s de espera antes de consultar, y el vigilante
- * creía que el servidor tardaba. La cámara no usa esto: llama al lookup al leer.
+ * Tiempos de la búsqueda de portería (teclado y láser en el mismo recuadro).
+ * Lo hice para no consultar a mitad de cédula. La cámara no usa esto: busca al leer.
  *
  * @author Cristian Deysdayr Jiménez
  */
@@ -10,7 +9,7 @@
 export const DEBOUNCE_MISMO_DOC_MS = 800;
 
 /**
- * Espera tras la última tecla antes de buscar solo.
- * El láser deja todos los dígitos en un instante; 400 ms alcanza y no se siente como 3 s.
+ * Tras la última tecla espero 3 s y recién ahí busco solo.
+ * Enter, Buscar y la cámara no esperan este tiempo.
  */
-export const AUTO_LOOKUP_MS = 400;
+export const AUTO_LOOKUP_MS = 3000;

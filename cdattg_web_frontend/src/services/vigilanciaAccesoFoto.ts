@@ -23,3 +23,10 @@ export function urlFotoAcceso(documento: string): string {
 export function urlFotoCambioPendiente(id: number): string {
   return `${API_BASE_URL}/cambios-pendientes/${id}/foto`;
 }
+
+/**
+ * Si no hay archivo de foto, no pinto recuadro vacío.
+ */
+export function debeMostrarFotoPorteria(tieneFoto: boolean): boolean {
+  return tieneFoto;
+}

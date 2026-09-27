@@ -104,5 +104,6 @@ func itemBiblioteca(s models.CarnetSolicitud, lider string, p *models.Persona) d
 		FichaID: s.FichaID, FichaNumero: s.FichaNumero, Programa: s.Programa,
 		InstructorLider: lider, TieneFoto: s.FotoPath != "",
 		FotoURL: rutaFotoImpresora(s.NumeroDocumento),
+		Listo:   s.Listo,
 	}
 }

@@ -17,6 +17,7 @@ import (
 const permVerCarnetDigital = "VER CARNET DIGITAL"
 const permValidarCarnetDigital = "VALIDAR CARNET DIGITAL"
 const permVerCarnetBiblioteca = "VER CARNET BIBLIOTECA"
+const permMarcarCarnetBiblioteca = "MARCAR CARNET BIBLIOTECA"
 const permConfigurarCarnet = "CONFIGURAR CARNET"
 const rutaMiFoto = "/mi-foto"
 
@@ -40,6 +41,7 @@ func registerPersonaFotoYCarnet(protected *gin.RouterGroup, personas *gin.Router
 	carnets.GET("/biblioteca/excel", middleware.RequirePermission("carnet", permVerCarnetBiblioteca), carnetHandler.DescargarExcelBiblioteca)
 	carnets.GET("/biblioteca/fotos/zip", middleware.RequirePermission("carnet", permVerCarnetBiblioteca), carnetHandler.DescargarFotosBibliotecaZip)
 	carnets.GET("/biblioteca/:id/foto", middleware.RequirePermission("carnet", permVerCarnetBiblioteca), carnetHandler.VerFotoBiblioteca)
+	carnets.POST("/biblioteca/:id/listo", middleware.RequirePermission("carnet", permMarcarCarnetBiblioteca), carnetHandler.MarcarListoBiblioteca)
 	carnets.GET("/:id", middleware.RequirePermission("carnet", permValidarCarnetDigital), carnetHandler.VerSolicitud)
 	carnets.GET("/:id/foto", middleware.RequirePermission("carnet", permValidarCarnetDigital), carnetHandler.VerFotoSolicitud)
 	carnets.POST("/:id/decidir", middleware.RequirePermission("carnet", permValidarCarnetDigital), carnetHandler.DecidirSolicitud)

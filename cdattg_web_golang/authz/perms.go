@@ -75,7 +75,7 @@ var (
 		ActRegistrarAccesoSede,
 		ActVerAccesoSede,
 	}
-	PermisosCarnet = []string{ActVerCarnetDigital, ActValidarCarnetDigital, ActVerCarnetBiblioteca, ActConfigurarCarnet, ActSolicitarCarnetPerdida, ActValidarCarnetPerdida}
+	PermisosCarnet = []string{ActVerCarnetDigital, ActValidarCarnetDigital, ActVerCarnetBiblioteca, ActMarcarCarnetBiblioteca, ActConfigurarCarnet, ActSolicitarCarnetPerdida, ActValidarCarnetPerdida}
 )
 
 // ObjPersona, ObjPrograma, ... nombres de objeto usados en rutas y Casbin.
@@ -88,6 +88,7 @@ const (
 	ActVerCarnetDigital       = "VER CARNET DIGITAL"
 	ActValidarCarnetDigital   = "VALIDAR CARNET DIGITAL"
 	ActVerCarnetBiblioteca    = "VER CARNET BIBLIOTECA"
+	ActMarcarCarnetBiblioteca = "MARCAR CARNET BIBLIOTECA"
 	ActConfigurarCarnet       = "CONFIGURAR CARNET"
 	ActSolicitarCarnetPerdida = "SOLICITAR CARNET PERDIDA"
 	ActValidarCarnetPerdida   = "VALIDAR CARNET PERDIDA"

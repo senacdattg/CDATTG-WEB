@@ -25,6 +25,9 @@ func seedBibliotecarioPermissions(e *casbin.Enforcer) error {
 	if _, err := authz.AddPermissionForRole(e, authz.RolBibliotecario, authz.ObjCarnet, authz.ActVerCarnetBiblioteca); err != nil {
 		return err
 	}
+	if _, err := authz.AddPermissionForRole(e, authz.RolBibliotecario, authz.ObjCarnet, authz.ActMarcarCarnetBiblioteca); err != nil {
+		return err
+	}
 	if _, err := authz.AddPermissionForRole(e, authz.RolBibliotecario, authz.ObjCarnet, authz.ActValidarCarnetPerdida); err != nil {
 		return err
 	}

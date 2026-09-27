@@ -1,5 +1,5 @@
 /**
- * Quito del todo a una persona stub, incluso carpetas LMS y visitas viejas.
+ * Quito por completo a una persona stub, incluso carpetas LMS y visitas viejas.
  *
  * @author Cristian Deysdayr Jiménez
  */

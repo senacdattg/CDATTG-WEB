@@ -119,6 +119,7 @@ import type {
   AccesoHistorialParams,
   AccesoHistorialResponse,
   AccesoEstadisticasResponse,
+  AccesoBorrarResponse,
 } from '../types';
 import type {
   CreatePersonalRolRequest,
@@ -1418,6 +1419,27 @@ class ApiService {
     const response = await this.api.get<{ data: AccesoEstadisticasResponse }>('/vigilancia/acceso/estadisticas', {
       params,
     });
+    return response.data.data;
+  }
+
+  async accesoZipRegistros(params: AccesoHistorialParams): Promise<Blob> {
+    const response = await this.api.get<Blob>('/vigilancia/acceso/registros/zip', {
+      params,
+      responseType: 'blob',
+    });
+    return response.data;
+  }
+
+  async accesoBorrarRegistros(data: {
+    regional_id?: number;
+    sede_id?: number;
+    fecha_desde?: string;
+    fecha_hasta?: string;
+    descarga_ok: boolean;
+    confirmacion_1: string;
+    confirmacion_2: string;
+  }): Promise<AccesoBorrarResponse> {
+    const response = await this.api.post<{ data: AccesoBorrarResponse }>('/vigilancia/acceso/registros/borrar', data);
     return response.data.data;
   }
 

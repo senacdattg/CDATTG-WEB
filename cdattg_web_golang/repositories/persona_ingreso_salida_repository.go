@@ -49,6 +49,9 @@ type PersonaIngresoSalidaRepository interface {
 	ListAbiertasBySede(sedeID uint) ([]models.PersonaIngresoSalida, error)
 	CountAbiertasBySede(sedeID *uint, regionalID *uint) (int64, error)
 	ListHistorial(q AccesoHistorialQuery) ([]models.PersonaIngresoSalida, int64, error)
+	ListTodosHistorial(q AccesoHistorialQuery) ([]models.PersonaIngresoSalida, error)
+	DeleteByQuery(q AccesoHistorialQuery) (int64, error)
+	DeleteHardByPersonaID(personaID uint) error
 	StatsHistorial(q AccesoHistorialQuery) (AccesoStatsResult, error)
 }
 
@@ -119,6 +122,7 @@ func (r *personaIngresoSalidaRepository) ListAbiertasBySede(sedeID uint) ([]mode
 
 func (r *personaIngresoSalidaRepository) baseQuery(q AccesoHistorialQuery) *gorm.DB {
 	tx := r.db.Model(&models.PersonaIngresoSalida{}).
+		Where("persona_ingreso_salida.deleted_at IS NULL").
 		Joins("LEFT JOIN sedes ON sedes.id = persona_ingreso_salida.sede_id")
 
 	if q.SedeID != nil && *q.SedeID > 0 {
@@ -175,7 +179,7 @@ func (r *personaIngresoSalidaRepository) ListHistorial(q AccesoHistorialQuery) (
 	}
 
 	var total int64
-	if err := r.baseQuery(q).Count(&total).Error; err != nil {
+	if err := r.baseQuery(q).Distinct("persona_ingreso_salida.id").Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
 

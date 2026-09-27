@@ -1,21 +1,23 @@
 /**
- * Une reporte y salida masiva en el reporte de accesos.
+ * Une reporte, salida masiva y borrar visitas de portería.
  *
  * @author Cristian Deysdayr Jiménez
  */
 import { useState } from 'react';
 import { VigilanciaAccesoPanel } from '../VigilanciaAccesoPanel';
+import { BorrarAccesoTab } from './BorrarAccesoTab';
 import { SalidaMasivaTab } from './SalidaMasivaTab';
 
-type TabId = 'reporte' | 'salida';
+type TabId = 'reporte' | 'salida' | 'borrar';
 
 const TABS: { id: TabId; texto: string }[] = [
   { id: 'reporte', texto: 'Reporte' },
   { id: 'salida', texto: 'Salida masiva' },
+  { id: 'borrar', texto: 'Borrar registros' },
 ];
 
 /**
- * Dejo elegir historial o sacar a todos los que siguen adentro.
+ * Dejo elegir historial, sacar a todos o borrar visitas (no personas).
  */
 export function VigilanciaAccesoPage() {
   const [tab, setTab] = useState<TabId>('reporte');
@@ -38,6 +40,7 @@ export function VigilanciaAccesoPage() {
       </div>
       {tab === 'reporte' ? <VigilanciaAccesoPanel /> : null}
       {tab === 'salida' ? <SalidaMasivaTab /> : null}
+      {tab === 'borrar' ? <BorrarAccesoTab /> : null}
     </div>
   );
 }

@@ -1353,6 +1353,10 @@ export interface AccesoHistorialParams {
   page_size?: number;
 }
 
+export interface AccesoBorrarResponse {
+  eliminados: number;
+}
+
 // —— Complementarios (FPI): verificación de aspirantes en SofiaPlus ——
 export type VerificacionEstado = 'REGISTRADO' | 'NO_REGISTRADO' | 'NO_VERIFICADO';
 

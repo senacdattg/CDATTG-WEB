@@ -62,6 +62,8 @@ type VigilanciaAccesoService interface {
 	SalidaMasiva(req dto.AccesoSalidaMasivaRequest, registradoPorUserID uint) (*dto.AccesoSalidaMasivaResponse, error)
 	Historial(f dto.AccesoHistorialFiltros) (*dto.AccesoHistorialResponse, error)
 	Estadisticas(f dto.AccesoHistorialFiltros) (*dto.AccesoEstadisticasResponse, error)
+	ZipExcelAccesos(f dto.AccesoHistorialFiltros) ([]byte, error)
+	BorrarAccesos(req dto.AccesoBorrarRequest) (*dto.AccesoBorrarResponse, error)
 	LeerFotoAcceso(documento string) (*PersonaFotoArchivo, error)
 }
 

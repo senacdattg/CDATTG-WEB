@@ -359,6 +359,8 @@ func SetupRouter() *gin.Engine {
 				vigilancia.GET("/dentro", middleware.RequirePermission("vigilancia", permVerAccesoSede), vigilanciaAccesoHandler.ListDentro)
 				vigilancia.GET("/historial", middleware.RequirePermission("vigilancia", permVerAccesoSede), vigilanciaAccesoHandler.Historial)
 				vigilancia.GET("/estadisticas", middleware.RequirePermission("vigilancia", permVerAccesoSede), vigilanciaAccesoHandler.Estadisticas)
+				vigilancia.GET("/registros/zip", middleware.RequirePermission("vigilancia", permVerAccesoSede), vigilanciaAccesoHandler.ZipExcelRegistros)
+				vigilancia.POST("/registros/borrar", middleware.RequirePermission("vigilancia", permVerAccesoSede), vigilanciaAccesoHandler.BorrarRegistros)
 			}
 
 			vigilanciaPersonas := protected.Group("/vigilancia/personas")

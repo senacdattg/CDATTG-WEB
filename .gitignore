@@ -6,6 +6,7 @@ docs/deployment/conexiones-externas.md
 *.log
 .cursor/
 .vscode/
+.idea/
 .scannerwork/
 coverage/
 **/coverage.out

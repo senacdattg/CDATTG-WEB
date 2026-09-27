@@ -190,7 +190,7 @@ func TestGuardarCredencial_roundTripConDescifrado(t *testing.T) {
 		TipoDocumento: "CC",
 		Usuario:       " 1143364626 ",
 		Password:      "contraseña-prueba",
-		Rol:           "Encargado de ingreso centro formación",
+		Rol:           rolSofiaEncargadoIngreso,
 	}
 	if err := svc.GuardarCredencial(2, req); err != nil {
 		t.Fatalf("GuardarCredencial: %v", err)

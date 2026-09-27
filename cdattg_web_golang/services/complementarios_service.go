@@ -19,8 +19,6 @@ import (
 //  - credenciales SofiaPlus por operador (cifradas)
 //  - verificación individual de aspirantes en SofiaPlus
 
-const msgDocumentoObligatorio = "El número de documento es obligatorio."
-
 // ---------------------------------------------------------------------------
 // Registro en memoria de lotes en segundo plano (verificación por Excel).
 // El POST devuelve el lote_id al instante; el scraper reporta avance y el
@@ -188,7 +186,7 @@ func (s *ComplementariosService) VerificarAspirante(usuarioID uint, req dto.Veri
 		}
 	}
 	// Fase 1: siempre Encargado de ingreso (Consultar Registro / SGS).
-	cred.Rol = "Encargado de ingreso centro formación"
+	cred.Rol = rolSofiaEncargadoIngreso
 
 	scraper := NewSofiaScraper()
 	return scraper.VerificarDocumento(cred, numero, req.TipoDocumento)
@@ -228,7 +226,7 @@ func (s *ComplementariosService) ConsultarInscripciones(usuarioID uint, req dto.
 		}
 	}
 	// Este flujo siempre usa Usuario SENA (no el rol de Consultar Registro).
-	cred.Rol = "Usuario SENA"
+	cred.Rol = rolSofiaUsuarioSENA
 
 	scraper := NewSofiaScraper()
 	return scraper.ConsultarInscripciones(cred, numero, programa, req.TipoDocumento)
@@ -247,14 +245,14 @@ func (s *ComplementariosService) ConsultarInscripcionesLote(usuarioID uint, cont
 		return dto.ConsultarInscripcionesLoteResponse{}, err
 	}
 	if len(filas) == 0 {
-		return dto.ConsultarInscripcionesLoteResponse{}, errors.New("el Excel no tiene filas válidas (numero_documento y programa de formación)")
+		return dto.ConsultarInscripcionesLoteResponse{}, errors.New(msgExcelSinFilasInscripcion)
 	}
 
 	cred, err := s.credencialesDeUsuario(usuarioID)
 	if err != nil {
 		return dto.ConsultarInscripcionesLoteResponse{}, err
 	}
-	cred.Rol = "Usuario SENA"
+	cred.Rol = rolSofiaUsuarioSENA
 
 	scraper := NewSofiaScraper()
 	resultados := scraper.ConsultarInscripcionesLote(cred, filas, "")
@@ -281,14 +279,14 @@ func (s *ComplementariosService) ConsultarInscripcionesLoteAsync(usuarioID uint,
 		return dto.LoteIniciadoResponse{}, err
 	}
 	if len(filas) == 0 {
-		return dto.LoteIniciadoResponse{}, errors.New("el Excel no tiene filas válidas (numero_documento y programa de formación)")
+		return dto.LoteIniciadoResponse{}, errors.New(msgExcelSinFilasInscripcion)
 	}
 
 	cred, err := s.credencialesDeUsuario(usuarioID)
 	if err != nil {
 		return dto.LoteIniciadoResponse{}, err
 	}
-	cred.Rol = "Usuario SENA"
+	cred.Rol = rolSofiaUsuarioSENA
 
 	job := s.iniciarLoteInscripciones(cred, filas)
 	return dto.LoteIniciadoResponse{LoteID: job.LoteID, Total: len(filas)}, nil
@@ -305,7 +303,7 @@ func (s *ComplementariosService) ReintentarInscripciones(usuarioID uint, req dto
 	if err != nil {
 		return dto.LoteIniciadoResponse{}, err
 	}
-	cred.Rol = "Usuario SENA"
+	cred.Rol = rolSofiaUsuarioSENA
 
 	job := s.iniciarLoteInscripciones(cred, filas)
 	return dto.LoteIniciadoResponse{LoteID: job.LoteID, Total: len(filas)}, nil
@@ -350,7 +348,7 @@ func (s *ComplementariosService) ResultadosLoteInscripciones(loteID string) (dto
 	job, ok := lotes[loteID]
 	lotesMu.Unlock()
 	if !ok {
-		return dto.ConsultarInscripcionesLoteResponse{}, errors.New("lote no encontrado o expirado")
+		return dto.ConsultarInscripcionesLoteResponse{}, errors.New(msgLoteNoEncontrado)
 	}
 	if !jobTerminado(job) {
 		return dto.ConsultarInscripcionesLoteResponse{}, errors.New("el lote aún está en curso")
@@ -402,7 +400,7 @@ func (s *ComplementariosService) VerificarLote(usuarioID uint, contenido []byte)
 		return dto.VerificarLoteResponse{}, err
 	}
 	if len(docs) == 0 {
-		return dto.VerificarLoteResponse{}, errors.New("el Excel no tiene documentos válidos (revisa la columna numero_documento)")
+		return dto.VerificarLoteResponse{}, errors.New(msgExcelSinDocumentos)
 	}
 
 	cred, err := s.credencialesDeUsuario(usuarioID)
@@ -410,7 +408,7 @@ func (s *ComplementariosService) VerificarLote(usuarioID uint, contenido []byte)
 		return dto.VerificarLoteResponse{}, err
 	}
 	// Fase 1: siempre Encargado de ingreso (Consultar Registro / SGS).
-	cred.Rol = "Encargado de ingreso centro formación"
+	cred.Rol = rolSofiaEncargadoIngreso
 
 	scraper := NewSofiaScraper()
 	resultados := scraper.VerificarLote(cred, docs, "")
@@ -437,7 +435,7 @@ func (s *ComplementariosService) VerificarLoteAsync(usuarioID uint, contenido []
 		return dto.LoteIniciadoResponse{}, err
 	}
 	if len(docs) == 0 {
-		return dto.LoteIniciadoResponse{}, errors.New("el Excel no tiene documentos válidos (revisa la columna numero_documento)")
+		return dto.LoteIniciadoResponse{}, errors.New(msgExcelSinDocumentos)
 	}
 	return s.iniciarLoteVerificar(usuarioID, docs)
 }
@@ -476,7 +474,7 @@ func (s *ComplementariosService) iniciarLoteVerificar(usuarioID uint, docs []dto
 		return dto.LoteIniciadoResponse{}, err
 	}
 	// Fase 1: siempre Encargado de ingreso (Consultar Registro / SGS).
-	cred.Rol = "Encargado de ingreso centro formación"
+	cred.Rol = rolSofiaEncargadoIngreso
 
 	job := registrarLote("verificar", len(docs))
 	go func() {
@@ -495,7 +493,7 @@ func (s *ComplementariosService) ProgresoLote(loteID string) (dto.ProgresoLoteRe
 	job, ok := lotes[loteID]
 	lotesMu.Unlock()
 	if !ok {
-		return dto.ProgresoLoteResponse{}, errors.New("lote no encontrado o expirado")
+		return dto.ProgresoLoteResponse{}, errors.New(msgLoteNoEncontrado)
 	}
 	if jobTerminado(job) {
 		return dto.ProgresoLoteResponse{
@@ -525,7 +523,7 @@ func (s *ComplementariosService) ResultadosLote(loteID string) (dto.VerificarLot
 	job, ok := lotes[loteID]
 	lotesMu.Unlock()
 	if !ok {
-		return dto.VerificarLoteResponse{}, errors.New("lote no encontrado o expirado")
+		return dto.VerificarLoteResponse{}, errors.New(msgLoteNoEncontrado)
 	}
 	if !jobTerminado(job) {
 		return dto.VerificarLoteResponse{}, errors.New("el lote aún está en curso")
@@ -556,7 +554,7 @@ func (s *ComplementariosService) VerificarLoteBetowa(contenido []byte) (dto.Veri
 		return dto.VerificarLoteResponse{}, err
 	}
 	if len(docs) == 0 {
-		return dto.VerificarLoteResponse{}, errors.New("el Excel no tiene documentos válidos (revisa la columna numero_documento)")
+		return dto.VerificarLoteResponse{}, errors.New(msgExcelSinDocumentos)
 	}
 
 	scraper := NewBetowaScraper()

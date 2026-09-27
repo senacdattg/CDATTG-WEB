@@ -1,0 +1,18 @@
+{
+  "name": "CDATTG WEB",
+  "short_name": "CDATTG",
+  "description": "Portería y gestión CDATTG",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#003024",
+  "theme_color": "#003024",
+  "lang": "es-CO",
+  "icons": [
+    {
+      "src": "/logo-sena-verde-complementario-svg-2022.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

@@ -14,6 +14,10 @@ import { segundosParaSalida } from './vigilancia/esperaSalida';
 import { AUTO_LOOKUP_MS, DEBOUNCE_MISMO_DOC_MS } from './vigilancia/porteriaLookupTiempos';
 import { debeSalidaAutomatica, requiereConfirmacionSalida } from './vigilancia/porteriaConfirmacion';
 import { PaginadorAcceso } from './vigilancia/PaginadorAcceso';
+import { PorteriaRedAviso, usePorteriaRed } from './vigilancia/PorteriaRedAviso';
+import { listarDentroPorteria } from './vigilancia/porteriaDentroCliente';
+import { lookupPorteria } from './vigilancia/porteriaLookupCliente';
+import { ingresoPorteria, salidaPorteria } from './vigilancia/porteriaRegistroCliente';
 import { hojaDe, TAM_PAGINA_DENTRO, totalHojas } from './vigilancia/paginarLista';
 import type {
   AccesoLookupResponse,
@@ -539,6 +543,7 @@ export function VigilanciaPorteria() {
   const [feedback, setFeedback] = useState<{ accion: FeedbackAccion; mensaje: string } | null>(null);
   const [dentro, setDentro] = useState<AccesoDentroItem[]>([]);
   const [catalogError, setCatalogError] = useState('');
+  const hayInternet = usePorteriaRed();
 
   const enCursoRef = useRef(false);
   const ultimoDocRef = useRef<{ doc: string; at: number } | null>(null);
@@ -567,7 +572,7 @@ export function VigilanciaPorteria() {
       return;
     }
     try {
-      const list = await apiService.accesoListDentro(sid);
+      const list = await listarDentroPorteria(sid);
       setDentro(list ?? []);
     } catch {
       /* listado opcional */
@@ -625,16 +630,16 @@ export function VigilanciaPorteria() {
   };
 
   const registrarIngresoAuto = useCallback(
-    async (doc: string, metodoRegistro: AccesoMetodoRegistro) => {
+    async (doc: string, metodoRegistro: AccesoMetodoRegistro, ficha: AccesoLookupResponse) => {
       if (!sedeId) return;
       setAutoIngresando(true);
       setError('');
       try {
-        const res = await apiService.accesoIngreso({
+        const res = await ingresoPorteria({
           numero_documento: doc,
           metodo_registro: metodoRegistro,
           sede_id: sedeId,
-        });
+        }, ficha);
         setRegistro(res);
         setLookup(null);
         setDocumento('');
@@ -651,17 +656,17 @@ export function VigilanciaPorteria() {
 
   /** Salida automática: sin confirmación y sin motivo. Respeta la espera de 10 s, tanto con ingreso abierto como entre salidas irregulares. */
   const registrarSalidaAuto = useCallback(
-    async (doc: string, metodoRegistro: AccesoMetodoRegistro, permitirSinIngreso: boolean) => {
+    async (doc: string, metodoRegistro: AccesoMetodoRegistro, permitirSinIngreso: boolean, ficha: AccesoLookupResponse) => {
       if (!sedeId) return;
       setRegistrandoSalida(true);
       setError('');
       try {
-        const res = await apiService.accesoSalida({
+        const res = await salidaPorteria({
           numero_documento: doc,
           metodo_registro: metodoRegistro,
           sede_id: sedeId,
           permitir_sin_ingreso: permitirSinIngreso || undefined,
-        });
+        }, ficha);
         // Se muestran los datos de la persona, igual que en la entrada.
         setRegistro(res);
         setLookup(null);
@@ -697,7 +702,7 @@ export function VigilanciaPorteria() {
       if (requiereConfirmacionSalida(res)) return;
       if (debeSalidaAutomatica(res) === false) return;
       const irregular = Boolean(res.permite_salida_sin_ingreso) && res.dentro === false;
-      await registrarSalidaAuto(doc, metodoRegistro, irregular);
+      await registrarSalidaAuto(doc, metodoRegistro, irregular, res);
     },
     [registrarSalidaAuto],
   );
@@ -725,7 +730,7 @@ export function VigilanciaPorteria() {
       setRegistro(null);
       setMetodo(metodoRegistro);
       try {
-        const res = await apiService.accesoLookup({
+        const res = await lookupPorteria({
           numero_documento: doc,
           sede_id: sedeId,
           metodo: metodoRegistro,
@@ -742,7 +747,7 @@ export function VigilanciaPorteria() {
           setDocumento('');
           // Entrada instantánea solo para personas ya registradas y libres de bloqueos.
           if (!res.persona.es_nueva && res.puede_confirmar) {
-            void registrarIngresoAuto(doc, metodoRegistro);
+            void registrarIngresoAuto(doc, metodoRegistro, res);
           }
         }
       } catch (e: unknown) {
@@ -806,19 +811,19 @@ export function VigilanciaPorteria() {
     try {
       if (flujoSalida) {
         const irregular = Boolean(lookup.permite_salida_sin_ingreso) && lookup.dentro === false;
-        const res = await apiService.accesoSalida({
+        const res = await salidaPorteria({
           numero_documento: doc,
           metodo_registro: metodo,
           sede_id: sedeId,
           permitir_sin_ingreso: irregular || undefined,
-        });
+        }, lookup);
         showFeedback('SALIDA', res.mensaje || 'Salida registrada');
       } else {
-        const res = await apiService.accesoIngreso({
+        const res = await ingresoPorteria({
           numero_documento: doc,
           metodo_registro: metodo,
           sede_id: sedeId,
-        });
+        }, lookup);
         showFeedback('INGRESO', res.mensaje || 'Ingreso registrado');
       }
       void refreshDentro(sedeId);
@@ -1006,6 +1011,7 @@ export function VigilanciaPorteria() {
             Debe activar regional y sede antes de escanear.
           </p>
         )}
+        <PorteriaRedAviso hayInternet={hayInternet} />
       </section>
 
       <section className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800 sm:p-5">

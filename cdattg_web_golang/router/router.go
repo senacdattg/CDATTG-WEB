@@ -52,6 +52,7 @@ const (
 	permVerMiAgenda                       = "VER MI AGENDA"
 	permRegistrarAccesoSede               = "REGISTRAR ACCESO SEDE"
 	permVerAccesoSede                     = "VER ACCESO SEDE"
+	permBorrarAccesoSede                  = "BORRAR ACCESO SEDE"
 	permRegistrarPersona                  = "REGISTRAR PERSONA"
 )
 
@@ -359,8 +360,8 @@ func SetupRouter() *gin.Engine {
 				vigilancia.GET("/dentro", middleware.RequirePermission("vigilancia", permVerAccesoSede), vigilanciaAccesoHandler.ListDentro)
 				vigilancia.GET("/historial", middleware.RequirePermission("vigilancia", permVerAccesoSede), vigilanciaAccesoHandler.Historial)
 				vigilancia.GET("/estadisticas", middleware.RequirePermission("vigilancia", permVerAccesoSede), vigilanciaAccesoHandler.Estadisticas)
-				vigilancia.GET("/registros/zip", middleware.RequirePermission("vigilancia", permVerAccesoSede), vigilanciaAccesoHandler.ZipExcelRegistros)
-				vigilancia.POST("/registros/borrar", middleware.RequirePermission("vigilancia", permVerAccesoSede), vigilanciaAccesoHandler.BorrarRegistros)
+				vigilancia.GET("/registros/zip", middleware.RequirePermission("vigilancia", permBorrarAccesoSede), vigilanciaAccesoHandler.ZipExcelRegistros)
+				vigilancia.POST("/registros/borrar", middleware.RequirePermission("vigilancia", permBorrarAccesoSede), vigilanciaAccesoHandler.BorrarRegistros)
 				vigilancia.GET("/personas-sin-nombre", middleware.RequirePermission("vigilancia", permVerAccesoSede), vigilanciaAccesoHandler.ListPersonasSinNombre)
 				vigilancia.POST("/personas-sin-nombre/borrar", middleware.RequirePermission("vigilancia", permVerAccesoSede), vigilanciaAccesoHandler.BorrarPersonasSinNombre)
 			}

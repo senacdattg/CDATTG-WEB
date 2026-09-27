@@ -30,7 +30,7 @@ export function getHomeRouteForUser(roles: string[], permissions: string[]): str
   if (normalized.some((r) => (DASHBOARD_ROLES as readonly string[]).includes(r))) {
     return '/dashboard';
   }
-  if (normalized.includes('VIGILANTE')) {
+  if (normalized.includes('VIGILANTE') || normalized.includes('SUPER VIGILANTE')) {
     return '/vigilancia/porteria';
   }
   if (normalized.includes('INSTRUCTOR')) {

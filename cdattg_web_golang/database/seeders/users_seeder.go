@@ -30,6 +30,7 @@ type UserSeed struct {
 var exclusiveSeedRoles = map[string]struct{}{
 	"FPI":                      {},
 	"VIGILANTE":                {},
+	authz.RolSupervigilante:    {},
 	"BIENESTAR AL APRENDIZ":    {},
 	"BIBLIOTECARIO":            {},
 	"MEDIA TECNICA":            {},
@@ -51,6 +52,7 @@ var userSeeds = []UserSeed{
 	{"formacionprofesionalintegralcomplementaria@dataguaviare.com.co", seedPasswordDefault, 9100, "FPI"},
 	// Usuario módulo vigilancia (portería / accesos)
 	{"vigilanciasena@dataguaviare.com.co", seedPasswordDefault, 9101, "VIGILANTE"},
+	{"supervigilantesena@dataguaviare.com.co", seedPasswordDefault, 9102, authz.RolSupervigilante},
 	{"biblioteca@dataguaviare.com.co", seedPasswordDefault, 9200, "BIBLIOTECARIO"},
 	{"mediatecnica@dataguaviare.com.co", seedPasswordDefault, 9201, "MEDIA TECNICA"},
 	{"formacioncomplementaria@dataguaviare.com.co", seedPasswordDefault, 9202, "FORMACION COMPLEMENTARIA"},

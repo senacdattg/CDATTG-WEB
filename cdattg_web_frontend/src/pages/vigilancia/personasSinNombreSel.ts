@@ -36,6 +36,13 @@ export function conTodosDeHoja(sel: ReadonlySet<number>, ids: number[]): Set<num
 }
 
 /**
+ * Texto del botón de marcar la hoja.
+ */
+export function textoMarcarHoja(todos: boolean): string {
+  return todos ? 'Quitar selección' : 'Seleccionar a todos';
+}
+
+/**
  * La hoja está toda marcada.
  */
 export function hojaTodaMarcada(sel: ReadonlySet<number>, ids: number[]): boolean {

@@ -4,7 +4,7 @@
  * @author Cristian Deysdayr Jiménez
  */
 import { describe, expect, it } from 'vitest';
-import { conTodosDeHoja, hojaTodaMarcada, toggleId } from './personasSinNombreSel';
+import { conTodosDeHoja, hojaTodaMarcada, textoMarcarHoja, toggleId } from './personasSinNombreSel';
 
 describe('personasSinNombreSel', () => {
   it('pone y quita un id', () => {
@@ -27,5 +27,10 @@ describe('personasSinNombreSel', () => {
     expect(hojaTodaMarcada(new Set([1, 2]), [1, 2])).toBe(true);
     expect(hojaTodaMarcada(new Set([1]), [1, 2])).toBe(false);
     expect(hojaTodaMarcada(new Set([1]), [])).toBe(false);
+  });
+
+  it('dice el texto del botón de la hoja', () => {
+    expect(textoMarcarHoja(false)).toBe('Seleccionar a todos');
+    expect(textoMarcarHoja(true)).toBe('Quitar selección');
   });
 });

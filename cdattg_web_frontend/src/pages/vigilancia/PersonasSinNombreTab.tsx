@@ -10,9 +10,10 @@ import { axiosErrorMessage } from '../../utils/httpError';
 import { PaginadorAcceso } from './PaginadorAcceso';
 import { PersonasSinNombreConfirmar } from './PersonasSinNombreConfirmar';
 import { TAM_PAGINA_DENTRO, totalHojas } from './paginarLista';
-import { conTodosDeHoja, hojaTodaMarcada, idsDeHoja, toggleId } from './personasSinNombreSel';
+import { conTodosDeHoja, hojaTodaMarcada, idsDeHoja, textoMarcarHoja, toggleId } from './personasSinNombreSel';
+import { avisoAccesoError, avisoAccesoOk } from './vigilanciaAccesoAvisos';
 import {
-  BARRA_HERR, BTN_ROJO, CAJA_VIG, DOC_MONO, ERR_VIG, FILA_OFF, FILA_ON,
+  BARRA_HERR, BTN_ROJO, BTN_SEL, CAJA_VIG, DOC_MONO, ERR_VIG, FILA_OFF, FILA_ON,
   LABEL_CHK, LISTA_DIV, OK_VIG, PAGINA_VIG, SUB_VIG, TITULO_VIG,
 } from './vigilanciaUi';
 
@@ -36,6 +37,7 @@ export function PersonasSinNombreTab() {
       setSel(new Set()); setPaso(0);
     } catch (e: unknown) {
       setError(axiosErrorMessage(e, 'No se pudieron listar.'));
+      avisoAccesoError('No se pudieron listar las personas sin nombre.');
     } finally { setLoading(false); }
   }, []);
 
@@ -55,10 +57,13 @@ export function PersonasSinNombreTab() {
     try {
       const res = await apiService.accesoBorrarPersonasSinNombre([...sel], true);
       setOk(`Se quitaron ${res.eliminados} del sistema. No queda registro.`);
+      avisoAccesoOk('Fuera del sistema', `Se borraron ${res.eliminados}. No queda visita ni usuario.`);
       setPaso(0); setSel(new Set());
       await cargar(1);
     } catch (e: unknown) {
-      setError(axiosErrorMessage(e, 'No se pudieron eliminar.'));
+      const msg = axiosErrorMessage(e, 'No se pudieron eliminar.');
+      setError(msg);
+      avisoAccesoError(msg);
     } finally { setEnviando(false); }
   };
 
@@ -81,9 +86,14 @@ export function PersonasSinNombreTab() {
         <div className={BARRA_HERR}>
           <p className="text-sm font-medium">{total} sin nombre / {sel.size} elegidas</p>
           <div className="flex flex-wrap gap-2">
-            <button type="button" className="btn-secondary" disabled={loading} onClick={() => void cargar(pagina)}>Actualizar</button>
+            {items.length > 0 ? (
+              <button type="button" className={BTN_SEL} onClick={() => setSel((p) => conTodosDeHoja(p, idsHoja))}>
+                {textoMarcarHoja(todosHoja)}
+              </button>
+            ) : null}
+            <button type="button" className="btn-secondary" disabled={loading} onClick={() => void cargar(pagina)}>Actualizar lista</button>
             <button type="button" className={BTN_ROJO} disabled={sel.size === 0 || paso !== 0} onClick={() => setPaso(1)}>
-              Eliminar del sistema
+              Borrar elegidas del sistema
             </button>
           </div>
         </div>
@@ -99,16 +109,7 @@ export function PersonasSinNombreTab() {
           <p className="text-sm text-gray-500">No hay personas sin nombre.</p>
         )}
         {items.length > 0 ? (
-          <>
-            <label className={`${LABEL_CHK} mb-2`}>
-              <input
-                type="checkbox"
-                checked={todosHoja}
-                onChange={() => setSel((p) => conTodosDeHoja(p, idsHoja))}
-              />
-              <span>Seleccionar todos</span>
-            </label>
-            <ul className={LISTA_DIV}>
+          <ul className={LISTA_DIV}>
               {items.map((it) => {
                 const on = sel.has(it.id);
                 return (
@@ -122,7 +123,6 @@ export function PersonasSinNombreTab() {
                 );
               })}
             </ul>
-          </>
         ) : null}
         <PaginadorAcceso pagina={pagina} totalHojas={hojas} onPagina={(p) => { void cargar(p); }} />
       </section>

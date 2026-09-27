@@ -20,6 +20,7 @@ from urllib.parse import urljoin
 from patchright.sync_api import Frame, Page
 from scrapling.fetchers import StealthyFetcher
 
+from app.sofia_fetch_lote import correr_fetch_hasta_trabajo, envolver_page_action
 from app.config import (
     DEFAULT_ROL,
     DIAG_DIR,
@@ -506,9 +507,10 @@ def _stealthy_fetch_kwargs() -> dict[str, Any]:
 def _ejecutar_con_scrapling(
     cred: Credenciales, action: Callable[[Page], None], worker_id: int = 0
 ) -> str | None:
-    """Un fetch Scrapling por solicitud (StealthyFetcher), con sesión persistente por slot."""
+    """Un fetch Scrapling por solicitud. No espero el cierre de Chromium."""
     err_msg: list[str | None] = [None]
     estado = _FetchState()
+    listo = threading.Event()
 
     def page_action(page: Page) -> None:
         page.set_default_timeout(PAGE_TIMEOUT_MS)
@@ -521,11 +523,16 @@ def _ejecutar_con_scrapling(
         except Exception as exc:
             err_msg[0] = f"Error del scraper: {exc}"
 
-    try:
-        ejecutar_fetch(worker_id, page_action)
-    except Exception as exc:
-        return f"Error del scraper: {exc}"
+    def fetch() -> None:
+        try:
+            ejecutar_fetch(worker_id, envolver_page_action(page_action, listo))
+        except Exception as exc:
+            if err_msg[0] is None:
+                err_msg[0] = f"Error del scraper: {exc}"
 
+    # Tope alineado al lote del backend (45 min): el hang real era el cierre.
+    if not correr_fetch_hasta_trabajo(fetch, listo, 45 * 60):
+        return "el scraper Sofía no terminó las consultas a tiempo"
     return err_msg[0]
 
 

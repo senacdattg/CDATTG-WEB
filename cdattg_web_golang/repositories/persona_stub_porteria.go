@@ -43,7 +43,3 @@ func (r *personaRepository) ListStubsPorteria(page, pageSize int) ([]models.Pers
 		Find(&rows).Error
 	return rows, total, err
 }
-
-func (r *personaRepository) HardDelete(id uint) error {
-	return r.db.Unscoped().Delete(&models.Persona{}, id).Error
-}

@@ -21,3 +21,12 @@ export const FILA_OFF = 'flex items-center justify-between gap-2 py-2';
 export const LISTA_DIV = 'divide-y divide-gray-100 dark:divide-gray-700';
 export const DOC_MONO = 'font-mono text-lg font-semibold tabular-nums text-gray-900 dark:text-white';
 export const LABEL_CHK = 'flex cursor-pointer items-center gap-2 text-sm';
+export const BTN_SEL =
+  'rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-800 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100';
+export const FILA_QUEDA =
+  'flex flex-wrap items-center justify-between gap-3 rounded-xl border border-emerald-300 bg-emerald-50 px-3 py-3 dark:border-emerald-700 dark:bg-emerald-950/40';
+export const FILA_SALE =
+  'flex flex-wrap items-center justify-between gap-3 rounded-xl border border-gray-200 bg-white px-3 py-3 dark:border-gray-600 dark:bg-gray-900';
+export const PILA_QUEDA = 'rounded-full bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white';
+export const PILA_SALE =
+  'rounded-full border border-emerald-600 px-3 py-1.5 text-xs font-semibold text-emerald-800 dark:border-emerald-400 dark:text-emerald-200';

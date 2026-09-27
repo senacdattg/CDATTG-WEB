@@ -10,10 +10,9 @@ import { axiosErrorMessage } from '../../utils/httpError';
 import { SalidaMasivaConfirmar } from './SalidaMasivaConfirmar';
 import { SalidaMasivaLista } from './SalidaMasivaLista';
 import { filtrarDentro, toggleExcluir, visitasACerrar } from './salidaMasivaIds';
+import { avisoAccesoError, avisoAccesoOk } from './vigilanciaAccesoAvisos';
+import { BARRA_HERR, CAJA_VIG, ERR_VIG, OK_VIG, PAGINA_VIG, SUB_VIG, TITULO_VIG } from './vigilanciaUi';
 
-/**
- * Cargo la sede, listo a quienes están y cierro la salida masiva.
- */
 export function SalidaMasivaTab() {
   const [sedes, setSedes] = useState<SedeItem[]>([]);
   const [sedeId, setSedeId] = useState('');
@@ -28,7 +27,9 @@ export function SalidaMasivaTab() {
 
   useEffect(() => {
     apiService.getCatalogosSedes().then((s) => setSedes(s ?? [])).catch((e: unknown) => {
-      setError(axiosErrorMessage(e, 'No se pudieron cargar las sedes.'));
+      const msg = axiosErrorMessage(e, 'No se pudieron cargar las sedes.');
+      setError(msg);
+      avisoAccesoError(msg);
     });
   }, []);
 
@@ -43,6 +44,7 @@ export function SalidaMasivaTab() {
       setConfirmar(false);
     } catch (e: unknown) {
       setError(axiosErrorMessage(e, 'No se pudo listar quién está adentro.'));
+      avisoAccesoError('No se pudo listar quién está adentro.');
     } finally {
       setLoading(false);
     }
@@ -65,22 +67,25 @@ export function SalidaMasivaTab() {
       setConfirmar(false);
       await cargar(sedeId);
       setOk(res);
+      avisoAccesoOk('Salida registrada', `Salieron ${res.cerradas}. Quedan ${res.quedan}.`);
     } catch (e: unknown) {
-      setError(axiosErrorMessage(e, 'No se pudo registrar la salida masiva.'));
+      const msg = axiosErrorMessage(e, 'No se pudo registrar la salida masiva.');
+      setError(msg);
+      avisoAccesoError(msg);
     } finally {
       setEnviando(false);
     }
   };
 
   return (
-    <div className="mx-auto max-w-7xl space-y-4 pb-8">
+    <div className={PAGINA_VIG}>
       <header>
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white sm:text-3xl">Salida masiva</h1>
-        <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
-          Cierra los ingresos abiertos de la sede. No pide motivo. Marca a quien debe quedar adentro.
+        <h1 className={TITULO_VIG}>Salida masiva</h1>
+        <p className={SUB_VIG}>
+          Pulse Quedarse en quien debe seguir adentro. Si no lo pulsa, sale.
         </p>
       </header>
-      <section className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800 sm:p-5">
+      <section className={CAJA_VIG}>
         <label htmlFor="masiva-sede" className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">Sede</label>
         <select id="masiva-sede" className="input-field w-full max-w-md" value={sedeId} onChange={(e) => setSedeId(e.target.value)}>
           <option value="">Seleccionar sede</option>
@@ -88,23 +93,33 @@ export function SalidaMasivaTab() {
         </select>
         {sedeId ? (
           <>
-            <input className="input-field mt-3 w-full max-w-md" placeholder="Buscar por nombre o documento" value={q} onChange={(e) => setQ(e.target.value)} />
-            <p className="mt-3 text-sm text-gray-600 dark:text-gray-400">
-              {loading ? 'Cargando…' : `${dentro.length} adentro · ${aCerrar} salen · ${excluir.size} quedan`}
-            </p>
-            <div className="mt-2"><SalidaMasivaLista items={visibles} excluir={excluir} onToggle={(id) => setExcluir((prev) => toggleExcluir(prev, id))} /></div>
-            {aCerrar > 0 && !confirmar ? (
-              <button type="button" className="btn-primary mt-4" onClick={() => setConfirmar(true)}>Registrar salida de {aCerrar}</button>
-            ) : null}
+            <div className={`${BARRA_HERR} mt-4`}>
+              <p className="text-sm font-medium text-gray-800 dark:text-gray-100">
+                {loading ? 'Cargando…' : `${dentro.length} adentro · ${aCerrar} salen · ${excluir.size} se quedan`}
+              </p>
+              {aCerrar > 0 && !confirmar ? (
+                <button type="button" className="btn-primary" onClick={() => setConfirmar(true)}>
+                  Registrar salida de {aCerrar}
+                </button>
+              ) : null}
+            </div>
             {confirmar ? (
-              <div className="mt-4">
+              <div className="mb-4">
                 <SalidaMasivaConfirmar aCerrar={aCerrar} excluidas={excluir.size} enviando={enviando} onCancelar={() => setConfirmar(false)} onConfirmar={() => void ejecutar()} />
               </div>
             ) : null}
+            {error ? <p className={ERR_VIG}>{error}</p> : null}
+            {ok ? <p className={OK_VIG}>Salieron {ok.cerradas}. Quedan {ok.quedan}.</p> : null}
+            <p className="mt-3 text-sm text-gray-600 dark:text-gray-400">
+              Pulse Quedarse para dejarlo adentro. Vuelva a pulsar si se equivocó.
+            </p>
+            <input className="input-field mt-3 w-full max-w-md" placeholder="Buscar por nombre o documento" value={q} onChange={(e) => setQ(e.target.value)} />
+            <div className="mt-3">
+              <SalidaMasivaLista items={visibles} excluir={excluir} onToggle={(id) => setExcluir((prev) => toggleExcluir(prev, id))} />
+            </div>
           </>
         ) : <p className="mt-3 text-sm text-gray-500">Elija una sede para ver quién está adentro.</p>}
-        {error ? <p className="mt-3 text-sm text-red-600">{error}</p> : null}
-        {ok ? <p className="mt-3 text-sm text-emerald-700">Salieron {ok.cerradas}. Quedan {ok.quedan}.</p> : null}
+        {!sedeId && error ? <p className={ERR_VIG}>{error}</p> : null}
       </section>
     </div>
   );

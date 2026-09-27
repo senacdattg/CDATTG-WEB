@@ -5,24 +5,16 @@
  */
 import { useEffect, useState } from 'react';
 import { apiService } from '../../services/api';
-import type { AccesoHistorialParams, RegionalItem, SedeItem } from '../../types';
+import type { RegionalItem, SedeItem } from '../../types';
 import { axiosErrorMessage } from '../../utils/httpError';
-import { BorrarAccesoConfirmar } from './BorrarAccesoConfirmar';
+import { BorrarAccesoBotonera } from './BorrarAccesoBotonera';
 import { BorrarAccesoFiltros } from './BorrarAccesoFiltros';
 import { BorrarAccesoGuia } from './BorrarAccesoGuia';
 import { hayRangoFechas, hoyISO } from './borrarAccesoFrase';
-import { AvisoZipManual, btnZip } from './BorrarAccesoZipUi';
+import { paramsBorrar } from './borrarAccesoParams';
+import { avisoAccesoAviso, avisoAccesoError, avisoAccesoOk } from './vigilanciaAccesoAvisos';
 import { guardarZipRespaldo } from './guardarZipRespaldo';
-import { CAJA_VIG, ERR_VIG, OK_VIG, PAGINA_VIG, SUB_VIG, TITULO_VIG } from './vigilanciaUi';
-
-function paramsBorrar(regionalId: string, sedeId: string, desde: string, hasta: string): AccesoHistorialParams {
-  const p: AccesoHistorialParams = { page: 1, page_size: 1 };
-  if (regionalId) p.regional_id = Number(regionalId);
-  if (sedeId) p.sede_id = Number(sedeId);
-  if (desde) p.fecha_desde = desde;
-  if (hasta) p.fecha_hasta = hasta;
-  return p;
-}
+import { CAJA_VIG, PAGINA_VIG, SUB_VIG, TITULO_VIG } from './vigilanciaUi';
 
 export function BorrarAccesoTab() {
   const [regionales, setRegionales] = useState<RegionalItem[]>([]);
@@ -53,7 +45,10 @@ export function BorrarAccesoTab() {
   };
 
   const consultar = async () => {
-    if (!hayRangoFechas(fechaDesde, fechaHasta)) { setError('Falta una fecha.'); return; }
+    if (!hayRangoFechas(fechaDesde, fechaHasta)) {
+      setError('Falta una fecha.');
+      return;
+    }
     setLoading(true); setError(''); setOk('');
     try {
       const res = await apiService.accesoHistorial(paramsBorrar(regionalId, sedeId, fechaDesde, fechaHasta));
@@ -67,18 +62,32 @@ export function BorrarAccesoTab() {
     setError(''); setDescargaOk(false); setZipPendiente(false);
     try {
       const blob = await apiService.accesoZipRegistros(paramsBorrar(regionalId, sedeId, fechaDesde, fechaHasta));
-      if (blob.type.includes('json')) { setError('No se pudo armar el ZIP.'); return; }
+      if (blob.type.includes('json')) {
+        setError('No se pudo armar el ZIP.');
+        avisoAccesoError('No se pudo armar el ZIP.');
+        return;
+      }
       const r = await guardarZipRespaldo(blob, 'registros-acceso-porteria.zip');
-      if (r === 'guardado') setDescargaOk(true);
-      else if (r === 'pendiente_confirmar') setZipPendiente(true);
-      else setError('Cancelaste el guardado. Vuelve a descargar y pulsa Guardar.');
+      if (r === 'guardado') {
+        setDescargaOk(true);
+        avisoAccesoOk('Copia ZIP lista', 'Ya puede borrar esas visitas.');
+      } else if (r === 'pendiente_confirmar') setZipPendiente(true);
+      else {
+        setError('Cancelaste el guardado. Vuelve a descargar y pulsa Guardar.');
+        avisoAccesoAviso('ZIP cancelado', 'Si canceló Guardar, baje de nuevo la copia.');
+      }
     } catch (e: unknown) {
-      setError(axiosErrorMessage(e, 'No se pudo descargar el ZIP.'));
+      const msg = axiosErrorMessage(e, 'No se pudo descargar el ZIP.');
+      setError(msg);
+      avisoAccesoError(msg);
     }
   };
 
   const eliminar = async () => {
-    if (!descargaOk) { setError('Hay que guardar el ZIP antes de eliminar.'); return; }
+    if (!descargaOk) {
+      setError('Hay que guardar el ZIP antes de eliminar.');
+      return;
+    }
     setEnviando(true); setError('');
     try {
       const res = await apiService.accesoBorrarRegistros({
@@ -91,11 +100,14 @@ export function BorrarAccesoTab() {
         confirmacion_2: c2,
       });
       setOk(`Se quitaron ${res.eliminados} visitas. Las personas siguen en el sistema.`);
+      avisoAccesoOk('Visitas borradas', `${res.eliminados} salieron del historial. Las personas siguen.`);
       setPaso(0); setDescargaOk(false); setZipPendiente(false); setC1(''); setC2('');
       const otra = await apiService.accesoHistorial(paramsBorrar(regionalId, sedeId, fechaDesde, fechaHasta));
       setTotal(otra.total);
     } catch (e: unknown) {
-      setError(axiosErrorMessage(e, 'No se pudieron eliminar los registros.'));
+      const msg = axiosErrorMessage(e, 'No se pudieron eliminar los registros.');
+      setError(msg);
+      avisoAccesoError(msg);
     } finally { setEnviando(false); }
   };
 
@@ -113,29 +125,16 @@ export function BorrarAccesoTab() {
           onSede={(v) => { setSedeId(v); resetRespaldo(); }}
           onDesde={(v) => { setFechaDesde(v); resetRespaldo(); }}
           onHasta={(v) => { setFechaHasta(v); resetRespaldo(); }} />
-        {total === null ? null : (
-          <p className="mt-3 text-sm">{total} visitas</p>
-        )}
-        <div className="mt-4 flex flex-wrap gap-2">
-          <button type="button" className="btn-primary" disabled={loading} onClick={() => void consultar()}>{loading ? 'Contando...' : 'Consultar'}</button>
-          {total !== null && total > 0 ? (
-            <button type="button" aria-pressed={descargaOk} className={btnZip(descargaOk)} onClick={() => void bajarZip()}>Descargar ZIP</button>
-          ) : null}
-          {descargaOk && total !== null && total > 0 && paso === 0 ? (
-            <button type="button" className="rounded-lg bg-red-700 px-4 py-2 text-sm text-white" onClick={() => setPaso(1)}>Eliminar</button>
-          ) : null}
-        </div>
-        <AvisoZipManual descargaOk={descargaOk} zipPendiente={zipPendiente} onMarcar={setDescargaOk} />
-        {paso === 1 || paso === 2 ? (
-          <div className="mt-4">
-            <BorrarAccesoConfirmar paso={paso} total={total ?? 0} c1={c1} c2={c2} enviando={enviando}
-              onC1={setC1} onC2={setC2} onPaso2={() => setPaso(2)}
-              onCancelar={() => { setPaso(0); setDescargaOk(false); setZipPendiente(false); setC1(''); setC2(''); }}
-              onEliminar={() => void eliminar()} />
-          </div>
-        ) : null}
-        {error ? <p className={ERR_VIG}>{error}</p> : null}
-        {ok ? <p className={OK_VIG}>{ok}</p> : null}
+        <BorrarAccesoBotonera
+          total={total} loading={loading} descargaOk={descargaOk} zipPendiente={zipPendiente}
+          paso={paso} c1={c1} c2={c2} enviando={enviando} error={error} ok={ok}
+          onConsultar={() => void consultar()} onZip={() => void bajarZip()} onPaso1={() => setPaso(1)}
+          onC1={setC1} onC2={setC2} onPaso2={() => setPaso(2)}
+          onCancelar={() => {
+            setPaso(0); setDescargaOk(false); setZipPendiente(false); setC1(''); setC2('');
+            avisoAccesoAviso('Borrado cancelado', 'No se quitó ninguna visita.');
+          }}
+          onEliminar={() => void eliminar()} onMarcarZip={setDescargaOk} />
       </section>
     </div>
   );

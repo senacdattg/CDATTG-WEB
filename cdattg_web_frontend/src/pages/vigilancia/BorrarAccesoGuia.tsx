@@ -10,9 +10,9 @@
 export function BorrarAccesoGuia() {
   return (
     <ol className="mt-2 list-decimal space-y-1 pl-5 text-sm text-gray-700 dark:text-gray-300">
-      <li>Consulta cuántas visitas hay en el rango.</li>
-      <li>Descarga el ZIP y elige dónde guardarlo. Si cancelas, hay que volver a descargar.</li>
-      <li>Recién entonces aparece Eliminar. Confirma dos veces con la palabra ELIMINAR. No se borra a las personas, solo las visitas.</li>
+      <li>Cuenta cuántas visitas hay en el rango.</li>
+      <li>Guarda la copia ZIP. Si cancelas, hay que volver a bajarla.</li>
+      <li>Recién entonces aparece Borrar esas visitas. Confirma dos veces con ELIMINAR. No se borra a las personas.</li>
     </ol>
   );
 }

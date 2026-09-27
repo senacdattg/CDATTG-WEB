@@ -28,6 +28,7 @@ type PersonaUserAccountService interface {
 	EnsureForPersonas(personaIDs []uint) error
 	SyncEmail(personaID uint, email string) error
 	ResetPassword(personaID uint, numeroDocumento string) error
+	BorrarForPersona(personaID uint) error
 }
 
 type personaUserAccountService struct {

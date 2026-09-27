@@ -64,6 +64,8 @@ type VigilanciaAccesoService interface {
 	Estadisticas(f dto.AccesoHistorialFiltros) (*dto.AccesoEstadisticasResponse, error)
 	ZipExcelAccesos(f dto.AccesoHistorialFiltros) ([]byte, error)
 	BorrarAccesos(req dto.AccesoBorrarRequest) (*dto.AccesoBorrarResponse, error)
+	ListPersonasSinNombre(page, pageSize int) (*dto.AccesoStubsListaResponse, error)
+	BorrarPersonasSinNombre(req dto.AccesoBorrarStubsRequest) (*dto.AccesoBorrarStubsResponse, error)
 	LeerFotoAcceso(documento string) (*PersonaFotoArchivo, error)
 }
 

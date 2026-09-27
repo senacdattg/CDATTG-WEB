@@ -120,6 +120,8 @@ import type {
   AccesoHistorialResponse,
   AccesoEstadisticasResponse,
   AccesoBorrarResponse,
+  AccesoStubsListaResponse,
+  AccesoBorrarStubsResponse,
 } from '../types';
 import type {
   CreatePersonalRolRequest,
@@ -1440,6 +1442,21 @@ class ApiService {
     confirmacion_2: string;
   }): Promise<AccesoBorrarResponse> {
     const response = await this.api.post<{ data: AccesoBorrarResponse }>('/vigilancia/acceso/registros/borrar', data);
+    return response.data.data;
+  }
+
+  async accesoPersonasSinNombre(page: number, pageSize: number): Promise<AccesoStubsListaResponse> {
+    const response = await this.api.get<{ data: AccesoStubsListaResponse }>('/vigilancia/acceso/personas-sin-nombre', {
+      params: { page, page_size: pageSize },
+    });
+    return response.data.data;
+  }
+
+  async accesoBorrarPersonasSinNombre(ids: number[], confirmado: boolean): Promise<AccesoBorrarStubsResponse> {
+    const response = await this.api.post<{ data: AccesoBorrarStubsResponse }>('/vigilancia/acceso/personas-sin-nombre/borrar', {
+      ids,
+      confirmado,
+    });
     return response.data.data;
   }
 

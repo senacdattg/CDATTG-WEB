@@ -52,6 +52,12 @@ func (m *mockVigAccesoFoto) ZipExcelAccesos(dto.AccesoHistorialFiltros) ([]byte,
 func (m *mockVigAccesoFoto) BorrarAccesos(dto.AccesoBorrarRequest) (*dto.AccesoBorrarResponse, error) {
 	return m.borrado, m.err
 }
+func (m *mockVigAccesoFoto) ListPersonasSinNombre(int, int) (*dto.AccesoStubsListaResponse, error) {
+	return nil, m.err
+}
+func (m *mockVigAccesoFoto) BorrarPersonasSinNombre(dto.AccesoBorrarStubsRequest) (*dto.AccesoBorrarStubsResponse, error) {
+	return nil, m.err
+}
 func (m *mockVigAccesoFoto) LeerFotoAcceso(string) (*services.PersonaFotoArchivo, error) {
 	return m.foto, m.err
 }

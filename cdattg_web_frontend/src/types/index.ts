@@ -1357,6 +1357,22 @@ export interface AccesoBorrarResponse {
   eliminados: number;
 }
 
+export interface AccesoStubItem {
+  id: number;
+  numero_documento: string;
+}
+
+export interface AccesoStubsListaResponse {
+  items: AccesoStubItem[];
+  total: number;
+  page: number;
+  page_size: number;
+}
+
+export interface AccesoBorrarStubsResponse {
+  eliminados: number;
+}
+
 // —— Complementarios (FPI): verificación de aspirantes en SofiaPlus ——
 export type VerificacionEstado = 'REGISTRADO' | 'NO_REGISTRADO' | 'NO_VERIFICADO';
 

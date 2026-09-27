@@ -1,19 +1,21 @@
 /**
- * Une reporte, salida masiva y borrar visitas de portería.
+ * Une reporte, salida masiva, visitas y personas sin nombre.
  *
  * @author Cristian Deysdayr Jiménez
  */
 import { useState } from 'react';
 import { VigilanciaAccesoPanel } from '../VigilanciaAccesoPanel';
 import { BorrarAccesoTab } from './BorrarAccesoTab';
+import { PersonasSinNombreTab } from './PersonasSinNombreTab';
 import { SalidaMasivaTab } from './SalidaMasivaTab';
 
-type TabId = 'reporte' | 'salida' | 'borrar';
+type TabId = 'reporte' | 'salida' | 'borrar' | 'stubs';
 
 const TABS: { id: TabId; texto: string }[] = [
   { id: 'reporte', texto: 'Reporte' },
   { id: 'salida', texto: 'Salida masiva' },
   { id: 'borrar', texto: 'Borrar registros' },
+  { id: 'stubs', texto: 'Personas sin nombre' },
 ];
 
 /**
@@ -41,6 +43,7 @@ export function VigilanciaAccesoPage() {
       {tab === 'reporte' ? <VigilanciaAccesoPanel /> : null}
       {tab === 'salida' ? <SalidaMasivaTab /> : null}
       {tab === 'borrar' ? <BorrarAccesoTab /> : null}
+      {tab === 'stubs' ? <PersonasSinNombreTab /> : null}
     </div>
   );
 }

@@ -72,6 +72,16 @@ export function urlFotoBiblioteca(id: number): string {
   return `${API_BASE_URL}/carnets/biblioteca/${id}/foto`;
 }
 
+/** Marco o quito “listo” (solo biblioteca y superadmin). */
+export async function marcarCarnetBibliotecaListo(id: number, listo: boolean): Promise<void> {
+  const res = await fetch(`${API_BASE_URL}/carnets/biblioteca/${id}/listo`, {
+    method: 'POST',
+    headers: { ...auth(), 'Content-Type': 'application/json' },
+    body: JSON.stringify({ listo }),
+  });
+  await leerJson(res, 'No pude guardar si el carnet quedó listo');
+}
+
 /** Listado de carnets regulares ya validados para biblioteca. */
 export async function listarCarnetsBiblioteca(fichaId?: number): Promise<CarnetBibliotecaResponse> {
   const q = fichaId && fichaId > 0 ? `?ficha_id=${fichaId}` : '';

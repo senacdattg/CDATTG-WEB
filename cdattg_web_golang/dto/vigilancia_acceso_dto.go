@@ -21,8 +21,9 @@ type AccesoIngresoRequest struct {
 
 // AccesoSalidaRequest confirma salida del centro.
 type AccesoSalidaRequest struct {
-	NumeroDocumento   string `json:"numero_documento" binding:"required"`
-	MotivoSalida      string `json:"motivo_salida" binding:"required"`
+	NumeroDocumento string `json:"numero_documento" binding:"required"`
+	// MotivoSalida es opcional e informativo: la salida se registra sin motivo si no se envía.
+	MotivoSalida      string `json:"motivo_salida"`
 	ObservacionSalida string `json:"observacion_salida"`
 	MetodoRegistro    string `json:"metodo_registro" binding:"required"`
 	SedeID            *uint  `json:"sede_id"`
@@ -77,15 +78,18 @@ type AccesoLookupResponse struct {
 	Persona                 AccesoPersonaFicha   `json:"persona"`
 	Dentro                  bool                 `json:"dentro"`
 	AccionSugerida          string               `json:"accion_sugerida"` // INGRESO | SALIDA
-	VisitaAbierta           *AccesoVisitaAbierta  `json:"visita_abierta,omitempty"`
-	Ficha                   *AccesoFichaResumen   `json:"ficha,omitempty"`  // primera ficha (compat)
-	Fichas                  []AccesoFichaResumen  `json:"fichas,omitempty"` // todas las fichas activas vinculadas
-	SedeID                  uint                  `json:"sede_id"`
-	TiposPersona            []string              `json:"tipos_persona"`
-	MotivosSalida           []string              `json:"motivos_salida"`
-	PuedeConfirmar          bool                  `json:"puede_confirmar"`
-	Alerta                  string                `json:"alerta,omitempty"`
-	PermiteSalidaSinIngreso bool                  `json:"permite_salida_sin_ingreso"`
+	VisitaAbierta           *AccesoVisitaAbierta `json:"visita_abierta,omitempty"`
+	Ficha                   *AccesoFichaResumen  `json:"ficha,omitempty"`  // primera ficha (compat)
+	Fichas                  []AccesoFichaResumen `json:"fichas,omitempty"` // todas las fichas activas vinculadas
+	SedeID                  uint                 `json:"sede_id"`
+	TiposPersona            []string             `json:"tipos_persona"`
+	MotivosSalida           []string             `json:"motivos_salida"`
+	PuedeConfirmar          bool                 `json:"puede_confirmar"`
+	Alerta                  string               `json:"alerta,omitempty"`
+	PermiteSalidaSinIngreso bool                 `json:"permite_salida_sin_ingreso"`
+	// SegundosRestantesSalida: segundos que faltan para poder registrar la salida
+	// (solo aplica a la salida regular con visita abierta). 0 = salida habilitada.
+	SegundosRestantesSalida int `json:"segundos_restantes_salida"`
 }
 
 // AccesoRegistroResponse respuesta tras confirmar ingreso/salida.
@@ -141,20 +145,20 @@ type AccesoHistorialFiltros struct {
 
 // AccesoHistorialItem fila del reporte.
 type AccesoHistorialItem struct {
-	VisitaID           uint               `json:"visita_id"`
-	Persona            AccesoPersonaFicha `json:"persona"`
-	TipoPersona        string             `json:"tipo_persona"`
-	SedeID             uint               `json:"sede_id"`
-	SedeNombre         string             `json:"sede_nombre"`
-	RegionalID         *uint              `json:"regional_id,omitempty"`
-	RegionalNombre     string             `json:"regional_nombre,omitempty"`
-	TimestampEntrada   string             `json:"timestamp_entrada"`
-	TimestampSalida    *string            `json:"timestamp_salida,omitempty"`
-	MetodoRegistro     string             `json:"metodo_registro"`
-	MotivoSalida       string             `json:"motivo_salida,omitempty"`
-	ObservacionSalida  string             `json:"observacion_salida,omitempty"`
-	SalidaSinIngreso   bool               `json:"salida_sin_ingreso"`
-	Estado             string             `json:"estado"` // abierto | cerrado
+	VisitaID          uint               `json:"visita_id"`
+	Persona           AccesoPersonaFicha `json:"persona"`
+	TipoPersona       string             `json:"tipo_persona"`
+	SedeID            uint               `json:"sede_id"`
+	SedeNombre        string             `json:"sede_nombre"`
+	RegionalID        *uint              `json:"regional_id,omitempty"`
+	RegionalNombre    string             `json:"regional_nombre,omitempty"`
+	TimestampEntrada  string             `json:"timestamp_entrada"`
+	TimestampSalida   *string            `json:"timestamp_salida,omitempty"`
+	MetodoRegistro    string             `json:"metodo_registro"`
+	MotivoSalida      string             `json:"motivo_salida,omitempty"`
+	ObservacionSalida string             `json:"observacion_salida,omitempty"`
+	SalidaSinIngreso  bool               `json:"salida_sin_ingreso"`
+	Estado            string             `json:"estado"` // abierto | cerrado
 }
 
 // AccesoHistorialResponse listado paginado.

@@ -30,6 +30,7 @@ type CarnetBibliotecaItem struct {
 	InstructorLider string `json:"instructor_lider"`
 	TieneFoto       bool   `json:"tiene_foto"`
 	FotoURL         string `json:"foto_url"`
+	Listo           bool   `json:"listo"`
 }
 
 // CarnetBibliotecaResponse junta el catálogo de fichas y las personas.

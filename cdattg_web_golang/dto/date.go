@@ -3,6 +3,8 @@ package dto
 import (
 	"encoding/json"
 	"time"
+
+	"github.com/sena/cdattg-web-golang/utils"
 )
 
 // FlexDate acepta en JSON fechas "2006-01-02", RFC3339 o null para binding con el frontend.
@@ -22,7 +24,9 @@ func (t *FlexDate) UnmarshalJSON(b []byte) error {
 		t.Time = time.Time{}
 		return nil
 	}
-	parsed, err := time.Parse("2006-01-02", s)
+	// Una fecha sin hora pertenece al calendario de la aplicación. Interpretarla
+	// como UTC adelanta su inicio y vencimiento un día al convertirla a Bogotá.
+	parsed, err := time.ParseInLocation(time.DateOnly, s, utils.AppLocation())
 	if err != nil {
 		parsed, err = time.Parse(time.RFC3339, s)
 		if err != nil {

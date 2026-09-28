@@ -25,6 +25,7 @@ type CarnetSolicitudRepository interface {
 	FindNombresLiderPorFicha(fichaIDs []uint) (map[uint]string, error)
 	FindLiderPersonaIDDeFicha(fichaID uint) (uint, error)
 	FindPersonasPorIDs(ids []uint) (map[uint]models.Persona, error)
+	FindFichasPorIDs(ids []uint) (map[uint]models.FichaCaracterizacion, error)
 	Create(s *models.CarnetSolicitud) error
 	Update(s *models.CarnetSolicitud) error
 }

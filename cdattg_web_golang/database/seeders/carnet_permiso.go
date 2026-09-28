@@ -35,6 +35,9 @@ func SyncCarnetDigitalPermission(db *gorm.DB) error {
 	if err := seedBibliotecarioPermissions(e); err != nil {
 		return err
 	}
+	if err := EnsureUsuarioBiblioteca(db); err != nil {
+		return err
+	}
 	if err := asignarRolBibliotecario(db, e); err != nil {
 		return err
 	}

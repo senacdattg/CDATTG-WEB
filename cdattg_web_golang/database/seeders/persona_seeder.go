@@ -36,6 +36,7 @@ var personaSeeds = []PersonaSeed{
 	// ID alto: no reutilizar IDs bajos (pueden ser aprendices reales; el sync les asignaría APRENDIZ/fichas).
 	{9100, "9000000010", "FORMACION", "PROFESIONAL", "INTEGRAL", "COMPLEMENTARIA", "3071010101", "formacionprofesionalintegralcomplementaria@dataguaviare.com.co", "CALLE 10 #10-10", "1991-02-01"},
 	{9101, "9000000011", "VIGILANCIA", "SENA", "CDATTG", "PRUEBAS", "3081111110", "vigilanciasena@dataguaviare.com.co", "CALLE 11 #11-11", "1992-03-01"},
+	{9102, "9000000015", "SUPER", "VIGILANCIA", "SENA", "CDATTG", "3081111115", "supervigilantesena@dataguaviare.com.co", "CALLE 11 #11-15", "1992-03-15"},
 	{9200, "9000000012", "BIBLIOTECA", "SENA", "CDATTG", "PRUEBAS", "3091212120", "biblioteca@dataguaviare.com.co", "CALLE 12 #12-12", "1993-04-01"},
 	{9201, "9000000013", "MEDIA", "TECNICA", "CDATTG", "PRUEBAS", "3101313131", "mediatecnica@dataguaviare.com.co", "CALLE 13 #13-13", "1994-05-01"},
 	{9202, "9000000014", "FORMACION", "COMPLEMENTARIA", "CDATTG", "PRUEBAS", "3111424242", "formacioncomplementaria@dataguaviare.com.co", "CALLE 14 #14-14", "1995-06-01"},

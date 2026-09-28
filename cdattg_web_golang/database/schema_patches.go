@@ -305,6 +305,7 @@ func EnsureSchemaPatches() error {
 		patchAutoMigratePersonaCambioPendiente,
 		patchPersonaIngresoSalidaCancelado,
 		patchPersonaAceptaTerminos,
+		patchAutoMigratePersonalRol,
 	}
 	for _, patch := range patches {
 		if err := patch(); err != nil {

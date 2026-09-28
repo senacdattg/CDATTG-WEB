@@ -29,6 +29,9 @@ import type { SidebarManifestItem } from './types';
 /** Perfiles que administran la formación (media técnica y formación complementaria). */
 const ROLES_FORMACION = ['MEDIA TECNICA', 'FORMACION COMPLEMENTARIA'] as const;
 
+/** Quien puede abrir el menú de vigilancia (el borrar visitas va por permiso aparte). */
+const ROLES_VIGILANCIA = ['VIGILANTE', 'SUPER VIGILANTE', 'SUPER ADMINISTRADOR', 'ADMINISTRADOR', 'COORDINADOR'] as const;
+
 /** Orden y agrupación del menú lateral (de arriba hacia abajo). */
 export const SIDEBAR_MANIFEST: SidebarManifestItem[] = [
   // —— Inicio (accesos directos, sin acordeón) ——
@@ -346,7 +349,8 @@ export const SIDEBAR_MANIFEST: SidebarManifestItem[] = [
     path: vigilanciaPaths.porteria,
     label: 'Portería / Acceso',
     permission: 'REGISTRAR ACCESO SEDE',
-    rolesRequired: ['VIGILANTE', 'SUPER ADMINISTRADOR', 'ADMINISTRADOR', 'COORDINADOR'],
+    rolesRequired: [...ROLES_VIGILANCIA],
+    alsoVisibleForPermissions: ['REGISTRAR ACCESO SEDE'],
     iconKey: 'vigilancia/porteria',
   },
   {
@@ -354,7 +358,8 @@ export const SIDEBAR_MANIFEST: SidebarManifestItem[] = [
     path: vigilanciaPaths.reporte,
     label: 'Reporte de accesos',
     permission: 'VER ACCESO SEDE',
-    rolesRequired: ['VIGILANTE', 'SUPER ADMINISTRADOR', 'ADMINISTRADOR', 'COORDINADOR'],
+    rolesRequired: [...ROLES_VIGILANCIA],
+    alsoVisibleForPermissions: ['VER ACCESO SEDE'],
     iconKey: 'vigilancia/reporte',
   },
   {
@@ -362,7 +367,8 @@ export const SIDEBAR_MANIFEST: SidebarManifestItem[] = [
     path: vigilanciaPaths.ambientes,
     label: 'Ambientes en uso',
     permission: null,
-    rolesRequired: ['VIGILANTE', 'SUPER ADMINISTRADOR', 'ADMINISTRADOR', 'COORDINADOR'],
+    rolesRequired: [...ROLES_VIGILANCIA],
+    alsoVisibleForPermissions: ['REGISTRAR ACCESO SEDE', 'VER ACCESO SEDE'],
     iconKey: 'vigilancia/ambientes',
   },
   {
@@ -370,7 +376,8 @@ export const SIDEBAR_MANIFEST: SidebarManifestItem[] = [
     path: vigilanciaPaths.registroPersonas,
     label: 'Registro de personas',
     permission: 'REGISTRAR PERSONA',
-    rolesRequired: ['VIGILANTE', 'SUPER ADMINISTRADOR', 'ADMINISTRADOR', 'COORDINADOR'],
+    rolesRequired: [...ROLES_VIGILANCIA],
+    alsoVisibleForPermissions: ['REGISTRAR PERSONA'],
     iconKey: 'vigilancia/registro',
   },
   {
@@ -378,7 +385,8 @@ export const SIDEBAR_MANIFEST: SidebarManifestItem[] = [
     path: vigilanciaPaths.cambiosPendientes,
     label: 'Cambios pendientes',
     permission: 'REGISTRAR PERSONA',
-    rolesRequired: ['VIGILANTE', 'SUPER ADMINISTRADOR', 'ADMINISTRADOR', 'COORDINADOR'],
+    rolesRequired: [...ROLES_VIGILANCIA],
+    alsoVisibleForPermissions: ['REGISTRAR PERSONA'],
     iconKey: 'vigilancia/cambios',
   },
 

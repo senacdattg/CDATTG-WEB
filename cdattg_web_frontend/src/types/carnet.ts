@@ -82,6 +82,7 @@ export type CarnetBibliotecaItem = {
   instructor_lider: string;
   tiene_foto: boolean;
   foto_url: string;
+  listo: boolean;
 };
 
 export type CarnetBibliotecaResponse = {

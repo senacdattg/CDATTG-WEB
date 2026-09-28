@@ -1,6 +1,7 @@
 package repositories
 
 import (
+	"errors"
 	"strings"
 	"time"
 
@@ -42,11 +43,15 @@ type AccesoStatsResult struct {
 type PersonaIngresoSalidaRepository interface {
 	FindByID(id uint) (*models.PersonaIngresoSalida, error)
 	FindAbiertaByPersonaAndSede(personaID, sedeID uint) (*models.PersonaIngresoSalida, error)
+	FindUltimaSalidaSinIngresoByPersonaSede(personaID, sedeID uint) (*models.PersonaIngresoSalida, error)
 	Create(row *models.PersonaIngresoSalida) error
 	Update(row *models.PersonaIngresoSalida) error
 	ListAbiertasBySede(sedeID uint) ([]models.PersonaIngresoSalida, error)
 	CountAbiertasBySede(sedeID *uint, regionalID *uint) (int64, error)
 	ListHistorial(q AccesoHistorialQuery) ([]models.PersonaIngresoSalida, int64, error)
+	ListTodosHistorial(q AccesoHistorialQuery) ([]models.PersonaIngresoSalida, error)
+	DeleteByQuery(q AccesoHistorialQuery) (int64, error)
+	DeleteHardByPersonaID(personaID uint) error
 	StatsHistorial(q AccesoHistorialQuery) (AccesoStatsResult, error)
 }
 
@@ -79,6 +84,24 @@ func (r *personaIngresoSalidaRepository) FindAbiertaByPersonaAndSede(personaID, 
 	return &row, nil
 }
 
+// FindUltimaSalidaSinIngresoByPersonaSede devuelve la salida irregular más reciente de la
+// persona en la sede. Se usa para aplicar la espera mínima entre salidas irregulares, ya que
+// no existe visita abierta que sirva de referencia. Devuelve (nil, nil) si nunca hubo una.
+func (r *personaIngresoSalidaRepository) FindUltimaSalidaSinIngresoByPersonaSede(personaID, sedeID uint) (*models.PersonaIngresoSalida, error) {
+	var row models.PersonaIngresoSalida
+	err := r.db.
+		Where("persona_id = ? AND sede_id = ? AND salida_sin_ingreso = true", personaID, sedeID).
+		Order("timestamp_salida DESC").
+		First(&row).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	return &row, nil
+}
+
 func (r *personaIngresoSalidaRepository) Create(row *models.PersonaIngresoSalida) error {
 	return r.db.Create(row).Error
 }
@@ -99,6 +122,7 @@ func (r *personaIngresoSalidaRepository) ListAbiertasBySede(sedeID uint) ([]mode
 
 func (r *personaIngresoSalidaRepository) baseQuery(q AccesoHistorialQuery) *gorm.DB {
 	tx := r.db.Model(&models.PersonaIngresoSalida{}).
+		Where("persona_ingreso_salida.deleted_at IS NULL").
 		Joins("LEFT JOIN sedes ON sedes.id = persona_ingreso_salida.sede_id")
 
 	if q.SedeID != nil && *q.SedeID > 0 {
@@ -155,7 +179,7 @@ func (r *personaIngresoSalidaRepository) ListHistorial(q AccesoHistorialQuery) (
 	}
 
 	var total int64
-	if err := r.baseQuery(q).Count(&total).Error; err != nil {
+	if err := r.baseQuery(q).Distinct("persona_ingreso_salida.id").Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
 

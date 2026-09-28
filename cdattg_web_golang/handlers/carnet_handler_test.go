@@ -68,6 +68,7 @@ func (m *mockCarnetSvc) LeerFotoBiblioteca(uint) (*services.PersonaFotoArchivo, 
 func (m *mockCarnetSvc) LeerFotoBibliotecaPorDocumento(string) (*services.PersonaFotoArchivo, error) {
 	return m.foto, m.err
 }
+func (m *mockCarnetSvc) MarcarListoBiblioteca(uint, bool) error { return m.err }
 
 func TestGetMiCarnetSinPersona(t *testing.T) {
 	gin.SetMode(gin.TestMode)

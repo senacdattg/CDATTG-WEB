@@ -1251,6 +1251,8 @@ export interface AccesoLookupResponse {
   puede_confirmar: boolean;
   alerta?: string;
   permite_salida_sin_ingreso: boolean;
+  /** Segundos que faltan para poder registrar la salida (salida regular). 0 = salida habilitada. */
+  segundos_restantes_salida: number;
 }
 
 export interface AccesoRegistroResponse {
@@ -1279,6 +1281,12 @@ export interface AccesoDentroItem {
   tipo_persona: string;
   timestamp_entrada: string;
   metodo_registro: string;
+}
+
+export interface AccesoSalidaMasivaResponse {
+  cerradas: number;
+  excluidas: number;
+  quedan: number;
 }
 
 export interface AccesoHistorialItem {
@@ -1343,6 +1351,26 @@ export interface AccesoHistorialParams {
   salida_sin_ingreso?: boolean;
   page?: number;
   page_size?: number;
+}
+
+export interface AccesoBorrarResponse {
+  eliminados: number;
+}
+
+export interface AccesoStubItem {
+  id: number;
+  numero_documento: string;
+}
+
+export interface AccesoStubsListaResponse {
+  items: AccesoStubItem[];
+  total: number;
+  page: number;
+  page_size: number;
+}
+
+export interface AccesoBorrarStubsResponse {
+  eliminados: number;
 }
 
 // —— Complementarios (FPI): verificación de aspirantes en SofiaPlus ——

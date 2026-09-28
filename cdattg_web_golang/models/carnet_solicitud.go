@@ -31,6 +31,8 @@ type CarnetSolicitud struct {
 	ValidadorInstructorID *uint      `gorm:"column:validador_instructor_id" json:"validador_instructor_id"`
 	ValidadoEn            *time.Time `gorm:"column:validado_en" json:"validado_en"`
 	MotivoRechazo         string     `gorm:"column:motivo_rechazo;size:255" json:"motivo_rechazo"`
+	Listo                 bool       `gorm:"column:listo;default:false" json:"listo"`
+	ListoEn               *time.Time `gorm:"column:listo_en" json:"listo_en"`
 }
 
 // TableName nombra la tabla.

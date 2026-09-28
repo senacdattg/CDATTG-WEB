@@ -23,6 +23,10 @@ func (s *carnetDigitalService) ListarBiblioteca(fichaID uint) (*dto.CarnetBiblio
 		}
 		return nil, err
 	}
+	list, err = s.soloSolicitudesFichaViva(list)
+	if err != nil {
+		return nil, err
+	}
 	lideres, err := s.solicitudRepo.FindNombresLiderPorFicha(fichaIDsDeSolicitudes(list))
 	if err != nil {
 		return nil, err

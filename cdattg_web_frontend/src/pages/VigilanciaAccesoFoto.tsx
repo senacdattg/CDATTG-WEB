@@ -4,7 +4,7 @@
  * @author Cristian Deysdayr Jiménez
  */
 import { useEffect, useState } from 'react';
-import { urlFotoAcceso } from '../services/vigilanciaAccesoFoto';
+import { debeMostrarFotoPorteria, urlFotoAcceso } from '../services/vigilanciaAccesoFoto';
 
 /**
  * Cargo la foto de portería con el token de la sesión.
@@ -18,7 +18,7 @@ export function VigilanciaAccesoFoto({
   const [src, setSrc] = useState<string | null>(null);
   useEffect(() => {
     setSrc(null);
-    if (!tieneFoto || !documento) return;
+    if (!debeMostrarFotoPorteria(tieneFoto) || !documento) return;
     const token = localStorage.getItem('token') ?? '';
     let revoke: string | null = null;
     void fetch(urlFotoAcceso(documento), { headers: { Authorization: `Bearer ${token}` } })
@@ -32,13 +32,10 @@ export function VigilanciaAccesoFoto({
       if (revoke) URL.revokeObjectURL(revoke);
     };
   }, [documento, tieneFoto]);
+  if (!debeMostrarFotoPorteria(tieneFoto) || !src) return null;
   return (
     <figure className="mx-auto h-44 w-36 overflow-hidden rounded-lg bg-gray-100 dark:bg-gray-700">
-      {src ? (
-        <img src={src} alt="Foto de la persona" className="h-full w-full object-cover" />
-      ) : (
-        <span className="flex h-full items-center justify-center text-xs text-gray-400">Sin foto</span>
-      )}
+      <img src={src} alt="Foto de la persona" className="h-full w-full object-cover" />
     </figure>
   );
 }

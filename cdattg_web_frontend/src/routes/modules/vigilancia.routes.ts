@@ -18,8 +18,8 @@ export const vigilanciaRoutes: RouteObject[] = [
       breadcrumb: [{ label: 'Vigilancia' }, { label: 'Reporte de accesos' }],
     },
     lazy: async () => {
-      const { VigilanciaAccesoPanel } = await import('../../pages/VigilanciaAccesoPanel');
-      return { Component: VigilanciaAccesoPanel };
+      const { VigilanciaAccesoPage } = await import('../../pages/vigilancia/VigilanciaAccesoPage');
+      return { Component: VigilanciaAccesoPage };
     },
   },
   {

@@ -67,6 +67,14 @@ func TestEnsureUsuarioSupervigilanteNoPisaClave(t *testing.T) {
 	}
 }
 
+func TestVigilanteNoLlevaAltaPersonalEnPaqueteBase(t *testing.T) {
+	for _, p := range authz.PermisosVigilancia {
+		if p == "CREAR PERSONA" {
+			t.Fatal("el vigilante no debe crear personas por el paquete base")
+		}
+	}
+}
+
 func TestVigilanteNoTienePermisoBorrarEnListaBase(t *testing.T) {
 	for _, p := range authz.PermisosVigilancia {
 		if p == authz.ActBorrarAccesoSede {

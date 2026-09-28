@@ -230,8 +230,10 @@ func seedVigilanciaPermissions(e *casbin.Enforcer) error {
 			return err
 		}
 	}
-	_, err := authz.AddPermissionForRole(e, authz.RolSupervigilante, authz.ObjVigilancia, authz.ActBorrarAccesoSede)
-	return err
+	if _, err := authz.AddPermissionForRole(e, authz.RolSupervigilante, authz.ObjVigilancia, authz.ActBorrarAccesoSede); err != nil {
+		return err
+	}
+	return seedSupervigilanteAltaPersonal(e)
 }
 
 // seedFPIPermissions: perfil mínimo para el módulo FPI (Sofía/Betowa) + ver/editar mi persona.

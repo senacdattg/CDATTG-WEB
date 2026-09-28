@@ -9,6 +9,7 @@ Flujo (Scrapling StealthyFetcher):
 from __future__ import annotations
 
 import re
+import threading
 import time
 import unicodedata
 from concurrent.futures import ThreadPoolExecutor
@@ -18,6 +19,7 @@ from urllib.parse import urljoin
 from patchright.sync_api import Page
 
 from app import scraper as s
+from app.sofia_fetch_lote import correr_fetch_hasta_trabajo, envolver_page_action
 
 ROL_USUARIO_SENA = s.ROL_USUARIO_SENA
 
@@ -1797,14 +1799,28 @@ def consultar_inscripciones(
             _resultado_consulta_en_pagina(page, numero, programa_n, tipo_documento)
         )
 
-    try:
-        s.ejecutar_fetch(0, page_action)
-    except Exception as exc:
+    listo = threading.Event()
+    err_fetch: list[str | None] = [None]
+
+    def fetch() -> None:
+        try:
+            s.ejecutar_fetch(0, envolver_page_action(page_action, listo))
+        except Exception as exc:
+            err_fetch[0] = f"Error del scraper: {exc}"
+
+    if not correr_fetch_hasta_trabajo(fetch, listo, 45 * 60):
         return ResultadoInscripciones(
             numero_documento=numero,
             programa_consultado=programa_n,
             estado=ESTADO_NO_VERIFICADO,
-            mensaje=f"Error del scraper: {exc}",
+            mensaje="el scraper Sofía no terminó las consultas a tiempo",
+        )
+    if err_fetch[0] and not resultado_holder:
+        return ResultadoInscripciones(
+            numero_documento=numero,
+            programa_consultado=programa_n,
+            estado=ESTADO_NO_VERIFICADO,
+            mensaje=err_fetch[0],
         )
 
     if err_msg[0] and not resultado_holder:
@@ -1897,10 +1913,20 @@ def _consultar_inscripciones_lote_secuencial(
             )
             s.progreso.reportar(lote_id, item.numero_documento, r.estado)
 
-    try:
-        s.ejecutar_fetch(worker_id, page_action)
-    except Exception as exc:
-        return _resultados_error_lote(items, f"Error del scraper: {exc}")
+    listo = threading.Event()
+    err_fetch: list[str | None] = [None]
+
+    def fetch() -> None:
+        try:
+            s.ejecutar_fetch(worker_id, envolver_page_action(page_action, listo))
+        except Exception as exc:
+            err_fetch[0] = f"Error del scraper: {exc}"
+
+    to_s = float(180 + 90 * max(len(items), 1))
+    if not correr_fetch_hasta_trabajo(fetch, listo, min(to_s, 45 * 60)):
+        return _resultados_error_lote(items, "el scraper Sofía no terminó las consultas a tiempo")
+    if err_fetch[0] and not resultados:
+        return _resultados_error_lote(items, err_fetch[0])
 
     if err_global[0] and not resultados:
         errores = _resultados_error_lote(items, err_global[0] or "Error de login")

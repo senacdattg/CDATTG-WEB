@@ -115,9 +115,13 @@ import type {
   AccesoRegistroResponse,
   AccesoCancelarIngresoResponse,
   AccesoDentroItem,
+  AccesoSalidaMasivaResponse,
   AccesoHistorialParams,
   AccesoHistorialResponse,
   AccesoEstadisticasResponse,
+  AccesoBorrarResponse,
+  AccesoStubsListaResponse,
+  AccesoBorrarStubsResponse,
 } from '../types';
 import type {
   CreatePersonalRolRequest,
@@ -1372,7 +1376,7 @@ class ApiService {
 
   async accesoSalida(data: {
     numero_documento: string;
-    motivo_salida: string;
+    motivo_salida?: string;
     observacion_salida?: string;
     metodo_registro: string;
     sede_id: number;
@@ -1398,6 +1402,14 @@ class ApiService {
     return response.data.data;
   }
 
+  async accesoSalidaMasiva(sedeId: number, excluirVisitaIds: number[]): Promise<AccesoSalidaMasivaResponse> {
+    const response = await this.api.post<{ data: AccesoSalidaMasivaResponse }>('/vigilancia/acceso/salida-masiva', {
+      sede_id: sedeId,
+      excluir_visita_ids: excluirVisitaIds,
+    });
+    return response.data.data;
+  }
+
   async accesoHistorial(params: AccesoHistorialParams): Promise<AccesoHistorialResponse> {
     const response = await this.api.get<{ data: AccesoHistorialResponse }>('/vigilancia/acceso/historial', {
       params,
@@ -1408,6 +1420,42 @@ class ApiService {
   async accesoEstadisticas(params: AccesoHistorialParams): Promise<AccesoEstadisticasResponse> {
     const response = await this.api.get<{ data: AccesoEstadisticasResponse }>('/vigilancia/acceso/estadisticas', {
       params,
+    });
+    return response.data.data;
+  }
+
+  async accesoZipRegistros(params: AccesoHistorialParams): Promise<Blob> {
+    const response = await this.api.get<Blob>('/vigilancia/acceso/registros/zip', {
+      params,
+      responseType: 'blob',
+    });
+    return response.data;
+  }
+
+  async accesoBorrarRegistros(data: {
+    regional_id?: number;
+    sede_id?: number;
+    fecha_desde?: string;
+    fecha_hasta?: string;
+    descarga_ok: boolean;
+    confirmacion_1: string;
+    confirmacion_2: string;
+  }): Promise<AccesoBorrarResponse> {
+    const response = await this.api.post<{ data: AccesoBorrarResponse }>('/vigilancia/acceso/registros/borrar', data);
+    return response.data.data;
+  }
+
+  async accesoPersonasSinNombre(page: number, pageSize: number): Promise<AccesoStubsListaResponse> {
+    const response = await this.api.get<{ data: AccesoStubsListaResponse }>('/vigilancia/acceso/personas-sin-nombre', {
+      params: { page, page_size: pageSize },
+    });
+    return response.data.data;
+  }
+
+  async accesoBorrarPersonasSinNombre(ids: number[], confirmado: boolean): Promise<AccesoBorrarStubsResponse> {
+    const response = await this.api.post<{ data: AccesoBorrarStubsResponse }>('/vigilancia/acceso/personas-sin-nombre/borrar', {
+      ids,
+      confirmado,
     });
     return response.data.data;
   }

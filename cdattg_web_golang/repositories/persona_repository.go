@@ -21,6 +21,8 @@ type PersonaRepository interface {
 	ExistsByCelular(celular string) bool
 	FindByEmailExcludingID(email string, excludeID uint) (*models.Persona, error)
 	FindByCelularExcludingID(celular string, excludeID uint) (*models.Persona, error)
+	ListStubsPorteria(page, pageSize int) ([]models.Persona, int64, error)
+	HardDelete(id uint) error
 }
 
 type personaRepository struct {

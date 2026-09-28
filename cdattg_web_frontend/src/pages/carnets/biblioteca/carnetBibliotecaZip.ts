@@ -9,7 +9,7 @@ import { descargarBlob } from '../digital/carnetVideoGiro';
 
 /**
  * Pido el zip a la API y lo guardo.
- * @param fichaId ficha elegida; 0 = todas
+ * @param fichaId ficha elegida
  */
 export async function descargarFotosBibliotecaZip(fichaId: number): Promise<void> {
   const blob = await bajarFotosBibliotecaZip(fichaId);

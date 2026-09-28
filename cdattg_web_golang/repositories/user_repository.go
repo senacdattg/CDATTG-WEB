@@ -17,6 +17,7 @@ type UserRepository interface {
 	Create(user *models.User) error
 	Update(user *models.User) error
 	Delete(id uint) error
+	HardDeleteByPersonaID(personaID uint) error
 	ExistsByEmail(email string) bool
 }
 
@@ -91,6 +92,10 @@ func (r *userRepository) Update(user *models.User) error {
 
 func (r *userRepository) Delete(id uint) error {
 	return r.db.Delete(&models.User{}, id).Error
+}
+
+func (r *userRepository) HardDeleteByPersonaID(personaID uint) error {
+	return r.db.Unscoped().Where("persona_id = ?", personaID).Delete(&models.User{}).Error
 }
 
 func (r *userRepository) ExistsByEmail(email string) bool {

@@ -52,6 +52,7 @@ const (
 	permVerMiAgenda                       = "VER MI AGENDA"
 	permRegistrarAccesoSede               = "REGISTRAR ACCESO SEDE"
 	permVerAccesoSede                     = "VER ACCESO SEDE"
+	permBorrarAccesoSede                  = "BORRAR ACCESO SEDE"
 	permRegistrarPersona                  = "REGISTRAR PERSONA"
 )
 
@@ -353,11 +354,16 @@ func SetupRouter() *gin.Engine {
 				vigilancia.POST("/lookup", middleware.RequirePermission("vigilancia", permRegistrarAccesoSede), vigilanciaAccesoHandler.Lookup)
 				vigilancia.POST("/ingreso", middleware.RequirePermission("vigilancia", permRegistrarAccesoSede), vigilanciaAccesoHandler.Ingreso)
 				vigilancia.POST("/salida", middleware.RequirePermission("vigilancia", permRegistrarAccesoSede), vigilanciaAccesoHandler.Salida)
+				vigilancia.POST("/salida-masiva", middleware.RequirePermission("vigilancia", permVerAccesoSede), vigilanciaAccesoHandler.SalidaMasiva)
 				vigilancia.POST("/cancelar-ingreso", middleware.RequirePermission("vigilancia", permRegistrarAccesoSede), vigilanciaAccesoHandler.CancelarIngreso)
 				vigilancia.GET("/foto", middleware.RequirePermission("vigilancia", permRegistrarAccesoSede), vigilanciaAccesoHandler.VerFotoAcceso)
 				vigilancia.GET("/dentro", middleware.RequirePermission("vigilancia", permVerAccesoSede), vigilanciaAccesoHandler.ListDentro)
 				vigilancia.GET("/historial", middleware.RequirePermission("vigilancia", permVerAccesoSede), vigilanciaAccesoHandler.Historial)
 				vigilancia.GET("/estadisticas", middleware.RequirePermission("vigilancia", permVerAccesoSede), vigilanciaAccesoHandler.Estadisticas)
+				vigilancia.GET("/registros/zip", middleware.RequirePermission("vigilancia", permBorrarAccesoSede), vigilanciaAccesoHandler.ZipExcelRegistros)
+				vigilancia.POST("/registros/borrar", middleware.RequirePermission("vigilancia", permBorrarAccesoSede), vigilanciaAccesoHandler.BorrarRegistros)
+				vigilancia.GET("/personas-sin-nombre", middleware.RequirePermission("vigilancia", permVerAccesoSede), vigilanciaAccesoHandler.ListPersonasSinNombre)
+				vigilancia.POST("/personas-sin-nombre/borrar", middleware.RequirePermission("vigilancia", permVerAccesoSede), vigilanciaAccesoHandler.BorrarPersonasSinNombre)
 			}
 
 			vigilanciaPersonas := protected.Group("/vigilancia/personas")

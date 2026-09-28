@@ -55,6 +55,9 @@ func TestBibliotecaDesdeSolicitudes(t *testing.T) {
 	if out.Items[0].FotoURL != "/api/impresora/carnets/foto?documento=1" {
 		t.Fatalf("foto_url %q", out.Items[0].FotoURL)
 	}
+	if out.Items[0].Listo {
+		t.Fatal("sin marcar no es listo")
+	}
 	if ids := fichaIDsDeSolicitudes(list); len(ids) != 1 || ids[0] != 8 {
 		t.Fatalf("ids %v", ids)
 	}

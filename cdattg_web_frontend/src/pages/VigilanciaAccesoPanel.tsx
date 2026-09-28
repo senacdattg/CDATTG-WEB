@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ChartBarIcon, ClockIcon, MagnifyingGlassIcon, UserIcon } from '@heroicons/react/24/outline';
+import { AccesoEstadoCelda } from './vigilancia/accesoEstadoVisita';
 import { apiService } from '../services/api';
 import { axiosErrorMessage } from '../utils/httpError';
 import type {
@@ -238,6 +239,28 @@ function HalfDayHourTable({
   );
 }
 
+function AlertaError({ error }: Readonly<{ error: string }>) {
+  if (error === '') return null;
+  return (
+    <div role="alert" className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+      {error}
+    </div>
+  );
+}
+
+function BloqueKpis({ stats }: Readonly<{ stats: AccesoEstadisticasResponse | null }>) {
+  if (stats === null) return null;
+  return (
+    <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+      <KpiCard label="Ingresos (periodo)" value={stats.total_ingresos} tone="emerald" />
+      <KpiCard label="Salidas (periodo)" value={stats.total_salidas} tone="amber" />
+      <KpiCard label="Índice salida/ingreso" value={formatIndice(stats.indice_salida_ingreso)} tone="emerald" />
+      <KpiCard label="Dentro ahora" value={stats.dentro_ahora} />
+      <KpiCard label="Salidas sin ingreso" value={stats.salidas_sin_ingreso} tone="red" />
+    </section>
+  );
+}
+
 function shiftDayISO(iso: string, delta: number): string {
   const d = new Date(`${iso}T12:00:00`);
   d.setDate(d.getDate() + delta);
@@ -338,7 +361,12 @@ export function VigilanciaAccesoPanel() {
       opts?: { silent?: boolean },
       base?: FiltrosSnapshot,
     ) => {
-      if (!opts?.silent) setLoadingDia(true);
+      const silencioso = Boolean(opts?.silent);
+      if (silencioso) {
+        /* en vivo no bloqueo el gráfico */
+      } else {
+        setLoadingDia(true);
+      }
       try {
         const params: AccesoHistorialParams = {
           ...buildParams(1, base),
@@ -351,11 +379,17 @@ export function VigilanciaAccesoPanel() {
         setStatsDia(est);
         setUltimaActualizacion(new Date());
       } catch (e: unknown) {
-        if (!opts?.silent) {
+        if (silencioso) {
+          /* en vivo no muestro el error */
+        } else {
           setError(axiosErrorMessage(e, 'No se pudo cargar la tabla del día.'));
         }
       } finally {
-        if (!opts?.silent) setLoadingDia(false);
+        if (silencioso) {
+          /* el live no usa loadingDia */
+        } else {
+          setLoadingDia(false);
+        }
       }
     },
     [buildParams],
@@ -369,11 +403,12 @@ export function VigilanciaAccesoPanel() {
       opts?: { silent?: boolean },
       base?: FiltrosSnapshot,
     ) => {
-      if (!opts?.silent) {
+      const silencioso = Boolean(opts?.silent);
+      if (silencioso) {
+        setLiveUpdating(true);
+      } else {
         setLoading(true);
         setError('');
-      } else {
-        setLiveUpdating(true);
       }
       const params = { ...buildParams(pageOverride, base), ...overrides };
       try {
@@ -383,17 +418,26 @@ export function VigilanciaAccesoPanel() {
         ]);
         setHistorial(hist);
         setStats(est);
-        if (pageOverride && !opts?.silent) setPage(pageOverride);
+        if (silencioso) {
+          /* en vivo no cambio de página */
+        } else if (pageOverride) {
+          setPage(pageOverride);
+        }
         const dia = diaChart ?? diaGrafico;
         if (diaChart) setDiaGrafico(diaChart);
         await cargarDiaGrafico(dia, overrides, { silent: opts?.silent }, base);
       } catch (e: unknown) {
-        if (!opts?.silent) {
+        if (silencioso) {
+          /* en vivo no muestro el error en pantalla */
+        } else {
           setError(axiosErrorMessage(e, 'No se pudo cargar el reporte.'));
         }
       } finally {
-        if (!opts?.silent) setLoading(false);
-        else setLiveUpdating(false);
+        if (silencioso) {
+          setLiveUpdating(false);
+        } else {
+          setLoading(false);
+        }
       }
     },
     [buildParams, cargarDiaGrafico, diaGrafico],
@@ -661,25 +705,8 @@ export function VigilanciaAccesoPanel() {
         </div>
       </section>
 
-      {error ? (
-        <div role="alert" className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-          {error}
-        </div>
-      ) : null}
-
-      {stats ? (
-        <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-          <KpiCard label="Ingresos (periodo)" value={stats.total_ingresos} tone="emerald" />
-          <KpiCard label="Salidas (periodo)" value={stats.total_salidas} tone="amber" />
-          <KpiCard
-            label="Índice salida/ingreso"
-            value={formatIndice(stats.indice_salida_ingreso)}
-            tone="emerald"
-          />
-          <KpiCard label="Dentro ahora" value={stats.dentro_ahora} />
-          <KpiCard label="Salidas sin ingreso" value={stats.salidas_sin_ingreso} tone="red" />
-        </section>
-      ) : null}
+      <AlertaError error={error} />
+      <BloqueKpis stats={stats} />
 
       {stats || statsDia ? (
         <section className="space-y-3">
@@ -819,21 +846,7 @@ export function VigilanciaAccesoPanel() {
                     {MOTIVO_LABELS[item.motivo_salida || ''] || item.motivo_salida || '—'}
                   </td>
                   <td className="px-3 py-2 text-sm">
-                    <span
-                      className={`inline-flex rounded px-2 py-0.5 text-xs font-medium ${
-                        item.estado === 'abierto'
-                          ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200'
-                          : item.estado === 'cancelado'
-                            ? 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-200'
-                            : 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
-                      }`}
-                    >
-                      {item.estado === 'abierto'
-                        ? 'Dentro'
-                        : item.estado === 'cancelado'
-                          ? 'Cancelado'
-                          : 'Cerrado'}
-                    </span>
+                    <AccesoEstadoCelda item={item} />
                   </td>
                 </tr>
               ))}

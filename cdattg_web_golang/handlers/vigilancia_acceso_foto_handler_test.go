@@ -17,8 +17,11 @@ import (
 )
 
 type mockVigAccesoFoto struct {
-	foto *services.PersonaFotoArchivo
-	err  error
+	foto    *services.PersonaFotoArchivo
+	masiva  *dto.AccesoSalidaMasivaResponse
+	zip     []byte
+	borrado *dto.AccesoBorrarResponse
+	err     error
 }
 
 func (m *mockVigAccesoFoto) Lookup(dto.AccesoLookupRequest) (*dto.AccesoLookupResponse, error) {
@@ -34,10 +37,25 @@ func (m *mockVigAccesoFoto) CancelarIngreso(dto.AccesoCancelarIngresoRequest, ui
 	return nil, m.err
 }
 func (m *mockVigAccesoFoto) ListDentro(*uint) ([]dto.AccesoDentroItem, error) { return nil, m.err }
+func (m *mockVigAccesoFoto) SalidaMasiva(dto.AccesoSalidaMasivaRequest, uint) (*dto.AccesoSalidaMasivaResponse, error) {
+	return m.masiva, m.err
+}
 func (m *mockVigAccesoFoto) Historial(dto.AccesoHistorialFiltros) (*dto.AccesoHistorialResponse, error) {
 	return nil, m.err
 }
 func (m *mockVigAccesoFoto) Estadisticas(dto.AccesoHistorialFiltros) (*dto.AccesoEstadisticasResponse, error) {
+	return nil, m.err
+}
+func (m *mockVigAccesoFoto) ZipExcelAccesos(dto.AccesoHistorialFiltros) ([]byte, error) {
+	return m.zip, m.err
+}
+func (m *mockVigAccesoFoto) BorrarAccesos(dto.AccesoBorrarRequest) (*dto.AccesoBorrarResponse, error) {
+	return m.borrado, m.err
+}
+func (m *mockVigAccesoFoto) ListPersonasSinNombre(int, int) (*dto.AccesoStubsListaResponse, error) {
+	return nil, m.err
+}
+func (m *mockVigAccesoFoto) BorrarPersonasSinNombre(dto.AccesoBorrarStubsRequest) (*dto.AccesoBorrarStubsResponse, error) {
 	return nil, m.err
 }
 func (m *mockVigAccesoFoto) LeerFotoAcceso(string) (*services.PersonaFotoArchivo, error) {

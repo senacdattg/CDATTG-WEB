@@ -8,7 +8,7 @@ import { descargarBlob } from '../digital/carnetVideoGiro';
 
 /**
  * Pido el archivo a la API y lo guardo.
- * @param fichaId ficha elegida; 0 = todas
+ * @param fichaId ficha elegida
  */
 export async function descargarExcelBiblioteca(fichaId: number): Promise<void> {
   const blob = await bajarExcelBiblioteca(fichaId);

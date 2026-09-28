@@ -9,6 +9,7 @@ var RoleNames = []string{
 	"SUPER ADMINISTRADOR",
 	"ADMINISTRADOR",
 	"VIGILANTE",
+	RolSupervigilante,
 	"COORDINADOR",
 	"INSTRUCTOR",
 	"VISITANTE",
@@ -75,7 +76,7 @@ var (
 		ActRegistrarAccesoSede,
 		ActVerAccesoSede,
 	}
-	PermisosCarnet = []string{ActVerCarnetDigital, ActValidarCarnetDigital, ActVerCarnetBiblioteca, ActConfigurarCarnet, ActSolicitarCarnetPerdida, ActValidarCarnetPerdida}
+	PermisosCarnet = []string{ActVerCarnetDigital, ActValidarCarnetDigital, ActVerCarnetBiblioteca, ActMarcarCarnetBiblioteca, ActConfigurarCarnet, ActSolicitarCarnetPerdida, ActValidarCarnetPerdida}
 )
 
 // ObjPersona, ObjPrograma, ... nombres de objeto usados en rutas y Casbin.
@@ -85,9 +86,11 @@ const (
 	ActEditarMiPersona        = "EDITAR MI PERSONA"
 	ActRegistrarAccesoSede    = "REGISTRAR ACCESO SEDE"
 	ActVerAccesoSede          = "VER ACCESO SEDE"
+	ActBorrarAccesoSede       = "BORRAR ACCESO SEDE"
 	ActVerCarnetDigital       = "VER CARNET DIGITAL"
 	ActValidarCarnetDigital   = "VALIDAR CARNET DIGITAL"
 	ActVerCarnetBiblioteca    = "VER CARNET BIBLIOTECA"
+	ActMarcarCarnetBiblioteca = "MARCAR CARNET BIBLIOTECA"
 	ActConfigurarCarnet       = "CONFIGURAR CARNET"
 	ActSolicitarCarnetPerdida = "SOLICITAR CARNET PERDIDA"
 	ActValidarCarnetPerdida   = "VALIDAR CARNET PERDIDA"
@@ -122,6 +125,7 @@ const (
 	RolPersonalAdministrativo         = "PERSONAL ADMINISTRATIVO"
 	RolContratistaPrestacionServicios = "CONTRATISTA PRESTACIÓN DE SERVICIOS"
 	RolBibliotecario                  = "BIBLIOTECARIO"
+	RolSupervigilante                 = "SUPER VIGILANTE"
 	// Perfiles que administran la formación académica (fichas, programas y personal).
 	RolMediaTecnica            = "MEDIA TECNICA"
 	RolFormacionComplementaria = "FORMACION COMPLEMENTARIA"
@@ -176,6 +180,7 @@ func AllPermissionPairs() []struct{ Obj, Act string } {
 	for _, act := range PermisosVigilancia {
 		out = append(out, struct{ Obj, Act string }{ObjVigilancia, act})
 	}
+	out = append(out, struct{ Obj, Act string }{ObjVigilancia, ActBorrarAccesoSede})
 	for _, act := range PermisosCarnet {
 		out = append(out, struct{ Obj, Act string }{ObjCarnet, act})
 	}

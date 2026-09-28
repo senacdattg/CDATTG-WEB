@@ -8,35 +8,7 @@ import { asistenciaPaths } from '../../routes/paths';
 import type { AprendizResponse, FichaCaracterizacionResponse, InstructorFichaResponse } from '../../types';
 import { tituloProgramaFicha } from '../../utils/fichaListDisplay';
 import { labelTipoFormacion } from '../../constants/tipoFormacion';
-
-const MAX_DIAS_ATRAS = 30;
-
-function fechaLocalISO(d: Date): string {
-  const year = d.getFullYear();
-  const month = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
-}
-
-function ayerISO(): string {
-  const d = new Date();
-  d.setDate(d.getDate() - 1);
-  return fechaLocalISO(d);
-}
-
-function ultimoDiaHabilISO(): string {
-  const d = new Date();
-  do {
-    d.setDate(d.getDate() - 1);
-  } while (d.getDay() === 0 || d.getDay() === 6);
-  return fechaLocalISO(d);
-}
-
-function minFechaISO(): string {
-  const d = new Date();
-  d.setDate(d.getDate() - MAX_DIAS_ATRAS);
-  return fechaLocalISO(d);
-}
+import { ayerISO, minFechaRetroISO, ultimoDiaHabilISO } from './cargaRetroactivaFechas';
 
 function ordenarFichas(fichas: FichaCaracterizacionResponse[]): FichaCaracterizacionResponse[] {
   return [...fichas].sort((a, b) => a.ficha.localeCompare(b.ficha, 'es'));
@@ -218,7 +190,7 @@ export function CargaRetroactivaAsistenciaPage() {
           </h1>
           <p className="mt-1 text-sm text-gray-600 dark:text-gray-400 max-w-3xl">
             Registra asistencia de un día pasado cuando el instructor no pudo tomarla (sin internet u otro
-            impedimento). Máximo {MAX_DIAS_ATRAS} días atrás. Solo superadministrador.
+            impedimento). Cualquier fecha anterior a hoy. Solo superadministrador.
           </p>
         </div>
         <Link to={asistenciaPaths.index} className="btn-secondary inline-flex items-center gap-2">
@@ -323,7 +295,7 @@ export function CargaRetroactivaAsistenciaPage() {
                 id="fecha-retro"
                 type="date"
                 value={fecha}
-                min={minFechaISO()}
+                min={minFechaRetroISO()}
                 max={ayerISO()}
                 onChange={(e) => setFecha(e.target.value)}
                 className="input-field max-w-full"

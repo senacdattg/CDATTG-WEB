@@ -13,6 +13,8 @@ import (
 	"github.com/sena/cdattg-web-golang/models"
 )
 
+var zonaVigenciaTest = time.FixedZone("America/Bogota", -5*60*60)
+
 func ptrTime(y int, m time.Month, d int, hm ...int) *time.Time {
 	h, mi := 0, 0
 	if len(hm) > 0 {
@@ -21,7 +23,7 @@ func ptrTime(y int, m time.Month, d int, hm ...int) *time.Time {
 	if len(hm) > 1 {
 		mi = hm[1]
 	}
-	t := time.Date(y, m, d, h, mi, 0, 0, time.UTC)
+	t := time.Date(y, m, d, h, mi, 0, 0, zonaVigenciaTest)
 	return &t
 }
 
@@ -48,7 +50,7 @@ func withVigenciaFechasActiva(t *testing.T) func() {
 }
 
 func TestInstructorVigenteParaAcceso(t *testing.T) {
-	hoy := time.Date(2026, 8, 15, 8, 0, 0, 0, time.Local)
+	hoy := time.Date(2026, 8, 15, 8, 0, 0, 0, zonaVigenciaTest)
 	instOK := func() *models.Instructor {
 		return &models.Instructor{
 			Status:              true,
@@ -93,7 +95,7 @@ func TestInstructorVigenteParaAcceso(t *testing.T) {
 func TestFichaVigenteParaAcceso(t *testing.T) {
 	restore := withVigenciaFechasActiva(t)
 	defer restore()
-	hoy := time.Date(2026, 8, 15, 8, 0, 0, 0, time.Local)
+	hoy := time.Date(2026, 8, 15, 8, 0, 0, 0, zonaVigenciaTest)
 
 	cases := []struct {
 		name  string
@@ -137,7 +139,7 @@ func TestFichaVigenteParaAcceso_IgnoraFechasPorConfig(t *testing.T) {
 	prev := config.AppConfig
 	config.AppConfig = &config.Config{Negocio: config.NegocioConfig{IgnorarVigenciaFicha: true}}
 	defer func() { config.AppConfig = prev }()
-	hoy := time.Date(2026, 8, 15, 8, 0, 0, 0, time.Local)
+	hoy := time.Date(2026, 8, 15, 8, 0, 0, 0, zonaVigenciaTest)
 	ficha := func() *models.FichaCaracterizacion {
 		f := fichaActiva()
 		f.FechaFin = ptrTime(2026, 7, 14)
@@ -158,7 +160,7 @@ func TestFichaVigenteParaAcceso_IgnoraFechasPorConfig(t *testing.T) {
 func TestHayMatriculaConFichaVigente(t *testing.T) {
 	restore := withVigenciaFechasActiva(t)
 	defer restore()
-	hoy := time.Date(2026, 8, 15, 8, 0, 0, 0, time.Local)
+	hoy := time.Date(2026, 8, 15, 8, 0, 0, 0, zonaVigenciaTest)
 
 	fichas := map[uint]*models.FichaCaracterizacion{}
 	cargarFicha := func(id uint) *models.FichaCaracterizacion { return fichas[id] }
@@ -208,7 +210,7 @@ func TestHayMatriculaConFichaVigente(t *testing.T) {
 func TestFichasVigentesDeMatriculas_DedupYDescartaInactivas(t *testing.T) {
 	restore := withVigenciaFechasActiva(t)
 	defer restore()
-	hoy := time.Date(2026, 8, 15, 8, 0, 0, 0, time.Local)
+	hoy := time.Date(2026, 8, 15, 8, 0, 0, 0, zonaVigenciaTest)
 
 	fichas := map[uint]*models.FichaCaracterizacion{}
 	cargarFicha := func(id uint) *models.FichaCaracterizacion { return fichas[id] }
@@ -263,7 +265,7 @@ func TestFichaDeMatricula(t *testing.T) {
 }
 
 func TestCalcularEstadoFicha(t *testing.T) {
-	hoy := time.Date(2026, 8, 15, 8, 0, 0, 0, time.Local)
+	hoy := time.Date(2026, 8, 15, 8, 0, 0, 0, zonaVigenciaTest)
 	ficha := func() *models.FichaCaracterizacion {
 		f := fichaConID(1, true)
 		f.FechaInicio = ptrTime(2026, 1, 1)

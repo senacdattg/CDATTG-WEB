@@ -12,8 +12,7 @@ import (
 
 const (
 	prefijoObservacionRetroactiva = "[CARGA RETROACTIVA]"
-	maxDiasRetroactivoAsistencia = 30
-	motivoAjusteRetroactivo        = "Registro retroactivo por superadministrador"
+	motivoAjusteRetroactivo       = "Registro retroactivo por superadministrador"
 )
 
 type contextoAsistenciaRetroactiva struct {
@@ -118,9 +117,7 @@ func (s *asistenciaService) validarProgramacionRetroactiva(
 	ifc *models.InstructorFichaCaracterizacion,
 	fecha time.Time,
 ) error {
-	if err := s.horarioSvc.ValidarPuedeTomarAsistencia(ifc.InstructorID, ifc.FichaID, fecha); err != nil {
-		return err
-	}
+	// No uso el reloj de ahora: medianoche queda fuera del horario de la clase y en producción rechazaba el día.
 	if !s.horarioSvc.calendarioSvc.EsSesionFormacionValida(ifc.FichaID, ifc.InstructorID, fecha) {
 		return errors.New("la fecha no corresponde a un día de formación programado para este instructor en la ficha")
 	}
@@ -134,10 +131,6 @@ func validarFechaRetroactiva(fecha time.Time) error {
 	inicioFecha := time.Date(fecha.Year(), fecha.Month(), fecha.Day(), 0, 0, 0, 0, loc)
 	if !inicioFecha.Before(inicioHoy) {
 		return errors.New("la fecha debe ser anterior al día de hoy")
-	}
-	diffDias := int(inicioHoy.Sub(inicioFecha).Hours() / 24)
-	if diffDias > maxDiasRetroactivoAsistencia {
-		return fmt.Errorf("solo se permite cargar asistencia hasta %d días atrás", maxDiasRetroactivoAsistencia)
 	}
 	return nil
 }

@@ -24,9 +24,9 @@ func TestValidarFechaRetroactiva_aceptaAyer(t *testing.T) {
 	}
 }
 
-func TestValidarFechaRetroactiva_rechazaMasDe30Dias(t *testing.T) {
-	fecha := time.Now().AddDate(0, 0, -(maxDiasRetroactivoAsistencia + 1))
-	if err := validarFechaRetroactiva(fecha); err == nil {
-		t.Fatal("esperaba error por exceder límite de días")
+func TestValidarFechaRetroactiva_aceptaNoventaDias(t *testing.T) {
+	fecha := time.Now().AddDate(0, 0, -90)
+	if err := validarFechaRetroactiva(fecha); err != nil {
+		t.Fatalf("90 días atrás debería valer: %v", err)
 	}
 }

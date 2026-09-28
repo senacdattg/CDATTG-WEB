@@ -1,8 +1,10 @@
 /**
  * Guardo la pantalla de la app para abrirla si se cae la red.
  * No cacheo /api: entradas y salidas van al servidor o a la cola del navegador.
+ * Solo guardo respuestas buenas: un 502 no debe quedar como “la app”.
+ * Las reglas están en src/pwa/swCacheReglas.ts (pruebas).
  */
-const CACHE = 'cdattg-pantalla-v1';
+const CACHE = 'cdattg-pantalla-v2';
 
 globalThis.addEventListener('install', (event) => {
   event.waitUntil(
@@ -20,6 +22,7 @@ globalThis.addEventListener('fetch', (event) => {
   const req = event.request;
   if (req.method !== 'GET') return;
   const url = new URL(req.url);
+  if (url.origin !== globalThis.location.origin) return;
   if (url.pathname.startsWith('/api/')) return;
   event.respondWith(responder(req));
 });
@@ -27,9 +30,10 @@ globalThis.addEventListener('fetch', (event) => {
 async function responder(req) {
   try {
     const net = await fetch(req);
-    const copia = net.clone();
-    const cache = await caches.open(CACHE);
-    await cache.put(req, copia);
+    if (net.ok) {
+      const cache = await caches.open(CACHE);
+      await cache.put(req, net.clone());
+    }
     return net;
   } catch {
     const hit = await caches.match(req);
